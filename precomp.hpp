@@ -115,4 +115,8 @@ typedef struct tagCIEXYZ {
 #include "basetypes.h"
 #include "wgx_render_types_generated.h"
 //#include "wgx_misc.h"
+#include "spec_string.h"
+typedef INT_PTR PERFMETERTAG;
+#define     MtExtern(tag)                       extern PERFMETERTAG g_mt##tag;
+#include "MILMatrix.h"
 #include "aarasterizer.h"
