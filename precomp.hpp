@@ -19,6 +19,24 @@ typedef long long LONGLONG;
 #include "pal_assert.h"
 #include "intsafe.h"
 #include "windef.h"
+
+typedef struct _D3DMATRIX {
+    union {
+        struct {
+            float        _11, _12, _13, _14;
+            float        _21, _22, _23, _24;
+            float        _31, _32, _33, _34;
+            float        _41, _42, _43, _44;
+
+        };
+        float m[4][4];
+    };
+} D3DMATRIX;
+class IWICBitmapSource;
+#define MILINSTRUMENTATIONFLAGS_DONOTHING               0x00
+#define SET_MILINSTRUMENTATION_FLAGS(f) \
+    static const DWORD MILINSTRUMENTATIONFLAGS = (f)
+
 #define CCHILDREN_TITLEBAR 5
 #ifndef BEGIN_MILENUM
 #define BEGIN_MILENUM(type)                     \
@@ -85,10 +103,16 @@ struct TMILFlagsEnum
 
 
 #endif /*BEGIN_MILFLAGENUM*/
+typedef long            FXPT2DOT30;
+typedef struct tagCIEXYZ {
+  FXPT2DOT30 ciexyzX;
+  FXPT2DOT30 ciexyzY;
+  FXPT2DOT30 ciexyzZ;
+} CIEXYZ;
 
-
+#include "wincodec_private_generated.h"
 #include "wgx_core_types.h"
 #include "basetypes.h"
-//#include "wgx_render_types_generated.h"
+#include "wgx_render_types_generated.h"
 //#include "wgx_misc.h"
 #include "aarasterizer.h"

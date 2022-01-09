@@ -88,6 +88,7 @@ BOOL IntersectRect(
     return IntersectRectT(prcDst,prcSrc1,prcSrc2);
 }
 
+#if 0
 MIL_FORCEINLINE
 BOOL IntersectRect(
     __out_ecount(1) WICRect *prcDst,
@@ -97,6 +98,7 @@ BOOL IntersectRect(
 {
     return IntersectRectT(prcDst,prcSrc1,prcSrc2);
 }
+#endif
 
 //--------------------------------------------------------------------------
 // Represents a 32-bit ARGB color in AARRGGBB format
