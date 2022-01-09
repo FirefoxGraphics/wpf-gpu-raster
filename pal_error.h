@@ -1,0 +1,96 @@
+//
+// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//
+
+/*++
+
+
+
+
+
+--*/
+
+#ifndef __PAL_ERROR_H__
+#define __PAL_ERROR_H__
+
+/******************* error codes *****************************************/
+/* STARTERRORCODES - do not remove this marker, it is consumed by the palsatellite tool */
+
+#define ERROR_SUCCESS 0L
+#define ERROR_FILE_NOT_FOUND 2L
+#define ERROR_PATH_NOT_FOUND 3L
+#define ERROR_ACCESS_DENIED 5L
+#define ERROR_INVALID_HANDLE 6L
+#define ERROR_NOT_ENOUGH_MEMORY 8L
+#define ERROR_BUFFER_OVERFLOW 111L
+#define ERROR_INVALID_ACCESS 12L
+#define ERROR_INVALID_DATA 13L
+#define ERROR_OUTOFMEMORY 14L
+#define ERROR_BAD_COMMAND 22L
+
+#define ERROR_BAD_LENGTH 24L
+#define ERROR_WRITE_FAULT 29L
+#define ERROR_GEN_FAILURE 31L
+#define ERROR_SHARING_VIOLATION 32L
+#define ERROR_LOCK_VIOLATION 33L
+#define ERROR_HANDLE_EOF 38L
+#define ERROR_NOT_SUPPORTED 50L
+#define ERROR_DEV_NOT_EXIST 55L
+#define ERROR_BAD_NET_NAME 67L
+#define ERROR_FILE_EXISTS 80L
+#define ERROR_INVALID_PARAMETER 87L
+#define ERROR_OPEN_FAILED 110L
+#define ERROR_DISK_FULL 112L
+#define ERROR_CALL_NOT_IMPLEMENTED 120L
+#define ERROR_INSUFFICIENT_BUFFER 122L
+#define ERROR_INVALID_NAME 123L
+#define ERROR_MOD_NOT_FOUND 126L
+#define ERROR_PROC_NOT_FOUND 127L
+#define ERROR_NEGATIVE_SEEK 131L
+#define ERROR_DIR_NOT_EMPTY 145L
+#define ERROR_NOT_LOCKED 158L
+#define ERROR_BAD_PATHNAME 161L
+#define ERROR_BUSY 170L
+
+#define ERROR_ALREADY_EXISTS 183L
+#define ERROR_EXE_MARKED_INVALID 192L
+#define ERROR_ENVVAR_NOT_FOUND 203L
+#define ERROR_FILENAME_EXCED_RANGE 206L
+#define ERROR_DIRECTORY 267L
+#define ERROR_NOT_OWNER 288L
+#define ERROR_PARTIAL_COPY 299L
+#define ERROR_INVALID_ADDRESS 487L
+#define ERROR_ARITHMETIC_OVERFLOW 534L
+#define ERROR_NOACCESS 998L
+#define ERROR_STACK_OVERFLOW 1001L
+#define ERROR_FILE_INVALID 1006L
+#define ERROR_PROCESS_ABORTED 1067L
+#define ERROR_INVALID_FLAGS 1004L
+#define ERROR_NO_UNICODE_TRANSLATION 1113L
+#define ERROR_DLL_INIT_FAILED 1114L
+#define ERROR_TOO_MANY_LINKS 1142L
+
+#define ERROR_NOT_FOUND 1168L
+
+#define ERROR_INTERNAL_ERROR 1359L
+#define ERROR_NO_SYSTEM_RESOURCES 1450L
+#define ERROR_COMMITMENT_LIMIT 1455L
+#define ERROR_UNSUPPORTED_TYPE 1630L
+
+#define RPC_S_INVALID_VERS_OPTION 1756L
+
+#define ERROR_RESOURCE_DATA_NOT_FOUND    1812L
+#define ERROR_RESOURCE_LANG_NOT_FOUND 1815L
+#define ERROR_TAG_NOT_PRESENT 2013L
+
+#define CRYPT_E_NO_MATCH 0x80092009
+
+/* ENDERRORCODES - do not remove this marker, it is consumed by the palsatellite tool */
+
+/******************* error code aliases **************************************/
+
+#define NOERROR 0
+#define NO_ERROR 0L
+
+#endif // __PAL_ERROR_H__
