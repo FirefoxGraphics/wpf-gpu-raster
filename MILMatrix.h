@@ -55,7 +55,7 @@ public:
 // Ignore deprecation of D3DMATRIX type here to provides conversion functionality
 #pragma warning (push)
 #pragma warning (disable : 4995)
-
+#if 0
     CMILMatrix(__in_ecount(1) const dxlayer::basetypes<dxlayer::dx_apiset>::matrix_base_t &m)
         : CBaseMatrix(m)
     { 
@@ -66,7 +66,7 @@ public:
         CBaseMatrix::operator=(m);
         return *this;
     }
-
+#endif
     // We continue to support D3DMATRIX (but not D3DXMATRIX)
     CMILMatrix(__in_ecount(1) const D3DMATRIX &m)
         : CBaseMatrix(m)

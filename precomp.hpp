@@ -1,5 +1,6 @@
     #define DeclareTag(tag, szOwner, szDescription)
 #define     MtDefine(tag, szOwner, szDescrip)
+#define     Mt(x)                               g_mt##x
 #define MIL_FORCEINLINE inline
 #include <stdint.h>
 /*typedef int32_t BOOL;
@@ -32,6 +33,85 @@ typedef struct _D3DMATRIX {
         float m[4][4];
     };
 } D3DMATRIX;
+
+struct  D3DXMATRIX  {
+        D3DXMATRIX(const float * pf) {
+                _11 = pf[0];
+                _12 = pf[1];
+                _13 = pf[2];
+                _14 = pf[3];
+                _21 = pf[4];
+                _22 = pf[5];
+                _23 = pf[6];
+                _24 = pf[7];
+                _31 = pf[8];
+                _32 = pf[9];
+                _33 = pf[10];
+                _34 = pf[11];
+                _41 = pf[12];
+                _42 = pf[13];
+                _43 = pf[14];
+                _44 = pf[15];
+        }
+        D3DXMATRIX(float m00, float m01, float m02, float m03,
+                float m10, float m11, float m12, float m13,
+                float m20, float m21, float m22, float m23,
+                float m30, float m31, float m32, float m33) {
+                _11 = m00;
+                _12 = m01;
+                _13 = m02;
+                _14 = m03;
+                _21 = m10;
+                _22 = m11;
+                _23 = m12;
+                _24 = m13;
+                _31 = m20;
+                _32 = m21;
+                _33 = m22;
+                _34 = m23;
+                _41 = m30;
+                _42 = m31;
+                _43 = m32;
+                _44 = m33;
+        }
+
+        D3DXMATRIX(const D3DMATRIX &a) {
+                memcpy(m, a.m, sizeof(m));
+        }
+        D3DXMATRIX() {}
+
+
+/*        D3DXMATRIX&
+        operator *= (float f)
+        {
+                _11 *= f; _12 *= f; _13 *= f; _14 *= f;
+                _21 *= f; _22 *= f; _23 *= f; _24 *= f;
+                _31 *= f; _32 *= f; _33 *= f; _34 *= f;
+                _41 *= f; _42 *= f; _43 *= f; _44 *= f;
+                return *this;
+        }
+*/
+        operator * ( float f ) const
+{
+    return D3DXMATRIX(_11 * f, _12 * f, _13 * f, _14 * f,
+                      _21 * f, _22 * f, _23 * f, _24 * f,
+                      _31 * f, _32 * f, _33 * f, _34 * f,
+                      _41 * f, _42 * f, _43 * f, _44 * f);
+}
+
+
+        union {
+        struct {
+            float        _11, _12, _13, _14;
+            float        _21, _22, _23, _24;
+            float        _31, _32, _33, _34;
+            float        _41, _42, _43, _44;
+
+        };
+        float m[4][4];
+    };
+};
+
 class IWICBitmapSource;
 #define MILINSTRUMENTATIONFLAGS_DONOTHING               0x00
 #define SET_MILINSTRUMENTATION_FLAGS(f) \
@@ -68,7 +148,7 @@ class IWICBitmapSource;
 #define MILFLAGENUM(type) type::Flags
 
 #define WINCODEC_SDK_VERSION_WPF 0x0236
-
+#define Assert(x) assert(x)
 DEFINE_GUID(CLSID_WICImagingFactoryWPF, 0xcacaf262, 0x9370, 0x4615, 0xa1, 0x3b, 0x9f, 0x55, 0x39, 0xda, 0x4c, 0xa);
 
 template<class E>
@@ -113,10 +193,15 @@ typedef struct tagCIEXYZ {
 #include "wincodec_private_generated.h"
 #include "wgx_core_types.h"
 #include "basetypes.h"
-#include "wgx_render_types_generated.h"
+#include "wgx_render_types.h"
 //#include "wgx_misc.h"
 #include "spec_string.h"
 typedef INT_PTR PERFMETERTAG;
 #define     MtExtern(tag)                       extern PERFMETERTAG g_mt##tag;
+#include "MILRect.h"
+#include "BaseMatrix.h"
 #include "MILMatrix.h"
 #include "aarasterizer.h"
+#include "matrix3x2.h"
+#include "GeometrySink.h"
+#include "hwrasterizer.h"
