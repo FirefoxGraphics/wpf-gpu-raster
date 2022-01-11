@@ -203,6 +203,10 @@ typedef INT_PTR PERFMETERTAG;
 #include "MILRect.h"
 #include "BaseMatrix.h"
 #include "MILMatrix.h"
+#include "scanoperation.h"
+#include "mem.h"
+class CSpanSink;
+class CSpanClipper;
 #include "aarasterizer.h"
 #include "matrix3x2.h"
 #include "GeometrySink.h"
@@ -210,8 +214,21 @@ typedef INT_PTR PERFMETERTAG;
 // based off of Chakra/lib/Common/CommonDefines.h
 #define MEMORY_ALLOCATION_ALIGNMENT (sizeof(void*)*2)
 
-#include "mem.h"
 #include "BufferDispenser.h"
 #include "dynarrayimpl.h"
 #include "dynarray.h"
+#include "geometry/utils.h"
+class CPlainPen;
+class IFigureData;
+class CShape;
+class IShapeBuilder;
+class CWideningSink;
+class CFillTessellator;
+class IShapeData;
+class CParallelogram;
+class CHitTest;
+class CBounds;
+class IPopulationSink;
+#include "ShapeBase.h"
+#include "ShapeData.h"
 #include "hwrasterizer.h"
