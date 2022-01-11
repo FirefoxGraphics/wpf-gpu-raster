@@ -16,6 +16,7 @@ typedef long long LONGLONG;
 #define Int32x32To64(a, b)  (((__int64)((long)(a))) * ((__int64)((long)(b))))
 #include <stdlib.h>
 #include <stdarg.h>
+#include <float.h>
 #include "palrt.h"
 #include "pal_assert.h"
 #include "intsafe.h"
@@ -91,6 +92,7 @@ struct  D3DXMATRIX  {
                 return *this;
         }
 */
+        D3DXMATRIX
         operator * ( float f ) const
 {
     return D3DXMATRIX(_11 * f, _12 * f, _13 * f, _14 * f,
@@ -204,4 +206,12 @@ typedef INT_PTR PERFMETERTAG;
 #include "aarasterizer.h"
 #include "matrix3x2.h"
 #include "GeometrySink.h"
+
+// based off of Chakra/lib/Common/CommonDefines.h
+#define MEMORY_ALLOCATION_ALIGNMENT (sizeof(void*)*2)
+
+#include "mem.h"
+#include "BufferDispenser.h"
+#include "dynarrayimpl.h"
+#include "dynarray.h"
 #include "hwrasterizer.h"
