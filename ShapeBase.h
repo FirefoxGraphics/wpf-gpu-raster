@@ -134,6 +134,7 @@ public:
         INLINED_RRETURN(GetTightBoundsNoBadNumber(rect, NULL, NULL));
     }
     
+#if 0
     virtual HRESULT WidenToShape(
         __in_ecount(1) const            CPlainPen &pen,
             // The pen
@@ -148,7 +149,7 @@ public:
         __in_ecount_opt(1) const CMILSurfaceRect *prcClip = NULL
             // Viewable region (NULL OK)
         ) const;
-
+#endif
     //
     // Non-virtual general geometry functionality 
     //
@@ -172,7 +173,7 @@ public:
         __in_ecount_opt(1) const CMILMatrix *pMatrix=NULL
             // Optional: Transformation (NULL OK)
         ) const;
-
+#if 0
     HRESULT WidenToSink(
         __in_ecount(1) const CPlainPen &pen,
             // The pen
@@ -188,7 +189,7 @@ public:
             // If true, we earlied out because the pen is either empty or very
             // close to it (NULL OK)
         ) const;
-
+#endif
     HRESULT SetupFillTessellator(
         __in_ecount_opt(1) const CBaseMatrix *pMatrix,
             // Transformation matrix (NULL OK)

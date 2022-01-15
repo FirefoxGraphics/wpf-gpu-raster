@@ -540,7 +540,7 @@ CHwRasterizer::RasterizePath(
         goto Cleanup;
     }
 
-    UINT nTotalCount = edgeStore.StartEnumeration();
+    UINT nTotalCount; nTotalCount = edgeStore.StartEnumeration();
     if (nTotalCount == 0)
     {
         hr = S_OK;     // We're outta here (empty path or entirely clipped)
@@ -567,14 +567,14 @@ CHwRasterizer::RasterizePath(
 
     // Initialize and sort the inactive array:
 
-    INT nSubpixelYCurrent = InitializeInactiveArray(
+    INT nSubpixelYCurrent; nSubpixelYCurrent = InitializeInactiveArray(
         &edgeStore,
         pInactiveArray,
         nTotalCount,
         &edgeTail
         );
 
-    INT nSubpixelYBottom = edgeContext.MaxY;
+    INT nSubpixelYBottom; nSubpixelYBottom = edgeContext.MaxY;
 
     Assert(nSubpixelYBottom > 0);
 

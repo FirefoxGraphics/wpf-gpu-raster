@@ -208,6 +208,7 @@ typedef INT_PTR PERFMETERTAG;
 class CSpanSink;
 class CSpanClipper;
 #include "aarasterizer.h"
+#include "aacoverage.h"
 #include "matrix3x2.h"
 #include "GeometrySink.h"
 
@@ -219,7 +220,9 @@ class CSpanClipper;
 #include "dynarray.h"
 #include "geometry/utils.h"
 #define INLINED_RRETURN(hr) return hr
+#define RRETURN(x) return (x);
 #define WHEN_DBG_ANALYSIS(x)
+#define IFC(x) { hr = (x); if (FAILED(hr)) goto Cleanup; }
 class CPlainPen;
 class IFigureData;
 class CShape;
@@ -233,8 +236,12 @@ class CBounds;
 class IPopulationSink;
 class CD3DDeviceLevel1;
 #include "ShapeData.h"
+// common.h
 #include "CoordinateSpace.h"
+#include "fix.h"
 #include "Rect.h"
 #include "matrix.h"
 #include "ShapeBase.h"
+// from RefCountBase.h
+#define override
 #include "hwrasterizer.h"
