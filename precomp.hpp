@@ -218,17 +218,23 @@ class CSpanClipper;
 #include "dynarrayimpl.h"
 #include "dynarray.h"
 #include "geometry/utils.h"
+#define INLINED_RRETURN(hr) return hr
+#define WHEN_DBG_ANALYSIS(x)
 class CPlainPen;
 class IFigureData;
 class CShape;
 class IShapeBuilder;
 class CWideningSink;
 class CFillTessellator;
-class IShapeData;
 class CParallelogram;
 class CHitTest;
+class CShapeBase;
 class CBounds;
 class IPopulationSink;
-#include "ShapeBase.h"
+class CD3DDeviceLevel1;
 #include "ShapeData.h"
+#include "CoordinateSpace.h"
+#include "Rect.h"
+#include "matrix.h"
+#include "ShapeBase.h"
 #include "hwrasterizer.h"

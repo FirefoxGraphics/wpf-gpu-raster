@@ -1165,6 +1165,16 @@ public:
     static void HasBaseType();
 };
 
+template<typename T>
+struct RectHasBaseType {
+        static const bool value = false;
+};
+
+template<typename TBase, typename TBaseRect, typename TBaseRect_WH, typename unique>
+struct RectHasBaseType<TMilRect_<TBase, TBaseRect, TBaseRect_WH, unique>> {
+        static const bool value = true;
+};
+
 
 // template <class TBase, class TBaseRect, class TBaseRect_WH>
 
