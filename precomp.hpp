@@ -196,6 +196,7 @@ typedef struct tagCIEXYZ {
 #include "wgx_core_types.h"
 #include "basetypes.h"
 #include "wgx_render_types.h"
+#include "wgx_error.h"
 //#include "wgx_misc.h"
 #include "spec_string.h"
 typedef INT_PTR PERFMETERTAG;
@@ -205,6 +206,7 @@ typedef INT_PTR PERFMETERTAG;
 #include "MILMatrix.h"
 #include "scanoperation.h"
 #include "mem.h"
+
 class CSpanSink;
 class CSpanClipper;
 #include "aarasterizer.h"

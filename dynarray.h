@@ -107,12 +107,12 @@ public:
 
     __range(==, this->Count) UINT GetCount() const
     {
-        return Count;
+        return this->Count;
     }
 
     __range(==, this->Capacity) UINT GetCapacity() const
     {
-        return Capacity;
+        return this->Capacity;
     }
 
     // Reset the dynamic array to empty state

@@ -146,10 +146,10 @@ public:
     {
         UNREFERENCED_PARAMETER(ltrb);
 
-        left = _left;
-        top = _top;
-        right = _right;
-        bottom = _bottom;
+        this->left = _left;
+        this->top = _top;
+        this->right = _right;
+        this->bottom = _bottom;
     }
 
     //+------------------------------------------------------------------------
