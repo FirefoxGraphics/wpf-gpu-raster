@@ -221,12 +221,22 @@ typedef INT_PTR PERFMETERTAG;
 #include "scanoperation.h"
 #include "mem.h"
 
+//real.h
+// convert from unknown FLOAT type => REAL
+#define TOREAL(x)       (static_cast<REAL>(x))
+
+// avaondebugp.h
+#define THR(x) (x)
+#define UNCONDITIONAL_EXPR(Exp) (Exp)
+#define TraceHR(a, b, c, d, e)          (a)
+#define ASSIGN_HR_PREFASTOKAY(destVar, errExpr)         (TraceHR((destVar = (errExpr)), FALSE, #errExpr, __FILE__, __LINE__))
+#define WHEN_DBG_ANALYSIS(x)
+
 class CSpanSink;
 class CSpanClipper;
-#define INLINED_RRETURN(hr) return hr
-#define RRETURN(x) return (x);
-#define WHEN_DBG_ANALYSIS(x)
-#define IFC(x) { hr = (x); if (FAILED(hr)) goto Cleanup; }
+#include "instrumentation.h"
+#include "InstrumentationConfig.h"
+#include "instrumentationapi.h"
 #include "aarasterizer.h"
 #include "aacoverage.h"
 #include "matrix3x2.h"
