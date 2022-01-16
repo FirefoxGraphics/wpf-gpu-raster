@@ -3,6 +3,7 @@
 #define     Mt(x)                               g_mt##x
 #define MIL_FORCEINLINE inline
 #include <stdint.h>
+     #include <stdlib.h>
 /*typedef int32_t BOOL;
 typedef int INT;
 typedef long long LONGLONG;
@@ -81,6 +82,46 @@ struct  D3DXMATRIX  {
         }
         D3DXMATRIX() {}
 
+        // From DirectXMathMatrix.inl
+        D3DXMATRIX XMMatrixMultiply(D3DXMATRIX M1, D3DXMATRIX M2) {
+        
+            D3DXMATRIX mResult;
+    // Cache the invariants in registers
+    float x = M1.m[0][0];
+    float y = M1.m[0][1];
+    float z = M1.m[0][2];
+    float w = M1.m[0][3];
+    // Perform the operation on the first row
+    mResult.m[0][0] = (M2.m[0][0] * x) + (M2.m[1][0] * y) + (M2.m[2][0] * z) + (M2.m[3][0] * w);
+    mResult.m[0][1] = (M2.m[0][1] * x) + (M2.m[1][1] * y) + (M2.m[2][1] * z) + (M2.m[3][1] * w);
+    mResult.m[0][2] = (M2.m[0][2] * x) + (M2.m[1][2] * y) + (M2.m[2][2] * z) + (M2.m[3][2] * w);
+    mResult.m[0][3] = (M2.m[0][3] * x) + (M2.m[1][3] * y) + (M2.m[2][3] * z) + (M2.m[3][3] * w);
+    // Repeat for all the other rows
+    x = M1.m[1][0];
+    y = M1.m[1][1];
+    z = M1.m[1][2];
+    w = M1.m[1][3];
+    mResult.m[1][0] = (M2.m[0][0] * x) + (M2.m[1][0] * y) + (M2.m[2][0] * z) + (M2.m[3][0] * w);
+    mResult.m[1][1] = (M2.m[0][1] * x) + (M2.m[1][1] * y) + (M2.m[2][1] * z) + (M2.m[3][1] * w);
+    mResult.m[1][2] = (M2.m[0][2] * x) + (M2.m[1][2] * y) + (M2.m[2][2] * z) + (M2.m[3][2] * w);
+    mResult.m[1][3] = (M2.m[0][3] * x) + (M2.m[1][3] * y) + (M2.m[2][3] * z) + (M2.m[3][3] * w);
+    x = M1.m[2][0];
+    y = M1.m[2][1];
+    z = M1.m[2][2];
+    w = M1.m[2][3];
+    mResult.m[2][0] = (M2.m[0][0] * x) + (M2.m[1][0] * y) + (M2.m[2][0] * z) + (M2.m[3][0] * w);
+    mResult.m[2][1] = (M2.m[0][1] * x) + (M2.m[1][1] * y) + (M2.m[2][1] * z) + (M2.m[3][1] * w);
+    mResult.m[2][2] = (M2.m[0][2] * x) + (M2.m[1][2] * y) + (M2.m[2][2] * z) + (M2.m[3][2] * w);
+    mResult.m[2][3] = (M2.m[0][3] * x) + (M2.m[1][3] * y) + (M2.m[2][3] * z) + (M2.m[3][3] * w);
+    x = M1.m[3][0];
+    y = M1.m[3][1];
+    z = M1.m[3][2];
+    w = M1.m[3][3];
+    mResult.m[3][0] = (M2.m[0][0] * x) + (M2.m[1][0] * y) + (M2.m[2][0] * z) + (M2.m[3][0] * w);
+    mResult.m[3][1] = (M2.m[0][1] * x) + (M2.m[1][1] * y) + (M2.m[2][1] * z) + (M2.m[3][1] * w);
+    mResult.m[3][2] = (M2.m[0][2] * x) + (M2.m[1][2] * y) + (M2.m[2][2] * z) + (M2.m[3][2] * w);
+    mResult.m[3][3] = (M2.m[0][3] * x) + (M2.m[1][3] * y) + (M2.m[2][3] * z) + (M2.m[3][3] * w);
+    return mResult;}
 
 /*        D3DXMATRIX&
         operator *= (float f)
@@ -99,9 +140,14 @@ struct  D3DXMATRIX  {
                       _21 * f, _22 * f, _23 * f, _24 * f,
                       _31 * f, _32 * f, _33 * f, _34 * f,
                       _41 * f, _42 * f, _43 * f, _44 * f);
-}
+} 
 
-
+                // D3DXMatrixDeterminant
+        inline float determinant() const
+        {
+            abort(1);
+            return 0;
+        }
         union {
         struct {
             float        _11, _12, _13, _14;
@@ -212,6 +258,11 @@ template < class T > inline T min ( T a, T b ) { return a < b ? a : b; }
 
 template < class T > inline T max ( T a, T b ) { return a > b ? a : b; }
 
+// MemUtils.h
+#define DECLARE_METERHEAP_ALLOC(a, b)
+//void __dummfunc() {}
+
+
 #include "spec_string.h"
 typedef INT_PTR PERFMETERTAG;
 #define     MtExtern(tag)                       extern PERFMETERTAG g_mt##tag;
@@ -234,6 +285,7 @@ typedef INT_PTR PERFMETERTAG;
 
 class CSpanSink;
 class CSpanClipper;
+class CAntialiasedFiller;
 #include "instrumentation.h"
 #include "InstrumentationConfig.h"
 #include "instrumentationapi.h"
