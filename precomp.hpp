@@ -198,6 +198,20 @@ typedef struct tagCIEXYZ {
 #include "wgx_render_types.h"
 #include "wgx_error.h"
 //#include "wgx_misc.h"
+
+// UtilMisc.h
+#ifdef min
+#undef min
+#endif
+
+template < class T > inline T min ( T a, T b ) { return a < b ? a : b; }
+
+#ifdef max
+#undef max
+#endif
+
+template < class T > inline T max ( T a, T b ) { return a > b ? a : b; }
+
 #include "spec_string.h"
 typedef INT_PTR PERFMETERTAG;
 #define     MtExtern(tag)                       extern PERFMETERTAG g_mt##tag;

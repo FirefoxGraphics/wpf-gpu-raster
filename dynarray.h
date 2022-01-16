@@ -46,7 +46,7 @@ public:
 
     __ecount(this->Count) T *GetDataBuffer() const
     {
-        return reinterpret_cast<T *>(m_pData);
+        return reinterpret_cast<T *>(this->m_pData);
     }
 
     //
