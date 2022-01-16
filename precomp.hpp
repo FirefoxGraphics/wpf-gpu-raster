@@ -223,6 +223,10 @@ typedef INT_PTR PERFMETERTAG;
 
 class CSpanSink;
 class CSpanClipper;
+#define INLINED_RRETURN(hr) return hr
+#define RRETURN(x) return (x);
+#define WHEN_DBG_ANALYSIS(x)
+#define IFC(x) { hr = (x); if (FAILED(hr)) goto Cleanup; }
 #include "aarasterizer.h"
 #include "aacoverage.h"
 #include "matrix3x2.h"
@@ -235,10 +239,6 @@ class CSpanClipper;
 #include "dynarrayimpl.h"
 #include "dynarray.h"
 #include "geometry/utils.h"
-#define INLINED_RRETURN(hr) return hr
-#define RRETURN(x) return (x);
-#define WHEN_DBG_ANALYSIS(x)
-#define IFC(x) { hr = (x); if (FAILED(hr)) goto Cleanup; }
 class CPlainPen;
 class IFigureData;
 class CShape;

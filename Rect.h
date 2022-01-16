@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <type_traits>
 
 //+----------------------------------------------------------------------------
 //
@@ -33,8 +34,15 @@
 //
 //-----------------------------------------------------------------------------
 
-template <typename TBaseMILRect, typename Space>
+template <typename TBaseMILRect, typename Space, typename Enable = void>
 class TRect_ : public TBaseMILRect
+{
+};
+
+template <typename TBaseMILRect, typename Space>
+class TRect_<TBaseMILRect, Space,
+	typename std::enable_if<std::is_pointer<decltype(&TBaseMILRect::HasBaseType)>::value>::type> :
+	public TBaseMILRect
 {
 protected:
 
@@ -85,12 +93,12 @@ public:
     //  Synopsis:  Delegate to base class ctors
     //
     //-------------------------------------------------------------------------
-    template<typename T>
+
     TRect_(
-        typename T::BaseUnitType _left,
-        typename T::BaseUnitType _top,
-        typename T::BaseUnitType _right,
-        typename T::BaseUnitType _bottom,
+        typename BaseMILRectType::BaseUnitType _left,
+        typename BaseMILRectType::BaseUnitType _top,
+        typename BaseMILRectType::BaseUnitType _right,
+        typename BaseMILRectType::BaseUnitType _bottom,
         LTRB ltrb
         )
 //
@@ -102,12 +110,11 @@ public:
     {}
 
 
-    template<typename T>
     TRect_(
-        typename T::BaseUnitType x,
-        typename T::BaseUnitType y,
-        typename T::BaseUnitType width,
-        typename T::BaseUnitType height,
+        typename BaseMILRectType::BaseUnitType x,
+        typename BaseMILRectType::BaseUnitType y,
+        typename BaseMILRectType::BaseUnitType width,
+        typename BaseMILRectType::BaseUnitType height,
         XYWH xywh
         )
 //
@@ -165,18 +172,16 @@ public:
     //      derived wrapper class - like CMilRectF wraps MilRectF.
     //
     //-------------------------------------------------------------------------
-    template<typename T>
-    static TRect_ * ReinterpretBaseType(__in_ecount_opt(1) TRect_<typename T::BaseRectType, Space> *base)
+
+    static TRect_ * ReinterpretBaseType(__in_ecount_opt(1) TRect_<typename BaseMILRectType::BaseRectType, Space> *base)
     {
         return reinterpret_cast<TRect_ *>(base);
     }
 
-    template<typename T>
-    static const TRect_ * ReinterpretBaseType(__in_ecount_opt(1) const TRect_<typename T::BaseRectType, Space> *base)
+    static const TRect_ * ReinterpretBaseType(__in_ecount_opt(1) const TRect_<typename BaseMILRectType::BaseRectType, Space> *base)
     {
         return reinterpret_cast<const TRect_ *>(base);
     }
-
 
 };
 
@@ -198,6 +203,8 @@ public:
 template <typename Space> 
 class CRectF : public TRect_<CMilRectF, Space>
 {
+    typedef CMilRectF BaseMILRectType;
+
 public:
 
     //=========================================================================
@@ -236,10 +243,10 @@ public:
     //-------------------------------------------------------------------------
 
     CRectF(
-        typename TRect_<CMilRectF, Space>::BaseMILRectType::BaseUnitType _left,
-        typename TRect_<CMilRectF, Space>::BaseMILRectType::BaseUnitType _top,
-        typename TRect_<CMilRectF, Space>::BaseMILRectType::BaseUnitType _right,
-        typename TRect_<CMilRectF, Space>::BaseMILRectType::BaseUnitType _bottom,
+        typename BaseMILRectType::BaseUnitType _left,
+        typename BaseMILRectType::BaseUnitType _top,
+        typename BaseMILRectType::BaseUnitType _right,
+        typename BaseMILRectType::BaseUnitType _bottom,
         LTRB ltrb
         )
 //
@@ -252,10 +259,10 @@ public:
 
 
     CRectF(
-        typename TRect_<CMilRectF, Space>::BaseMILRectType::BaseUnitType x,
-        typename TRect_<CMilRectF, Space>::BaseMILRectType::BaseUnitType y,
-        typename TRect_<CMilRectF, Space>::BaseMILRectType::BaseUnitType width,
-        typename TRect_<CMilRectF, Space>::BaseMILRectType::BaseUnitType height,
+        typename BaseMILRectType::BaseUnitType x,
+        typename BaseMILRectType::BaseUnitType y,
+        typename BaseMILRectType::BaseUnitType width,
+        typename BaseMILRectType::BaseUnitType height,
         XYWH xywh
         )
 //
@@ -331,12 +338,12 @@ public:
     //
     //-------------------------------------------------------------------------
 
-    static CRectF * ReinterpretBaseType(__in_ecount_opt(1) TRect_<typename TRect_<CMilRectF, Space>::BaseMILRectType::BaseRectType, Space> *base)
+    static CRectF * ReinterpretBaseType(__in_ecount_opt(1) TRect_<typename BaseMILRectType::BaseRectType, Space> *base)
     {
         return reinterpret_cast<CRectF *>(base);
     }
 
-    static const CRectF * ReinterpretBaseType(__in_ecount_opt(1) const TRect_<typename TRect_<CMilRectF, Space>::BaseMILRectType::BaseRectType, Space> *base)
+    static const CRectF * ReinterpretBaseType(__in_ecount_opt(1) const TRect_<typename BaseMILRectType::BaseRectType, Space> *base)
     {
         return reinterpret_cast<const CRectF *>(base);
     }
