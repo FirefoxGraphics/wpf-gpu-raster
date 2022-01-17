@@ -1,6 +1,7 @@
     #define DeclareTag(tag, szOwner, szDescription)
+    #define IsTagEnabled(tag) (FALSE)
+#define     Mt(x)                               ((void)#x,0)
 #define     MtDefine(tag, szOwner, szDescrip)
-#define     Mt(x)                               g_mt##x
 #define MIL_FORCEINLINE inline
 #include <stdint.h>
      #include <stdlib.h>
@@ -149,7 +150,7 @@ struct  D3DXMATRIX : D3DMATRIX {
                 // D3DXMatrixDeterminant
         inline float determinant() const
         {
-            abort(1);
+            abort();
             return 0;
         }
 };
@@ -252,8 +253,20 @@ template < class T > inline T min ( T a, T b ) { return a < b ? a : b; }
 
 template < class T > inline T max ( T a, T b ) { return a > b ? a : b; }
 
+#define ReleaseInterfaceNoNULL(x) do { if (x) { (x)->Release(); } } while (UNCONDITIONAL_EXPR(false))
+
 // MemUtils.h
 #define DECLARE_METERHEAP_ALLOC(a, b)
+typedef INT_PTR PERFMETERTAG;
+__checkReturn __allocator
+HRESULT HrMalloc(
+    PERFMETERTAG mt,
+    size_t cbElementSize,
+    size_t cElements,
+    __deref_bcount(cbElementSize*cElements) void **ppvmemblock
+    ) {
+        *ppvmemblock = calloc(cbElementSize, cElements);
+}
 //void __dummfunc() {}
 
 
@@ -305,7 +318,38 @@ class CHitTest;
 class CShapeBase;
 class CBounds;
 class IPopulationSink;
-class CD3DDeviceLevel1;
+class CHwColorComponentSource {
+public:
+
+    enum VertexComponent
+    {
+        Diffuse,
+        Specular,
+        Total
+    };
+        public:
+        void Release() {
+                abort();
+        }
+
+};
+class CD3DDeviceLevel1 {
+        public:
+    void GetClipRect(
+        __out_ecount(1) MilPointAndSizeL * const prcClipRect
+        ) const;
+        void GetColorComponentSource(
+        CHwColorComponentSource::VertexComponent eComponent,
+        __deref_out_ecount(1) CHwColorComponentSource ** const ppColorComponentSource
+        );
+};
+
+class CHwPipelineBuilder {
+        public:
+                    HRESULT Set_AAColorSource(
+        __in_ecount(1) CHwColorComponentSource *pAAColorSource
+        );
+};
 #include "ShapeData.h"
 // common.h
 #include "CoordinateSpace.h"
