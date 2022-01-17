@@ -236,6 +236,7 @@ typedef struct tagCIEXYZ {
 #include "wincodec_private_generated.h"
 #include "wgx_core_types.h"
 #include "basetypes.h"
+#include "core/common/basetypes.h"
 #include "wgx_render_types.h"
 #include "wgx_error.h"
 //#include "wgx_misc.h"
@@ -357,6 +358,8 @@ class CHwPipelineBuilder {
 #include "Rect.h"
 #include "matrix.h"
 #include "ShapeBase.h"
+#define        WINCODEC_ERR_VALUEOVERFLOW  (0x80070216)
+#include "bezier.h"
 // from RefCountBase.h
 #define override
 #include "hwrasterizer.h"
