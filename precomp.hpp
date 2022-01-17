@@ -6,6 +6,7 @@
 #define MIL_FORCEINLINE inline
 #include <stdint.h>
      #include <stdlib.h>
+#define        WINCODEC_ERR_VALUEOVERFLOW  (0x80070216)
 /*typedef int32_t BOOL;
 typedef int INT;
 typedef long long LONGLONG;
@@ -287,7 +288,43 @@ inline HRESULT HrMalloc(
     size_t cElements,
     __deref_bcount(cbElementSize*cElements) void **ppvmemblock
     ) {
+            HRESULT hr = S_OK;
         *ppvmemblock = calloc(cbElementSize, cElements);
+
+            return hr;
+}
+inline
+__checkReturn __allocator
+HRESULT HrAlloc(
+    PERFMETERTAG mt,
+    size_t cbSize,
+    __deref_bcount(cbSize) void **ppvmemblock
+    )
+{
+    // Callers must ensure a NULL initialized pointer location for the
+    // output buffer.
+
+    Assert(ppvmemblock);
+    Assert(NULL == *ppvmemblock);
+    Assert(cbSize > 0);
+
+    HRESULT hr = S_OK;
+
+    if (ppvmemblock == NULL || cbSize == 0)
+    {
+        hr = E_INVALIDARG;
+    }
+    else
+    {
+        *ppvmemblock = malloc(cbSize);
+
+        if (NULL == *ppvmemblock)
+        {
+            hr = E_OUTOFMEMORY;
+        }
+    }
+
+    return hr;
 }
 
 
@@ -295,7 +332,20 @@ inline HRESULT HrMalloc(
 #define WPFAllocType(type, h, mt, cb) ( malloc(cb))
 #define WPFAllocClear(h, mt, cb) ( calloc(1, cb))
 #define WPFAllocTypeClear(type, h, mt, cb) calloc(1, cb)
-#define WPFRealloc(h, mt, ppv, cb) realloc(ppv, cb)
+#define WPFRealloc(h, mt, ppv, cb) ReallocAnnotationHelper(h, mt, cb, ppv)
+class Heap;
+extern Heap *ProcessHeap;
+__forceinline HRESULT ReallocAnnotationHelper(
+    __in_ecount(1) Heap* pheap,
+    PERFMETERTAG mt,
+    size_t cbSize,
+    __deref_bcount(cbSize) void ** ppv
+    )
+{
+    *ppv = realloc(*ppv, cbSize);
+    return !!*ppv;
+}
+
 #define WPFFree(h, pv) free(pv)
 //void __dummfunc() {}
 
@@ -317,6 +367,7 @@ typedef INT_PTR PERFMETERTAG;
 #define TraceHR(a, b, c, d, e)          (a)
 #define ASSIGN_HR_PREFASTOKAY(destVar, errExpr)         (TraceHR((destVar = (errExpr)), FALSE, #errExpr, __FILE__, __LINE__))
 #define WHEN_DBG_ANALYSIS(x)
+#define ANALYSIS_COMMA_PARAM(x)
 
 class CSpanSink;
 class CSpanClipper;
@@ -334,6 +385,27 @@ class CMILSurfaceRect;
 #define MEMORY_ALLOCATION_ALIGNMENT (sizeof(void*)*2)
 
 #include "BufferDispenser.h"
+#if 1
+//#include <assert.h>
+// Arithmetic.h
+MIL_FORCEINLINE HRESULT AddUINT(UINT a, UINT b, __out_ecount(1) __deref_out_range(==,a+b) UINT &sum)
+{
+    UINT c = a + b;
+    if (c < a)
+    {
+        // c is also less than b.
+  //      assert(c < b, "UINT overflow test does not hold");
+        return WINCODEC_ERR_VALUEOVERFLOW;
+    }
+    else
+    {
+        // c is also >= b.
+    //    assert(c >= b, "UINT overflow test does not hold");
+        sum = c;
+        return S_OK;
+    }
+}
+#endif
 #include "dynarrayimpl.h"
 #include "dynarray.h"
 #include "geometry/utils.h"
@@ -367,11 +439,16 @@ class CD3DDeviceLevel1 {
         public:
     void GetClipRect(
         __out_ecount(1) MilPointAndSizeL * const prcClipRect
-        ) const { abort(); }
+        ) const {
+            *prcClipRect = clipRect;
+
+    }
         void GetColorComponentSource(
         CHwColorComponentSource::VertexComponent eComponent,
         __deref_out_ecount(1) CHwColorComponentSource ** const ppColorComponentSource
         ) {abort(); }
+
+        MilPointAndSizeL clipRect;
 };
 
 class CHwPipelineBuilder {
@@ -415,7 +492,6 @@ inline void GpFree(void *memblock)
 #include "Rect.h"
 #include "matrix.h"
 #include "ShapeBase.h"
-#define        WINCODEC_ERR_VALUEOVERFLOW  (0x80070216)
 #include "bezier.h"
 // from RefCountBase.h
 #define override

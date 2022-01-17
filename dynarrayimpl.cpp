@@ -59,7 +59,7 @@ MtDefine(DynArray, MIL, "DynArray");
 *   2/25/1999 agodfrey
 *
 \**************************************************************************/
-#if 0
+
 template <bool fZeroMemory>
 DynArrayImpl<fZeroMemory>::DynArrayImpl(
     __inout_bcount_part_opt(allocSize*eltSize, count*eltSize) void *initialAllocation,
@@ -118,7 +118,6 @@ DynArrayImpl<fZeroMemory>::~DynArrayImpl()
     }
 
 }
-#endif
 /**************************************************************************\
 *
 * Function Description:
@@ -217,7 +216,6 @@ VOID DynArrayImpl<fZeroMemory>::ShrinkToSize(
 *   1/18/1999 agodfrey
 *
 \**************************************************************************/
-#if 0
 template <bool fZeroMemory>
 HRESULT
 DynArrayImpl<fZeroMemory>::Grow(
@@ -319,7 +317,6 @@ DynArrayImpl<fZeroMemory>::Grow(
 Cleanup:
     RRETURN(hr);
 }
-#endif
 
 /**************************************************************************\
 *
@@ -439,7 +436,7 @@ Cleanup:
 *   2/25/1999 agodfrey
 *
 \**************************************************************************/
-
+#endif
 template <bool fZeroMemory>
 HRESULT
 DynArrayImpl<fZeroMemory>::AddMultipleAndSet(
@@ -479,7 +476,6 @@ DynArrayImpl<fZeroMemory>::AddMultipleAndSet(
 
     return hr;
 }
-#endif
 
 // Explicit template instantiation
 template class DynArrayImpl<false>;
