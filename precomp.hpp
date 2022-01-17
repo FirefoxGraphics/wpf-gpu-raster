@@ -8,6 +8,10 @@
 #include <stdint.h>
      #include <stdlib.h>
 #define        WINCODEC_ERR_VALUEOVERFLOW  (0x80070216)
+
+// precomp.hxx
+#define IGNORE_HR(x) ((void)(x))
+
 /*typedef int32_t BOOL;
 typedef int INT;
 typedef long long LONGLONG;
@@ -447,36 +451,20 @@ public:
         }
 
 };
-class CD3DDeviceLevel1 {
-        public:
-    void GetClipRect(
-        __out_ecount(1) MilPointAndSizeL * const prcClipRect
-        ) const {
-            *prcClipRect = clipRect;
-
-    }
-        void GetColorComponentSource(
-        CHwColorComponentSource::VertexComponent eComponent,
-        __deref_out_ecount(1) CHwColorComponentSource ** const ppColorComponentSource
-        ) {abort(); }
-
-            HRESULT DrawIndexedTriangleList(
-        UINT uBaseVertexIndex,
-        UINT uMinIndex,
-        UINT cVertices,
-        UINT uStartIndex,
-        UINT cPrimitives
-        ) { 
-                    abort();
-            }
-
-        MilPointAndSizeL clipRect;
-};
-
+class CD3DDeviceLevel1;
 class CHwPipelineBuilder {
         public:
                     HRESULT Set_AAColorSource(
         __in_ecount(1) CHwColorComponentSource *pAAColorSource
+        ) { abort(); }
+};
+class CHwVertexBuffer;
+class CHwPipeline {
+        public:
+        // This is public for the use of the vertex buffer builder to send
+    // the device state when it flushes.
+    HRESULT RealizeColorSourcesAndSendState(
+        __in_ecount_opt(1) const CHwVertexBuffer *pVB
         ) { abort(); }
 };
 
@@ -549,3 +537,73 @@ Convert_MilColorF_scRGB_To_Premultiplied_MilColorB_sRGB(
 
 #include "Waffler.h"
 #include "HwVertexBuffer.h"
+class CD3DDeviceLevel1{
+        public:
+    void GetClipRect(
+        __out_ecount(1) MilPointAndSizeL * const prcClipRect
+        ) const {
+            *prcClipRect = clipRect;
+
+    }
+        void GetColorComponentSource(
+        CHwColorComponentSource::VertexComponent eComponent,
+        __deref_out_ecount(1) CHwColorComponentSource ** const ppColorComponentSource
+        ) {abort(); }
+
+            HRESULT DrawIndexedTriangleList(
+        UINT uBaseVertexIndex,
+        UINT uMinIndex,
+        UINT cVertices,
+        UINT uStartIndex,
+        UINT cPrimitives
+        ) { 
+                    abort();
+            }
+
+                CHwTVertexBuffer<CD3DVertexXYZDUV2> *GetVB_XYZDUV2()
+    {
+        return &m_vBufferXYZDUV2;
+    }
+
+                    CHwTVertexBuffer<CD3DVertexXYZDUV8> *GetVB_XYZRHWDUV8()
+    {
+        return &m_vBufferXYZRHWDUV8;
+    }
+
+                    CHwTVertexBuffer<CD3DVertexXYZDUV8> m_vBufferXYZRHWDUV8;
+CHwTVertexBuffer<CD3DVertexXYZDUV2> m_vBufferXYZDUV2;
+
+        MilPointAndSizeL clipRect;
+};
+
+
+
+class CHwD3DVertexBuffer {
+        public:
+            HRESULT Lock(
+        UINT cVertices,
+        UINT uVertexStride,
+        __deref_out_bcount_part(cVertices * uVertexStride, 0) void ** const ppLockedVertices,
+        __out_ecount(1) UINT * const puStartVertex
+        ) { abort(); }
+
+                HRESULT Unlock(
+        UINT cVerticesUsed
+        ) { abort(); }
+};
+class CHwD3DIndexBuffer {
+        public:
+            HRESULT Lock(
+        UINT cIndices,
+        __deref_out_ecount_part(cIndices, 0) WORD ** const ppwLockedIndices,
+        __out_ecount(1) UINT *puStartIndex
+        ) { abort(); }
+                HRESULT Unlock() {  abort(); }
+};
+
+class CHwConstantColorSource {
+       public:
+            void GetColor(
+        __out_ecount(1) MilColorF &color
+        ) const { abort(); }
+};
