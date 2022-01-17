@@ -27,7 +27,7 @@ CShapeBase::ConvertToGpPath(
         rgPoints.Add({10, 10});
         rgTypes.Add(PathPointTypeStart);
 
-        rgPoints.Add({10, 30});
+        rgPoints.Add({10, 28});
         rgTypes.Add(PathPointTypeLine);
 
         rgPoints.Add({30, 30});
@@ -80,6 +80,89 @@ class RectShape : public CShapeBase {
 };
 
 Heap* ProcessHeap;
+class Sink : public IGeometrySink {
+        virtual HRESULT AddVertex(
+        __in_ecount(1) const MilPoint2F &ptPosition,
+            // In: Vertex coordinates
+        __out_ecount(1) WORD *pidxOut
+            // Out: Index of vertex
+        ) { abort(); }
+
+    virtual HRESULT AddIndexedVertices(
+        UINT cVertices,
+            // In: number of vertices
+        __in_bcount(cVertices*uVertexStride) const void *pVertexBuffer,
+            // In: vertex buffer containing the vertices
+        UINT uVertexStride,
+            // In: size of each vertex
+        MilVertexFormat mvfFormat,
+            // In: format of each vertex
+        UINT cIndices,
+            // In: Number of indices
+        __in_ecount(cIndices) const UINT *puIndexBuffer
+            // In: index buffer                                                             
+        ) { abort(); }
+
+    virtual void SetTransformMapping(
+        __in_ecount(1) const MILMatrix3x2 &mat2DTransform
+        ) { abort(); }
+
+    virtual HRESULT AddTriangle(
+        DWORD idx1,
+            // In: Index of triangle's first vertex
+        DWORD idx2,
+            // In: Index of triangle's second vertex
+        DWORD idx3
+            // In: Index of triangle's third vertex
+        ) { abort(); }
+
+    //
+    // Trapezoidal AA geometry output
+    //
+
+    virtual HRESULT AddComplexScan(
+        INT nPixelY,
+            // In: y coordinate in pixel space
+        __in_ecount(1) const CCoverageInterval *pIntervalSpanStart
+            // In: coverage segments
+        ) { abort(); }
+    
+    virtual HRESULT AddTrapezoid(
+        float rYMin,
+            // In: y coordinate of top of trapezoid
+        float rXLeftYMin,
+            // In: x coordinate for top left
+        float rXRightYMin,
+            // In: x coordinate for top right
+        float rYMax,
+            // In: y coordinate of bottom of trapezoid
+        float rXLeftYMax,
+            // In: x coordinate for bottom left
+        float rXRightYMax,
+            // In: x coordinate for bottom right
+        float rXDeltaLeft,
+            // In: trapezoid expand radius
+        float rXDeltaRight
+            // In: trapezoid expand radius
+        ) { printf("AddTrap: %f %f %f %f %f %f\n", rYMin, rXLeftYMin, rXRightYMin, rYMax, rXLeftYMax, rXRightYMax);
+        empty = false;
+        }
+    
+    virtual HRESULT AddParallelogram(
+        __in_ecount(4) const MilPoint2F *rgPosition
+        ) { abort(); }
+    
+    //
+    // Query sink status
+    //
+
+    // Some geometry generators don't actually know if they have output
+    // any triangles, so they need to get this information from the geometry sink.
+
+    virtual BOOL IsEmpty() { return empty; }
+        bool empty = true;
+
+};
 int main() {
         CHwRasterizer rasterizer;
         CD3DDeviceLevel1 device;
@@ -90,7 +173,9 @@ int main() {
         DynArray<MilPoint2F> pointsScratch;
         DynArray<BYTE> typesScratch;
         RectShape shape;
-        CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device> worldToDevice;
+        CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device> worldToDevice(true);
 
         rasterizer.Setup(&device, &shape, &pointsScratch, &typesScratch, &worldToDevice);
+        Sink sink;
+        rasterizer.SendGeometry(&sink);
 }
