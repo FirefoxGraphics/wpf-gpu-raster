@@ -76,8 +76,8 @@ public:
 
     __ecount(1) T &operator[](__in_range(0, this->Count-1) UINT n) const
     {
-        __pfx_assert(n < Count, "Buffer overflow accessing DynArray");
-        Assert(n < Count);
+        __pfx_assert(n < this->Count, "Buffer overflow accessing DynArray");
+        Assert(n < this->Count);
 
 #ifdef DBG
         return At(n); // At performs a range check which is slower. In retail we don't mind it this

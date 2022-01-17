@@ -1,6 +1,7 @@
     #define DeclareTag(tag, szOwner, szDescription)
     #define IsTagEnabled(tag) (FALSE)
 #define TraceTag(x)
+#define ExternTag(tag)
 #define     Mt(x)                               ((void)#x,0)
 #define     MtDefine(tag, szOwner, szDescrip)
 #define MIL_FORCEINLINE inline
@@ -25,7 +26,10 @@ typedef long long LONGLONG;
 #include "pal_assert.h"
 #include "intsafe.h"
 #include "windef.h"
-
+// debug.hxx
+#define RIP(msg) do { abort(); } while (0)
+// std.h
+#define __pfx_assert(Exp, Msg) do {} while ( UNCONDITIONAL_EXPR(false) )
 typedef struct _D3DMATRIX {
     union {
         struct {
@@ -372,7 +376,15 @@ typedef INT_PTR PERFMETERTAG;
 class CSpanSink;
 class CSpanClipper;
 class CAntialiasedFiller;
-class CMILSurfaceRect;
+// rtutils.h
+typedef
+    TMilRect_<
+        INT,
+        MilRectL,
+        MilPointAndSizeL,
+        RectUniqueness::_CMILSurfaceRect_ // Uniqueness specified to prevent confusion with CMilRectL
+        > CMILSurfaceRect;
+
 #include "instrumentation.h"
 #include "InstrumentationConfig.h"
 #include "instrumentationapi.h"
@@ -496,3 +508,27 @@ inline void GpFree(void *memblock)
 // from RefCountBase.h
 #define override
 #include "hwrasterizer.h"
+// from ziglang/zig/lib/libc/include/any-windows-any/ntdef.h
+#define RTL_NUMBER_OF_V1(A) (sizeof(A)/sizeof((A)[0]))
+#define RTL_NUMBER_OF_V2(A) RTL_NUMBER_OF_V1(A)
+#define ARRAYSIZE(A)    RTL_NUMBER_OF_V2(A)
+#define ARRAY_SIZE(a) (ARRAYSIZE(a))
+#define D3DFVF_XYZ              0x002
+#define D3DFVF_NORMAL           0x010
+#define D3DFVF_DIFFUSE          0x040
+#define D3DFVF_SPECULAR         0x080
+#define D3DFVF_TEX2             0x200
+#define D3DFVF_TEX4             0x400
+#define D3DFVF_TEX6             0x600
+#define D3DFVF_TEX8             0x800
+typedef struct D3DVECTOR {
+  float x;
+  float y;
+  float z;
+} D3DVECTOR;
+
+typedef DWORD D3DCOLOR;
+#include "d3dvertex.h"
+#include "MILRectF_WH.h"
+#include "Waffler.h"
+#include "HwVertexBuffer.h"
