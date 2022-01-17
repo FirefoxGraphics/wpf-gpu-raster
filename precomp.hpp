@@ -36,7 +36,7 @@ typedef struct _D3DMATRIX {
     };
 } D3DMATRIX;
 
-struct  D3DXMATRIX  {
+struct  D3DXMATRIX : D3DMATRIX {
         D3DXMATRIX(const float * pf) {
                 _11 = pf[0];
                 _12 = pf[1];
@@ -83,7 +83,7 @@ struct  D3DXMATRIX  {
         D3DXMATRIX() {}
 
         // From DirectXMathMatrix.inl
-        D3DXMATRIX XMMatrixMultiply(D3DXMATRIX M1, D3DXMATRIX M2) {
+        D3DXMATRIX XMMatrixMultiply(D3DXMATRIX M1, D3DXMATRIX M2) const {
         
             D3DXMATRIX mResult;
     // Cache the invariants in registers
@@ -141,6 +141,10 @@ struct  D3DXMATRIX  {
                       _31 * f, _32 * f, _33 * f, _34 * f,
                       _41 * f, _42 * f, _43 * f, _44 * f);
 } 
+        D3DMATRIX
+        operator*(const D3DMATRIX& m) const {
+                return XMMatrixMultiply(*this, m);
+        }
 
                 // D3DXMatrixDeterminant
         inline float determinant() const
@@ -148,16 +152,6 @@ struct  D3DXMATRIX  {
             abort(1);
             return 0;
         }
-        union {
-        struct {
-            float        _11, _12, _13, _14;
-            float        _21, _22, _23, _24;
-            float        _31, _32, _33, _34;
-            float        _41, _42, _43, _44;
-
-        };
-        float m[4][4];
-    };
 };
 
 class IWICBitmapSource;
@@ -272,9 +266,7 @@ typedef INT_PTR PERFMETERTAG;
 #include "scanoperation.h"
 #include "mem.h"
 
-//real.h
-// convert from unknown FLOAT type => REAL
-#define TOREAL(x)       (static_cast<REAL>(x))
+#include "real.h"
 
 // avaondebugp.h
 #define THR(x) (x)
@@ -286,6 +278,7 @@ typedef INT_PTR PERFMETERTAG;
 class CSpanSink;
 class CSpanClipper;
 class CAntialiasedFiller;
+class CMILSurfaceRect;
 #include "instrumentation.h"
 #include "InstrumentationConfig.h"
 #include "instrumentationapi.h"
