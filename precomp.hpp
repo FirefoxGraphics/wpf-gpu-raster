@@ -281,7 +281,7 @@ template < class T > inline T max ( T a, T b ) { return a > b ? a : b; }
 #define DECLARE_METERHEAP_ALLOC(a, b)
 typedef INT_PTR PERFMETERTAG;
 __checkReturn __allocator
-HRESULT HrMalloc(
+inline HRESULT HrMalloc(
     PERFMETERTAG mt,
     size_t cbElementSize,
     size_t cElements,
@@ -367,18 +367,18 @@ class CD3DDeviceLevel1 {
         public:
     void GetClipRect(
         __out_ecount(1) MilPointAndSizeL * const prcClipRect
-        ) const;
+        ) const { abort(); }
         void GetColorComponentSource(
         CHwColorComponentSource::VertexComponent eComponent,
         __deref_out_ecount(1) CHwColorComponentSource ** const ppColorComponentSource
-        );
+        ) {abort(); }
 };
 
 class CHwPipelineBuilder {
         public:
                     HRESULT Set_AAColorSource(
         __in_ecount(1) CHwColorComponentSource *pAAColorSource
-        );
+        ) { abort(); }
 };
 
 // mem.cp
