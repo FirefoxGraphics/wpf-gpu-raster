@@ -120,7 +120,7 @@ CheckGUIHandleQuota(
 //  Returns:    void
 //
 //------------------------------------------------------------------------
-#ifdef BUILD_FOR_CODE_COVERAGE
+#if 1
     // By removing this function, the compiler is able to simplify many macros
     // to trivial checks which don't add blocks to our dll. All we lose is stack
     // capture functionality.

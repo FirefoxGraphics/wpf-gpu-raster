@@ -1,5 +1,6 @@
     #define DeclareTag(tag, szOwner, szDescription)
     #define IsTagEnabled(tag) (FALSE)
+#define TraceTag(x)
 #define     Mt(x)                               ((void)#x,0)
 #define     MtDefine(tag, szOwner, szDescrip)
 #define MIL_FORCEINLINE inline
@@ -153,7 +154,27 @@ struct  D3DXMATRIX : D3DMATRIX {
             abort();
             return 0;
         }
+        void reset_to_identity() {
+                _11 = 1;
+                _12 = 0;
+                _13 = 0;
+                _14 = 0;
+                _21 = 0;
+                _22 = 1;
+                _23 = 0;
+                _24 = 0;
+                _31 = 0;
+                _32 = 0;
+                _33 = 1;
+                _34 = 0;
+                _41 = 0;
+                _42 = 0;
+                _43 = 0;
+                _44 = 1;
+
+        }
 };
+
 
 class IWICBitmapSource;
 #define MILINSTRUMENTATIONFLAGS_DONOTHING               0x00
@@ -268,6 +289,14 @@ HRESULT HrMalloc(
     ) {
         *ppvmemblock = calloc(cbElementSize, cElements);
 }
+
+
+#define WPFAlloc(h, mt, cb) ( malloc(cb))
+#define WPFAllocType(type, h, mt, cb) ( malloc(cb))
+#define WPFAllocClear(h, mt, cb) ( calloc(1, cb))
+#define WPFAllocTypeClear(type, h, mt, cb) calloc(1, cb)
+#define WPFRealloc(h, mt, ppv, cb) realloc(ppv, cb)
+#define WPFFree(h, pv) free(pv)
 //void __dummfunc() {}
 
 
@@ -351,6 +380,34 @@ class CHwPipelineBuilder {
         __in_ecount(1) CHwColorComponentSource *pAAColorSource
         );
 };
+
+// mem.cp
+inline void *GpMalloc(PERFMETERTAG mt, size_t size)
+{
+    return malloc(size);
+}
+
+/**************************************************************************\
+*
+* Function Description:
+*
+*   Frees a block of memory.
+*
+* Arguments:
+*
+*   [IN] memblock - block to free
+*
+* Notes:
+*
+*   If memblock is NULL, does nothing.
+*
+*
+\**************************************************************************/
+
+inline void GpFree(void *memblock)
+{
+    free(memblock);
+}
 #include "ShapeData.h"
 // common.h
 #include "CoordinateSpace.h"

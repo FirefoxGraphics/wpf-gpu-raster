@@ -8,5 +8,10 @@ DoStackCapture(
     )
 {
 }
+
+void CBaseMatrix::SetToIdentity()
+{
+    reset_to_identity();
+}
 int main() {
 }
