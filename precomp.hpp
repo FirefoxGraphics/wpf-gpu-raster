@@ -460,6 +460,16 @@ class CD3DDeviceLevel1 {
         __deref_out_ecount(1) CHwColorComponentSource ** const ppColorComponentSource
         ) {abort(); }
 
+            HRESULT DrawIndexedTriangleList(
+        UINT uBaseVertexIndex,
+        UINT uMinIndex,
+        UINT cVertices,
+        UINT uStartIndex,
+        UINT cPrimitives
+        ) { 
+                    abort();
+            }
+
         MilPointAndSizeL clipRect;
 };
 
@@ -530,5 +540,12 @@ typedef struct D3DVECTOR {
 typedef DWORD D3DCOLOR;
 #include "d3dvertex.h"
 #include "MILRectF_WH.h"
+
+//pixelformatutils.h
+MilColorB
+Convert_MilColorF_scRGB_To_Premultiplied_MilColorB_sRGB(
+    const MilColorF * pColor    // scRGB MilColorF to convert
+    );
+
 #include "Waffler.h"
 #include "HwVertexBuffer.h"
