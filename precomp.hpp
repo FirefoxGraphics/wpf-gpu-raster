@@ -537,6 +537,36 @@ Convert_MilColorF_scRGB_To_Premultiplied_MilColorB_sRGB(
 
 #include "Waffler.h"
 #include "HwVertexBuffer.h"
+class IDirect3DVertexBuffer9;
+class IDirect3DIndexBuffer9;
+class CHwD3DVertexBuffer {
+        public:
+            HRESULT Lock(
+        UINT cVertices,
+        UINT uVertexStride,
+        __deref_out_bcount_part(cVertices * uVertexStride, 0) void ** const ppLockedVertices,
+        __out_ecount(1) UINT * const puStartVertex
+        ) { abort(); }
+
+                HRESULT Unlock(
+        UINT cVerticesUsed
+        ) { abort(); }
+
+                    __out_ecount(1) IDirect3DVertexBuffer9 *GetD3DBuffer() const
+        { abort(); return nullptr; }
+};
+class CHwD3DIndexBuffer {
+        public:
+            HRESULT Lock(
+        UINT cIndices,
+        __deref_out_ecount_part(cIndices, 0) WORD ** const ppwLockedIndices,
+        __out_ecount(1) UINT *puStartIndex
+        ) { abort(); }
+                HRESULT Unlock() {  abort(); }
+
+                        __out_ecount(1) IDirect3DIndexBuffer9 *GetD3DBuffer() const
+        { abort(); return nullptr; }
+};
 class CD3DDeviceLevel1{
         public:
     void GetClipRect(
@@ -570,36 +600,40 @@ class CD3DDeviceLevel1{
         return &m_vBufferXYZRHWDUV8;
     }
 
+                    __out_ecount(1) CHwD3DVertexBuffer *Get3DVertexBuffer()
+        { abort(); return m_pHwVertexBuffer; }
+
+    __out_ecount(1) CHwD3DIndexBuffer *Get3DIndexBuffer()
+        { abort(); return m_pHwIndexBuffer; }
+
+                    MilPointAndSizeL GetViewport() const
+        { abort(); return m_rcViewport; }
+                  MIL_FORCEINLINE HRESULT SetStreamSource(
+        __in_ecount_opt(1) IDirect3DVertexBuffer9 *pStream,
+        UINT uVertexStride
+        )
+    {
+            abort();
+        return S_OK;
+
+    }
+
+                      MIL_FORCEINLINE HRESULT SetIndices(
+        __in_ecount_opt(1) IDirect3DIndexBuffer9 *pStream
+        )
+    {
+            abort();
+            return S_OK;
+    }
+MilPointAndSizeL m_rcViewport;
                     CHwTVertexBuffer<CD3DVertexXYZDUV8> m_vBufferXYZRHWDUV8;
 CHwTVertexBuffer<CD3DVertexXYZDUV2> m_vBufferXYZDUV2;
 
         MilPointAndSizeL clipRect;
+          CHwD3DIndexBuffer *m_pHwIndexBuffer = nullptr;
+    CHwD3DVertexBuffer *m_pHwVertexBuffer = nullptr;
 };
 
-
-
-class CHwD3DVertexBuffer {
-        public:
-            HRESULT Lock(
-        UINT cVertices,
-        UINT uVertexStride,
-        __deref_out_bcount_part(cVertices * uVertexStride, 0) void ** const ppLockedVertices,
-        __out_ecount(1) UINT * const puStartVertex
-        ) { abort(); }
-
-                HRESULT Unlock(
-        UINT cVerticesUsed
-        ) { abort(); }
-};
-class CHwD3DIndexBuffer {
-        public:
-            HRESULT Lock(
-        UINT cIndices,
-        __deref_out_ecount_part(cIndices, 0) WORD ** const ppwLockedIndices,
-        __out_ecount(1) UINT *puStartIndex
-        ) { abort(); }
-                HRESULT Unlock() {  abort(); }
-};
 
 class CHwConstantColorSource {
        public:
