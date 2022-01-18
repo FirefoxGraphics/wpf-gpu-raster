@@ -547,7 +547,7 @@ class CHwPipeline {
     // the device state when it flushes.
     HRESULT RealizeColorSourcesAndSendState(
         __in_ecount_opt(1) const CHwVertexBuffer *pVB
-        ) { abort(); }
+        ) { printf("RealizeColorSourcesAndSendState\n"); }
         enum {
         kGeneralScratchSpace =
             sizeof(CHwConstantAlphaScalableColorSource) +
@@ -615,13 +615,11 @@ class CD3DDeviceLevel1{
 
                 CHwTVertexBuffer<CD3DVertexXYZDUV2> *GetVB_XYZDUV2()
     {
-            abort();
         return &m_vBufferXYZDUV2;
     }
 
                     CHwTVertexBuffer<CD3DVertexXYZDUV8> *GetVB_XYZRHWDUV8()
     {
-            abort();
         return &m_vBufferXYZRHWDUV8;
     }
 
@@ -632,7 +630,7 @@ class CD3DDeviceLevel1{
         { abort(); return m_pHwIndexBuffer; }
 
                     MilPointAndSizeL GetViewport() const
-        { abort(); return m_rcViewport; }
+        { return m_rcViewport; }
                   MIL_FORCEINLINE HRESULT SetStreamSource(
         __in_ecount_opt(1) IDirect3DVertexBuffer9 *pStream,
         UINT uVertexStride

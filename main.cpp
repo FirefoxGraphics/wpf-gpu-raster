@@ -194,6 +194,7 @@ int main() {
         device.clipRect.Y = 0;
         device.clipRect.Width = 100;
         device.clipRect.Height = 100;
+        device.m_rcViewport = device.clipRect;
         DynArray<MilPoint2F> pointsScratch;
         DynArray<BYTE> typesScratch;
         RectShape shape;
@@ -208,17 +209,20 @@ int main() {
         rasterizer.GetPerVertexDataType(m_mvfIn);
         CHwVertexBuffer::Builder *vertexBuilder;
         CHwPipeline pipeline;
-            CHwPipeline * const m_pHP = &pipeline;
+        pipeline.m_pDevice  = &device;
+        CHwPipeline * const m_pHP = &pipeline;
         CHwVertexBuffer::Builder::Create(
-        m_mvfIn,
-        m_mvfIn | m_mvfGenerated,
-        mvfaAALocation,
-        m_pHP,
-        m_pHP->m_pDevice,
-        &m_pHP->m_dbScratch,
-        &vertexBuilder
-        );
+                                         m_mvfIn,
+                                         m_mvfIn | m_mvfGenerated,
+                                         mvfaAALocation,
+                                         m_pHP,
+                                         m_pHP->m_pDevice,
+                                         &m_pHP->m_dbScratch,
+                                         &vertexBuilder
+                                        );
         vertexBuilder->BeginBuilding();
         rasterizer.SendGeometry(vertexBuilder);
+            CHwVertexBuffer *m_pVB;
+        vertexBuilder->FlushTryGetVertexBuffer(&m_pVB);
         delete vertexBuilder;
 }
