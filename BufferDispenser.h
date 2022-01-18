@@ -123,11 +123,14 @@ public:
     //
     //-------------------------------------------------------------------------
 
+#if 0
+// This depends on this == NULL, which is undefined, so this is now CBufferDispenser_Allocate
     __allocator __bcount(size) void *Allocate(
         __in_range(1,SIZE_T_MAX)       size_t size,
         __in_range(1,(SIZE_T_MAX+1)/2) size_t alignment,
         PERFMETERTAG mt
         );
+#endif
 
     //+------------------------------------------------------------------------
     //
@@ -152,7 +155,7 @@ private:
         PERFMETERTAG mt
         );
 
-    __allocator __bcount(size) uintptr_t AllocateFromHeap(
+    __allocator __bcount(size) static uintptr_t AllocateFromHeap(
         __in_range(alignment,SIZE_T_MAX) size_t size,
         __in_range(1,(SIZE_T_MAX+1)/2)   size_t alignment,
         PERFMETERTAG mt
@@ -171,6 +174,14 @@ private:
         );
 
 private:
+
+	friend __allocator __bcount(size) void *
+	CBufferDispenser_Allocate(
+		CBufferDispenser *this_ptr,
+		__in_range(1,SIZE_T_MAX)       size_t size,
+		__in_range(1,(SIZE_T_MAX+1)/2) size_t alignment,
+		PERFMETERTAG mt
+		);
 
     uintptr_t m_ptrBuffer;           // Beginning of buffer to manage
     uintptr_t m_ptrNextAvailable;    // Next location available in buffer
@@ -194,13 +205,21 @@ private:
 // heap.
 //
 
+__allocator __bcount(size) void *
+CBufferDispenser_Allocate(
+	CBufferDispenser *this_ptr,
+    __in_range(1,SIZE_T_MAX)       size_t size,
+    __in_range(1,(SIZE_T_MAX+1)/2) size_t alignment,
+    PERFMETERTAG mt
+    );
+
 #define DECLARE_BUFFERDISPENSER_NEW(type, mt)                           \
     MIL_FORCEINLINE void * operator new(                                \
         size_t cb,                                                      \
         CBufferDispenser *pBufferDispenser = NULL                       \
         )                                                               \
     {                                                                   \
-        return pBufferDispenser->Allocate(cb, __alignof(type), mt);     \
+        return CBufferDispenser_Allocate(pBufferDispenser, cb, __alignof(type), mt);     \
     }                                                                   \
                                                                         \
     MIL_FORCEINLINE void * operator new[](                              \
@@ -208,7 +227,7 @@ private:
         CBufferDispenser *pBufferDispenser = NULL                       \
         )                                                               \
     {                                                                   \
-        return pBufferDispenser->Allocate(cb, __alignof(type), mt);     \
+        return CBufferDispenser_Allocate(pBufferDispenser, cb, __alignof(type), mt);     \
     }
 
 #define DECLARE_BUFFERDISPENSER_DELETE                  \
@@ -264,7 +283,11 @@ private:
     // Generate a compile time error (via private protection) when trying to
     // dynamically allocate one of these.  They should always be on the stack
     // or be a member.
+#ifdef __GNUC__
+    void *operator new(size_t size) __attribute__((deprecated));
+#else
     MIL_FORCEINLINE void *operator new(size_t size) { return NULL; }
+#endif
 
     BYTE m_rgBuffer[BufferSize +
                     ExpectedAllocationCount*kOverheadPerBufferAllocation +

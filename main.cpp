@@ -170,6 +170,23 @@ class Sink : public IGeometrySink {
         bool empty = true;
 
 };
+
+template <class TVertex>
+HRESULT CHwTVertexBuffer<TVertex>::SendVertexFormat(
+        __inout_ecount(1) CD3DDeviceLevel1 *pDevice
+        ) const
+{
+        abort();
+}
+
+template <class TVertex>
+HRESULT CHwTVertexBuffer<TVertex>::DrawPrimitive(
+        __inout_ecount(1) CD3DDeviceLevel1 *pDevice
+        ) const
+{
+        abort();
+}
+
 int main() {
         CHwRasterizer rasterizer;
         CD3DDeviceLevel1 device;
@@ -183,6 +200,24 @@ int main() {
         CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device> worldToDevice(true);
 
         rasterizer.Setup(&device, &shape, &pointsScratch, &typesScratch, &worldToDevice);
-        Sink sink;
-        rasterizer.SendGeometry(&sink);
+        MilVertexFormat m_mvfIn;
+        MilVertexFormat m_mvfGenerated = MILVFAttrNone;
+        MilVertexFormatAttribute mvfaAALocation = MILVFAttrNone;
+#define HWPIPELINE_ANTIALIAS_LOCATION MILVFAttrDiffuse
+        mvfaAALocation = HWPIPELINE_ANTIALIAS_LOCATION;
+        rasterizer.GetPerVertexDataType(m_mvfIn);
+        CHwVertexBuffer::Builder *vertexBuilder;
+        CHwPipeline pipeline;
+            CHwPipeline * const m_pHP = &pipeline;
+        CHwVertexBuffer::Builder::Create(
+        m_mvfIn,
+        m_mvfIn | m_mvfGenerated,
+        mvfaAALocation,
+        m_pHP,
+        m_pHP->m_pDevice,
+        &m_pHP->m_dbScratch,
+        &vertexBuilder
+        );
+        rasterizer.SendGeometry(vertexBuilder);
+        delete vertexBuilder;
 }

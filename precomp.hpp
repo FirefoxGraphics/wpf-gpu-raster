@@ -2,8 +2,11 @@
     #define IsTagEnabled(tag) (FALSE)
 #define TraceTag(x)
 #define ExternTag(tag)
+
+// avaondebugp.h
 #define     Mt(x)                               ((void)#x,0)
 #define     MtDefine(tag, szOwner, szDescrip)
+#define     MtAdd(mt, lCnt, lVal)
 #define MIL_FORCEINLINE inline
 #include <stdint.h>
      #include <stdlib.h>
@@ -337,7 +340,7 @@ HRESULT HrAlloc(
 
 
 #define WPFAlloc(h, mt, cb) ( malloc(cb))
-#define WPFAllocType(type, h, mt, cb) ( malloc(cb))
+#define WPFAllocType(type, h, mt, cb) (reinterpret_cast<type>(malloc(cb)))
 #define WPFAllocClear(h, mt, cb) ( calloc(1, cb))
 #define WPFAllocTypeClear(type, h, mt, cb) calloc(1, cb)
 #define WPFRealloc(h, mt, ppv, cb) ReallocAnnotationHelper(h, mt, cb, ppv)
@@ -459,14 +462,15 @@ class CHwPipelineBuilder {
         ) { abort(); }
 };
 class CHwVertexBuffer;
-class CHwPipeline {
-        public:
-        // This is public for the use of the vertex buffer builder to send
-    // the device state when it flushes.
-    HRESULT RealizeColorSourcesAndSendState(
-        __in_ecount_opt(1) const CHwVertexBuffer *pVB
-        ) { abort(); }
+class CHwConstantColorSource {
+       public:
+            void GetColor(
+        __out_ecount(1) MilColorF &color
+        ) const { abort(); }
 };
+class CHwConstantAlphaScalableColorSource {};
+class CHwTexturedColorSource {};
+
 
 // mem.cp
 inline void *GpMalloc(PERFMETERTAG mt, size_t size)
@@ -537,6 +541,25 @@ Convert_MilColorF_scRGB_To_Premultiplied_MilColorB_sRGB(
 
 #include "Waffler.h"
 #include "HwVertexBuffer.h"
+class CHwPipeline {
+        public:
+        // This is public for the use of the vertex buffer builder to send
+    // the device state when it flushes.
+    HRESULT RealizeColorSourcesAndSendState(
+        __in_ecount_opt(1) const CHwVertexBuffer *pVB
+        ) { abort(); }
+        enum {
+        kGeneralScratchSpace =
+            sizeof(CHwConstantAlphaScalableColorSource) +
+            sizeof(CHwTexturedColorSource),
+
+        kScratchAllocationSpace = kMaxVertexBuilderSize + kGeneralScratchSpace
+    };
+    CDispensableBuffer<kScratchAllocationSpace, 3> m_dbScratch;
+    CD3DDeviceLevel1 *m_pDevice = nullptr;
+};
+
+
 class IDirect3DVertexBuffer9;
 class IDirect3DIndexBuffer9;
 class CHwD3DVertexBuffer {
@@ -635,10 +658,5 @@ CHwTVertexBuffer<CD3DVertexXYZDUV2> m_vBufferXYZDUV2;
 };
 
 
-class CHwConstantColorSource {
-       public:
-            void GetColor(
-        __out_ecount(1) MilColorF &color
-        ) const { abort(); }
-};
 #include "common/shared/utils.h"
+#include <limits.h>
