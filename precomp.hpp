@@ -615,11 +615,13 @@ class CD3DDeviceLevel1{
 
                 CHwTVertexBuffer<CD3DVertexXYZDUV2> *GetVB_XYZDUV2()
     {
+            abort();
         return &m_vBufferXYZDUV2;
     }
 
                     CHwTVertexBuffer<CD3DVertexXYZDUV8> *GetVB_XYZRHWDUV8()
     {
+            abort();
         return &m_vBufferXYZRHWDUV8;
     }
 

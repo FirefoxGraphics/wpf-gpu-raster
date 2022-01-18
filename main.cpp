@@ -218,6 +218,7 @@ int main() {
         &m_pHP->m_dbScratch,
         &vertexBuilder
         );
+        vertexBuilder->BeginBuilding();
         rasterizer.SendGeometry(vertexBuilder);
         delete vertexBuilder;
 }
