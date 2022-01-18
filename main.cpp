@@ -1,5 +1,12 @@
 #include "precomp.hpp"
 
+PALIMPORT
+VOID
+PALAPI
+DebugBreak(
+       VOID) {
+        abort();
+}
 
 __declspec(noinline) void
 DoStackCapture(

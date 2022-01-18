@@ -530,10 +530,10 @@ typedef DWORD D3DCOLOR;
 #include "MILRectF_WH.h"
 
 //pixelformatutils.h
-MilColorB
+inline MilColorB
 Convert_MilColorF_scRGB_To_Premultiplied_MilColorB_sRGB(
     const MilColorF * pColor    // scRGB MilColorF to convert
-    );
+    ) { abort(); }
 
 #include "Waffler.h"
 #include "HwVertexBuffer.h"
@@ -641,3 +641,4 @@ class CHwConstantColorSource {
         __out_ecount(1) MilColorF &color
         ) const { abort(); }
 };
+#include "common/shared/utils.h"

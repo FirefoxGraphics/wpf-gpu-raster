@@ -394,7 +394,6 @@ DynArrayImpl<fZeroMemory>::DetachData(
 *   2/25/1999 agodfrey
 *
 \**************************************************************************/
-#if 0
 template <bool fZeroMemory> HRESULT
 DynArrayImpl<fZeroMemory>::AddMultiple(
     __in_range(==, this->ElementSize) UINT eltSize,
@@ -436,7 +435,6 @@ Cleanup:
 *   2/25/1999 agodfrey
 *
 \**************************************************************************/
-#endif
 template <bool fZeroMemory>
 HRESULT
 DynArrayImpl<fZeroMemory>::AddMultipleAndSet(
