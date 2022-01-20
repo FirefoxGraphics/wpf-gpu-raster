@@ -21,6 +21,18 @@ void CBaseMatrix::SetToIdentity()
     reset_to_identity();
 }
 
+struct Vec {
+        float x, y;
+};
+
+float dot(Vec a, Vec b) {
+        return a.x * b.x + a.y * b.y;
+}
+
+Vec perp(Vec v) {
+        return Vec { -v.y, v.x };
+}
+
 HRESULT
 CShapeBase::ConvertToGpPath(
     __out_ecount(1) DynArray<MilPoint2F> &rgPoints,
@@ -31,22 +43,46 @@ CShapeBase::ConvertToGpPath(
         // Stroking if true, filling otherwise (optional)
     ) const
 {
-        rgPoints.Add({10, 10});
+
+        auto a = Vec{ 0., -1. };
+        auto b = Vec { 1., 0. };
+        auto r = 15.;
+        auto r_sin_a = r * a.y;
+        auto r_cos_a = r * a.x;
+        auto r_sin_b = r * b.y;
+        auto r_cos_b = r * b.x;
+
+        auto mid  = Vec { a.x + b.x, a.y + b.y  };
+        auto mid2 = Vec { a.x + mid.x, a.y + mid.y };
+        auto xc = 10.;
+        auto yc = 25.;
+        auto h = (4. / 3. )* dot(perp(a), mid2)/ dot(a, mid2);
+        rgPoints.Add({xc + r_cos_a, yc + r_sin_a});
         rgTypes.Add(PathPointTypeStart);
 
-        rgPoints.Add({10, 28});
-        rgTypes.Add(PathPointTypeLine);
+        rgPoints.Add({xc + r_cos_a - h * r_sin_a, yc + r_sin_a + h * r_cos_a});
+        rgPoints.Add({        xc + r_cos_b + h * r_sin_b,        yc + r_sin_b - h * r_cos_b});
+        rgPoints.Add({xc + r_cos_b, yc + r_sin_b});
+        rgTypes.Add(PathPointTypeBezier);
 
-        rgPoints.Add({30, 30});
-        rgTypes.Add(PathPointTypeLine);
+        rgPoints.Add({xc, yc}); rgTypes.Add(PathPointTypeLine);
 
-        rgPoints.Add({30, 10});
-        rgTypes.Add(PathPointTypeLine);
-
-
-        rgPoints.Add({10, 10});
+        rgPoints.Add({xc + r_cos_a, yc + r_sin_a}); rgTypes.Add(PathPointTypeLine);
         rgTypes.Add(PathPointTypeLine | PathPointTypeCloseSubpath);
 
+
+#if 0
+        rgPoints.Add({10, 10.5});
+        rgTypes.Add(PathPointTypeStart);
+
+        rgPoints.Add({30, 10.5}); rgTypes.Add(PathPointTypeLine);
+        rgPoints.Add({10, 30.5}); rgTypes.Add(PathPointTypeLine);
+        rgPoints.Add({30, 30.5}); rgTypes.Add(PathPointTypeLine);
+
+
+        rgPoints.Add({10, 10.5});
+        rgTypes.Add(PathPointTypeLine | PathPointTypeCloseSubpath);
+#endif
 }
 
 HRESULT
@@ -186,6 +222,29 @@ HRESULT CHwTVertexBuffer<TVertex>::DrawPrimitive(
 {
         abort();
 }
+
+template <>
+HRESULT CHwTVertexBuffer<CD3DVertexXYZDUV2>::DrawPrimitive(
+        __inout_ecount(1) CD3DDeviceLevel1 *pDevice
+        ) const
+{
+        CD3DVertexXYZDUV2* data = m_rgVerticesTriStrip.GetDataBuffer();
+        for (int i = 0; i < m_rgVerticesTriStrip.GetCount(); i++) {
+                float color;
+                memcpy(&color, &data[i].Diffuse, sizeof(color));
+                printf("v %f %f %f %f %f %f\n", data[i].X, data[i].Y, data[i].Z, color, color, color);
+        }
+
+        for (int n = 1; n < m_rgVerticesTriStrip.GetCount()-1; n++) {
+                if (n % 2 == 1) {
+                        printf("f %d %d %d\n", n, n+1, n+2);
+                } else {
+                        printf("f %d %d %d\n", n+1, n, n+2);
+                }
+        }
+
+}
+
 
 int main() {
         CHwRasterizer rasterizer;
