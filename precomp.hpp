@@ -1,5 +1,8 @@
-    #define DeclareTag(tag, szOwner, szDescription)
-    #define IsTagEnabled(tag) (FALSE)
+#define FORCE_TRIANGLES true
+
+
+#define DeclareTag(tag, szOwner, szDescription)
+#define IsTagEnabled(tag) (FALSE)
 #define TraceTag(x)
 #define ExternTag(tag)
 

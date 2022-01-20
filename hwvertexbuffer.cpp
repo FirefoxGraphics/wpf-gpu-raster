@@ -208,7 +208,7 @@ CHwTVertexBuffer<TVertex>::AddLine(
 
     Assert(!(v0.y != v1.y));
     
-    bool fUseTriangles = v0.y < m_pBuilder->GetViewportTop() + 1;
+    bool fUseTriangles = (v0.y < m_pBuilder->GetViewportTop() + 1) || FORCE_TRIANGLES;
 
     if (fUseTriangles)
     {
@@ -1580,7 +1580,7 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
     // Use triangles instead of lines, for lines too close to the top of the viewport
     // because lines are clipped (before rasterization) against a viewport that only
     // includes half of the top pixel row.  Waffling will take care of this separately.
-    if (!pLineSink && rPixelY < GetViewportTop() + 1)
+    if (!pLineSink && rPixelY < GetViewportTop() + 1 || FORCE_TRIANGLES)
     {
         pLineSink = m_pVB;
     }
