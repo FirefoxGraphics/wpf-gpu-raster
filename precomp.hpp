@@ -550,7 +550,9 @@ class CHwPipeline {
     // the device state when it flushes.
     HRESULT RealizeColorSourcesAndSendState(
         __in_ecount_opt(1) const CHwVertexBuffer *pVB
-        ) { printf("RealizeColorSourcesAndSendState\n"); }
+        ) {
+        //    printf("RealizeColorSourcesAndSendState\n");
+        }
         enum {
         kGeneralScratchSpace =
             sizeof(CHwConstantAlphaScalableColorSource) +

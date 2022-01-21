@@ -43,7 +43,7 @@ CShapeBase::ConvertToGpPath(
         // Stroking if true, filling otherwise (optional)
     ) const
 {
-
+#if 1
         auto a = Vec{ 0., -1. };
         auto b = Vec { 1., 0. };
         auto r = 15.;
@@ -71,16 +71,27 @@ CShapeBase::ConvertToGpPath(
         rgTypes.Add(PathPointTypeLine | PathPointTypeCloseSubpath);
 
 
-#if 0
-        rgPoints.Add({10, 10.5});
+#elif 0
+        rgPoints.Add({10, 10});
         rgTypes.Add(PathPointTypeStart);
 
-        rgPoints.Add({30, 10.5}); rgTypes.Add(PathPointTypeLine);
-        rgPoints.Add({10, 30.5}); rgTypes.Add(PathPointTypeLine);
-        rgPoints.Add({30, 30.5}); rgTypes.Add(PathPointTypeLine);
+        rgPoints.Add({30, 10}); rgTypes.Add(PathPointTypeLine);
+        rgPoints.Add({10, 30}); rgTypes.Add(PathPointTypeLine);
+        rgPoints.Add({30, 30}); rgTypes.Add(PathPointTypeLine);
 
 
-        rgPoints.Add({10, 10.5});
+        rgPoints.Add({10, 10});
+        rgTypes.Add(PathPointTypeLine | PathPointTypeCloseSubpath);
+#else
+        rgPoints.Add({10, 10});
+        rgTypes.Add(PathPointTypeStart);
+
+        rgPoints.Add({30, 10}); rgTypes.Add(PathPointTypeLine);
+        rgPoints.Add({30, 30}); rgTypes.Add(PathPointTypeLine);
+        rgPoints.Add({10, 30}); rgTypes.Add(PathPointTypeLine);
+
+
+        rgPoints.Add({10, 10});
         rgTypes.Add(PathPointTypeLine | PathPointTypeCloseSubpath);
 #endif
 }
@@ -232,7 +243,8 @@ HRESULT CHwTVertexBuffer<CD3DVertexXYZDUV2>::DrawPrimitive(
         for (int i = 0; i < m_rgVerticesTriStrip.GetCount(); i++) {
                 float color;
                 memcpy(&color, &data[i].Diffuse, sizeof(color));
-                printf("v %f %f %f %f %f %f\n", data[i].X, data[i].Y, data[i].Z, color, color, color);
+                // adjust from D3D9 pixel centers to D3D11 ones
+                printf("v %f %f %f %f %f %f\n", data[i].X + 0.5, data[i].Y + 0.5, data[i].Z, color, color, color);
         }
 
         for (int n = 1; n < m_rgVerticesTriStrip.GetCount()-1; n++) {
