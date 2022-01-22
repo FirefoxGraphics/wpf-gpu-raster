@@ -156,23 +156,36 @@ HRESULT CHwTVertexBuffer<CD3DVertexXYZDUV2>::DrawPrimitive(
         __inout_ecount(1) CD3DDeviceLevel1 *pDevice
         ) const
 {
+        OutputVertex *output = (OutputVertex*)malloc(m_rgVerticesTriStrip.GetCount() * sizeof(OutputVertex));
         CD3DVertexXYZDUV2* data = m_rgVerticesTriStrip.GetDataBuffer();
         for (int i = 0; i < m_rgVerticesTriStrip.GetCount(); i++) {
                 float color;
                 memcpy(&color, &data[i].Diffuse, sizeof(color));
-                // adjust from D3D9 pixel centers to D3D11 ones
-                printf("v %f %f %f %f %f %f\n", data[i].X + 0.5, data[i].Y + 0.5, data[i].Z, color, color, color);
+                output[i].x = data[i].X + 0.5;
+                output[i].y = data[i].Y + 0.5;
+                output[i].coverage = color;
+        }
+        pDevice->outputLen = m_rgVerticesTriStrip.GetCount();
+        pDevice->output = output;
+}
+
+
+void output_obj_file(OutputVertex *data, size_t len) {
+        for (size_t i = 0; i < len; i++) {
+                float color = data[i].coverage;
+                printf("v %f %f %f %f %f %f\n", data[i].x, data[i].y, 0., color, color, color);
         }
 
-        for (int n = 1; n < m_rgVerticesTriStrip.GetCount()-1; n++) {
+        // output a standard triangle strip face list
+        for (int n = 1; n < len-1; n++) {
                 if (n % 2 == 1) {
                         printf("f %d %d %d\n", n, n+1, n+2);
                 } else {
                         printf("f %d %d %d\n", n+1, n, n+2);
                 }
         }
-}
 
+}
 
 int main() {
         CHwRasterizer rasterizer;
@@ -212,4 +225,5 @@ int main() {
         CHwVertexBuffer *m_pVB;
         vertexBuilder->FlushTryGetVertexBuffer(&m_pVB);
         delete vertexBuilder;
+        output_obj_file(device.output, device.outputLen);
 }

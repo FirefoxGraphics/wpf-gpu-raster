@@ -595,6 +595,13 @@ class CHwD3DIndexBuffer {
                         __out_ecount(1) IDirect3DIndexBuffer9 *GetD3DBuffer() const
         { abort(); return nullptr; }
 };
+
+struct OutputVertex {
+        float x;
+        float y;
+        float coverage;
+};
+
 class CD3DDeviceLevel1{
         public:
     void GetClipRect(
@@ -660,6 +667,10 @@ class CD3DDeviceLevel1{
     MilPointAndSizeL clipRect;
     CHwD3DIndexBuffer *m_pHwIndexBuffer = nullptr;
     CHwD3DVertexBuffer *m_pHwVertexBuffer = nullptr;
+  public:
+    OutputVertex *output;
+    size_t outputLen;
+
 };
 
 
