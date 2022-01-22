@@ -125,12 +125,12 @@ class RectShape : public CShapeBase {
         UINT GetFigureCount() const { return 1; }
         bool IsAxisAlignedRectangle() const { return false; }
 
-            virtual bool GetCachedBoundsCore(
+        virtual bool GetCachedBoundsCore(
         __out_ecount(1) MilRectF &rect) const { abort(); }
-    virtual void SetCachedBounds(
+        virtual void SetCachedBounds(
         __in_ecount(1) const MilRectF &rect) const { abort(); };  // Bounding box to cache
 
-                virtual __outro_ecount(1) const IFigureData &GetFigure(IN UINT index) const { abort(); }
+        virtual __outro_ecount(1) const IFigureData &GetFigure(IN UINT index) const { abort(); }
 };
 
 Heap* ProcessHeap;
@@ -171,7 +171,6 @@ HRESULT CHwTVertexBuffer<CD3DVertexXYZDUV2>::DrawPrimitive(
                         printf("f %d %d %d\n", n+1, n, n+2);
                 }
         }
-
 }
 
 
@@ -210,7 +209,7 @@ int main() {
                                         );
         vertexBuilder->BeginBuilding();
         rasterizer.SendGeometry(vertexBuilder);
-            CHwVertexBuffer *m_pVB;
+        CHwVertexBuffer *m_pVB;
         vertexBuilder->FlushTryGetVertexBuffer(&m_pVB);
         delete vertexBuilder;
 }

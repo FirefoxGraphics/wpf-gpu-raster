@@ -628,37 +628,37 @@ class CD3DDeviceLevel1{
         return &m_vBufferXYZRHWDUV8;
     }
 
-                    __out_ecount(1) CHwD3DVertexBuffer *Get3DVertexBuffer()
+    __out_ecount(1) CHwD3DVertexBuffer *Get3DVertexBuffer()
         { abort(); return m_pHwVertexBuffer; }
 
     __out_ecount(1) CHwD3DIndexBuffer *Get3DIndexBuffer()
         { abort(); return m_pHwIndexBuffer; }
 
-                    MilPointAndSizeL GetViewport() const
+    MilPointAndSizeL GetViewport() const
         { return m_rcViewport; }
-                  MIL_FORCEINLINE HRESULT SetStreamSource(
+    MIL_FORCEINLINE HRESULT SetStreamSource(
         __in_ecount_opt(1) IDirect3DVertexBuffer9 *pStream,
         UINT uVertexStride
         )
     {
-            abort();
+        abort();
         return S_OK;
 
     }
 
-                      MIL_FORCEINLINE HRESULT SetIndices(
+    MIL_FORCEINLINE HRESULT SetIndices(
         __in_ecount_opt(1) IDirect3DIndexBuffer9 *pStream
         )
     {
             abort();
             return S_OK;
     }
-MilPointAndSizeL m_rcViewport;
-                    CHwTVertexBuffer<CD3DVertexXYZDUV8> m_vBufferXYZRHWDUV8;
-CHwTVertexBuffer<CD3DVertexXYZDUV2> m_vBufferXYZDUV2;
+    MilPointAndSizeL m_rcViewport;
+    CHwTVertexBuffer<CD3DVertexXYZDUV8> m_vBufferXYZRHWDUV8;
+    CHwTVertexBuffer<CD3DVertexXYZDUV2> m_vBufferXYZDUV2;
 
-        MilPointAndSizeL clipRect;
-          CHwD3DIndexBuffer *m_pHwIndexBuffer = nullptr;
+    MilPointAndSizeL clipRect;
+    CHwD3DIndexBuffer *m_pHwIndexBuffer = nullptr;
     CHwD3DVertexBuffer *m_pHwVertexBuffer = nullptr;
 };
 
