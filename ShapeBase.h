@@ -154,7 +154,7 @@ public:
     // Non-virtual general geometry functionality 
     //
 
-    HRESULT ConvertToGpPath(
+    virtual HRESULT ConvertToGpPath(
         __out_ecount(1) DynArray<MilPoint2F> &rgPoints,       
             // Path points
         __out_ecount(1) DynArray<BYTE>      &rgTypes,       

@@ -33,6 +33,65 @@ Vec perp(Vec v) {
         return Vec { -v.y, v.x };
 }
 
+
+struct PathBuilder : CShapeBase {
+        DynArray<MilPoint2F> points;
+        DynArray<BYTE> types;
+        bool has_initial = false;
+        MilPoint2F initial_point;
+        MilFillMode::Enum fill_mode = MilFillMode::Alternate;
+        override HRESULT ConvertToGpPath(
+                                             __out_ecount(1) DynArray<MilPoint2F> &rgPoints,
+                                             // Path points
+                                             __out_ecount(1) DynArray<BYTE>      &rgTypes,
+                                             // Path types
+                                             IN  bool                fStroking
+                                             // Stroking if true, filling otherwise (optional)
+                                        ) const
+        {
+                rgPoints.Copy(points);
+                rgTypes.Copy(types);
+        }
+        MilFillMode::Enum GetFillMode() const {
+                        return fill_mode;
+        }
+        bool HasGaps() const { return false;
+        }
+        bool HasHollows() const { return false; }
+        bool IsEmpty() const { return false; }
+        UINT GetFigureCount() const { return 1; }
+        bool IsAxisAlignedRectangle() const { return false; }
+
+        virtual bool GetCachedBoundsCore(
+        __out_ecount(1) MilRectF &rect) const { abort(); }
+        virtual void SetCachedBounds(
+        __in_ecount(1) const MilRectF &rect) const { abort(); };  // Bounding box to cache
+
+        virtual __outro_ecount(1) const IFigureData &GetFigure(IN UINT index) const { abort(); }
+        void line_to(float x, float y) {
+                types.Add(PathPointTypeLine);
+                points.Add({x, y});
+        }
+        void move_to(float x, float y) {
+                types.Add(PathPointTypeStart);
+                points.Add({x, y});
+                initial_point = {x, y};
+        }
+        void curve_to(float c1x, float c1y, float c2x, float c2y, float x, float y) {
+                points.Add({c1x, c1y});
+                points.Add({c2x, c2y});
+                points.Add({x, y});
+                types.AddAndSet(3, PathPointTypeBezier);
+        }
+        void close() {
+                if (has_initial) {
+                        points.Add(initial_point);
+                        types.Add(PathPointTypeLine | PathPointTypeCloseSubpath);
+                }
+        }
+
+};
+
 HRESULT
 CShapeBase::ConvertToGpPath(
     __out_ecount(1) DynArray<MilPoint2F> &rgPoints,
@@ -202,9 +261,15 @@ int main() {
         DynArray<MilPoint2F> pointsScratch;
         DynArray<BYTE> typesScratch;
         RectShape shape;
+        PathBuilder b;
+        b.move_to(10, 10);
+        b.line_to(30, 30);
+        b.line_to(10, 30);
+        b.line_to(30, 10);
+        b.close();
         CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device> worldToDevice(true);
 
-        rasterizer.Setup(&device, &shape, &pointsScratch, &typesScratch, &worldToDevice);
+        rasterizer.Setup(&device, &b, &pointsScratch, &typesScratch, &worldToDevice);
         MilVertexFormat m_mvfIn;
         MilVertexFormat m_mvfGenerated = MILVFAttrNone;
         MilVertexFormatAttribute mvfaAALocation = MILVFAttrNone;
@@ -229,5 +294,5 @@ int main() {
         CHwVertexBuffer *m_pVB;
         vertexBuilder->FlushTryGetVertexBuffer(&m_pVB);
         delete vertexBuilder;
-        //output_obj_file(device.output, device.outputLen);
+        output_obj_file(device.output, device.outputLen);
 }
