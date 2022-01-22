@@ -229,7 +229,7 @@ SortActiveEdges(
     __inout_ecount(1) CEdge *list
     );
 
-#if DBG
+#if 1
     #define ASSERTACTIVELIST(list, y) AssertActiveList(list, y)
     #define ASSERTACTIVELISTORDER(list) AssertActiveListOrder(list)
     #define ASSERTINACTIVEARRAY(list, count) AssertInactiveArray(list, count)

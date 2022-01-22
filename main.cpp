@@ -64,6 +64,8 @@ CShapeBase::ConvertToGpPath(
         rgPoints.Add({        xc + r_cos_b + h * r_sin_b,        yc + r_sin_b - h * r_cos_b});
         rgPoints.Add({xc + r_cos_b, yc + r_sin_b});
         rgTypes.Add(PathPointTypeBezier);
+        rgTypes.Add(PathPointTypeBezier);
+        rgTypes.Add(PathPointTypeBezier);
 
         rgPoints.Add({xc, yc}); rgTypes.Add(PathPointTypeLine);
 
@@ -94,6 +96,7 @@ CShapeBase::ConvertToGpPath(
         rgPoints.Add({10, 10});
         rgTypes.Add(PathPointTypeLine | PathPointTypeCloseSubpath);
 #endif
+        return S_OK;
 }
 
 HRESULT
@@ -167,6 +170,7 @@ HRESULT CHwTVertexBuffer<CD3DVertexXYZDUV2>::DrawPrimitive(
         }
         pDevice->outputLen = m_rgVerticesTriStrip.GetCount();
         pDevice->output = output;
+        return S_OK;
 }
 
 
@@ -225,5 +229,5 @@ int main() {
         CHwVertexBuffer *m_pVB;
         vertexBuilder->FlushTryGetVertexBuffer(&m_pVB);
         delete vertexBuilder;
-        output_obj_file(device.output, device.outputLen);
+        //output_obj_file(device.output, device.outputLen);
 }

@@ -1,3 +1,5 @@
+#include <math.h>
+inline int _isnan(float x) { isnan(x); }
 #define FORCE_TRIANGLES true
 
 
@@ -408,7 +410,7 @@ typedef
 
 #include "BufferDispenser.h"
 #if 1
-//#include <assert.h>
+#include <assert.h>
 // Arithmetic.h
 MIL_FORCEINLINE HRESULT AddUINT(UINT a, UINT b, __out_ecount(1) __deref_out_range(==,a+b) UINT &sum)
 {
@@ -551,6 +553,7 @@ class CHwPipeline {
     HRESULT RealizeColorSourcesAndSendState(
         __in_ecount_opt(1) const CHwVertexBuffer *pVB
         ) {
+            return S_OK;
         //    printf("RealizeColorSourcesAndSendState\n");
         }
         enum {

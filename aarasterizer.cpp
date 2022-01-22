@@ -148,7 +148,7 @@ Cleanup:
     RRETURN(hr);
 }
 
-#ifdef DBG
+#if 1
 
 /**************************************************************************\
 *
@@ -1738,6 +1738,7 @@ InitializeEdges(
     // We're done with this batch.  Let the store know how many edges
     // we ended up with:
 
+    printf("bufferCount %d\n", bufferCount);
     store->EndAddBuffer(edgeBuffer, bufferCount);
 
     pEdgeContext->MaxY = yMax;
@@ -1787,7 +1788,7 @@ TurnLeft(
 *   03/25/2000 andrewgo
 *
 \**************************************************************************/
-#if 0
+#if 1
 BOOL
 ValidatePathTypes(
     __in_ecount(count) const BYTE *typesArray,
@@ -1915,7 +1916,6 @@ AssertPath(
     //
     //       No internal code should be producing invalid paths, and all
     //       paths created by the application must be parameter checked!
-
     Assert(ValidatePathTypes(rgTypes, cPoints));
 }
 
@@ -2348,7 +2348,7 @@ InsertionSortEdges(
     } while (inactive++, --count != 0);
 }
 
-#if DBG
+#if 1
 /**************************************************************************\
 *
 * Function Description:

@@ -74,7 +74,7 @@ public:
 
     CRectSpace1 const &CoordSpace1() const
     {
-        Assert(m_currentSpace == CoordinateSpace::CoordSpace1::Id);
+        //Assert(m_currentSpace == CoordinateSpace::CoordSpace1::Id);
         return *CRectSpace1::ReinterpretBaseType(&m_rc.CoordSpace1);
     };
 
@@ -93,7 +93,7 @@ public:
 
     CRectSpace2 const &CoordSpace2() const
     {
-        Assert(m_currentSpace == CoordinateSpace::CoordSpace2::Id);
+        //Assert(m_currentSpace == CoordinateSpace::CoordSpace2::Id);
         return *CRectSpace2::ReinterpretBaseType(&m_rc.CoordSpace2);
     };
 
@@ -116,13 +116,13 @@ public:
 
     BaseMILRect const &AnySpace() const
     {
-        Assert(m_currentSpace != CoordinateSpaceId::Invalid);
+        //Assert(m_currentSpace != CoordinateSpaceId::Invalid);
         return *CRectSpace1::ReinterpretBaseType(&m_rc.CoordSpace1);
     }
 
     BaseMILRect &AnySpace()
     {
-        Assert(m_currentSpace != CoordinateSpaceId::Invalid);
+        //Assert(m_currentSpace != CoordinateSpaceId::Invalid);
         return *CRectSpace1::ReinterpretBaseType(&m_rc.CoordSpace1);
     }
 

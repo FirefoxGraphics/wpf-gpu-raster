@@ -97,7 +97,7 @@ CBufferDispenser_Allocate(
     C_ASSERT(CBufferDispenser::kOverheadPerBufferAllocation > 0);
     size += CBufferDispenser::kOverheadPerBufferAllocation;
 
-    Assert(IsAlignedTo(size, kMinBufferAllocationAlignment));
+    //Assert(IsAlignedTo(size, kMinBufferAllocationAlignment));
 
     //
     // Attempt to allocate from buffer first, but fall back to heap if there
