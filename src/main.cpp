@@ -250,7 +250,7 @@ void output_obj_file(OutputVertex *data, size_t len) {
 
 }
 
-int main() {
+int rasterize() {
         CHwRasterizer rasterizer;
         CD3DDeviceLevel1 device;
         device.clipRect.X = 0;
@@ -295,4 +295,14 @@ int main() {
         vertexBuilder->FlushTryGetVertexBuffer(&m_pVB);
         delete vertexBuilder;
         output_obj_file(device.output, device.outputLen);
+}
+
+extern "C" {
+
+void *pathbuilder_new() {
+        return new PathBuilder;
+}
+void pathbuilder_delete(void *ptr) {
+        delete (PathBuilder*)ptr;
+}
 }
