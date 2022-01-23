@@ -12,7 +12,7 @@ extern "C" {
     fn pathbuilder_move_to(ptr: *mut c_void, x: f32, y: f32);
     fn pathbuilder_curve_to(ptr: *mut c_void, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32);
     fn pathbuilder_close(ptr: *mut c_void);
-    fn pathbuilder_rasterize(ptr: *mut c_void, out_len: *mut usize) -> *mut OutputVertex;
+    fn pathbuilder_rasterize(ptr: *mut c_void, out_len: *mut usize, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> *mut OutputVertex;
     fn pathbuilder_delete(ptr: *mut c_void);
 }
 
@@ -38,7 +38,7 @@ impl PathBuilder {
     }
     pub fn rasterize_to_tri_strip(&mut self) -> Box<[OutputVertex]> {
         let mut len = 0;
-        let ptr = unsafe { pathbuilder_rasterize(self.ptr, &mut len) };
+        let ptr = unsafe { pathbuilder_rasterize(self.ptr, &mut len, 0, 0, 100, 100) };
         unsafe { Box::from_raw(std::slice::from_raw_parts_mut(ptr, len)) }
     }
 }

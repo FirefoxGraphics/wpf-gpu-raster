@@ -90,7 +90,7 @@ struct PathBuilder : CShapeBase {
                 }
         }
 
-        OutputVertex *rasterize(size_t *outLen);
+        OutputVertex *rasterize(size_t *outLen, int clip_x, int clip_y, int clip_width, int clip_height);
 
 };
 
@@ -252,13 +252,13 @@ void output_obj_file(OutputVertex *data, size_t len) {
 
 }
 
-OutputVertex *PathBuilder::rasterize(size_t *outLen) {
+OutputVertex *PathBuilder::rasterize(size_t *outLen, int clip_x, int clip_y, int clip_width, int clip_height) {
         CHwRasterizer rasterizer;
         CD3DDeviceLevel1 device;
-        device.clipRect.X = 0;
-        device.clipRect.Y = 0;
-        device.clipRect.Width = 100;
-        device.clipRect.Height = 100;
+        device.clipRect.X = clip_x;
+        device.clipRect.Y = clip_y;
+        device.clipRect.Width = clip_width;
+        device.clipRect.Height = clip_height;
         device.m_rcViewport = device.clipRect;
         DynArray<MilPoint2F> pointsScratch;
         DynArray<BYTE> typesScratch;
@@ -316,8 +316,8 @@ void pathbuilder_curve_to(void *ptr, float c1x, float c1y, float c2x, float c2y,
 void pathbuilder_close(void *ptr) {
         ((PathBuilder*)ptr)->close();
 }
-OutputVertex* pathbuilder_rasterize(void *ptr, size_t *outLen) {
-        return ((PathBuilder*)ptr)->rasterize(outLen);
+OutputVertex* pathbuilder_rasterize(void *ptr, size_t *outLen,  int clip_x, int clip_y, int clip_width, int clip_height) {
+        return ((PathBuilder*)ptr)->rasterize(outLen, clip_x, clip_y, clip_width, clip_height);
 }
 
 }
