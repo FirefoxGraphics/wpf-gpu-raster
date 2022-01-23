@@ -3,7 +3,6 @@ fn main() {
         .cpp(true)
         .file("src/BufferDispenser.cpp")
         .file("src/real.cpp")
-        .file("src/waffler.cpp")
         .file("src/hwvertexbuffer.cpp")
         .file("src/dynarrayimpl.cpp")
         .file("src/hwrasterizer.cpp")

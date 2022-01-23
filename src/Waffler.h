@@ -98,7 +98,7 @@ public:
         __in_ecount(1) const T &v0,
         __in_ecount(1) const T &v1,
         __in_ecount(1) const T &v2
-        );
+        ) { abort(); }
 
 private:
     HRESULT SendTriangle(
@@ -200,7 +200,7 @@ public:
         m_consumer = tc;
     }
     
-    HRESULT AddLine(__in_ecount(1) const T &v0, __in_ecount(1) const T &v1);
+    HRESULT AddLine(__in_ecount(1) const T &v0, __in_ecount(1) const T &v1) { abort(); }
 
 private:
     // This defines a 1D subdivision using the lines given by
