@@ -17,6 +17,8 @@ fn main() {
         .flag("-fms-extensions")
         .flag("-Wno-unused-value")
         .flag("-Wno-unused-parameter")
+        .flag("-Wno-deprecated-register")
+        .flag("-Wno-extra-tokens")
         .flag("-Wno-pragma-pack")
         .flag("-Wno-macro-redefined")
         .define("PAL_STDCPP_COMPAT", None)

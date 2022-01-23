@@ -90,6 +90,8 @@ struct PathBuilder : CShapeBase {
                 }
         }
 
+        OutputVertex *rasterize(size_t *outLen);
+
 };
 
 HRESULT
@@ -250,7 +252,7 @@ void output_obj_file(OutputVertex *data, size_t len) {
 
 }
 
-int rasterize() {
+OutputVertex *PathBuilder::rasterize(size_t *outLen) {
         CHwRasterizer rasterizer;
         CD3DDeviceLevel1 device;
         device.clipRect.X = 0;
@@ -261,15 +263,9 @@ int rasterize() {
         DynArray<MilPoint2F> pointsScratch;
         DynArray<BYTE> typesScratch;
         RectShape shape;
-        PathBuilder b;
-        b.move_to(10, 10);
-        b.line_to(30, 30);
-        b.line_to(10, 30);
-        b.line_to(30, 10);
-        b.close();
         CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device> worldToDevice(true);
 
-        rasterizer.Setup(&device, &b, &pointsScratch, &typesScratch, &worldToDevice);
+        rasterizer.Setup(&device, this, &pointsScratch, &typesScratch, &worldToDevice);
         MilVertexFormat m_mvfIn;
         MilVertexFormat m_mvfGenerated = MILVFAttrNone;
         MilVertexFormatAttribute mvfaAALocation = MILVFAttrNone;
@@ -294,7 +290,9 @@ int rasterize() {
         CHwVertexBuffer *m_pVB;
         vertexBuilder->FlushTryGetVertexBuffer(&m_pVB);
         delete vertexBuilder;
-        output_obj_file(device.output, device.outputLen);
+        //output_obj_file(device.output, device.outputLen);
+        *outLen = device.outputLen;
+        return device.output;
 }
 
 extern "C" {
@@ -305,4 +303,21 @@ void *pathbuilder_new() {
 void pathbuilder_delete(void *ptr) {
         delete (PathBuilder*)ptr;
 }
+
+void pathbuilder_line_to(void *ptr, float x, float y) {
+        ((PathBuilder*)ptr)->line_to(x, y);
+}
+void pathbuilder_move_to(void *ptr, float x, float y) {
+        ((PathBuilder*)ptr)->move_to(x, y);
+}
+void pathbuilder_curve_to(void *ptr, float c1x, float c1y, float c2x, float c2y, float x, float y) {
+        ((PathBuilder*)ptr)->curve_to(c1x, c1y, c2x, c2y, x, y);
+}
+void pathbuilder_close(void *ptr) {
+        ((PathBuilder*)ptr)->close();
+}
+OutputVertex* pathbuilder_rasterize(void *ptr, size_t *outLen) {
+        return ((PathBuilder*)ptr)->rasterize(outLen);
+}
+
 }

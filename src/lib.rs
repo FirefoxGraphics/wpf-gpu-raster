@@ -1,6 +1,18 @@
 use std::ffi::c_void;
+#[repr(C)]
+#[derive(Debug)]
+pub struct OutputVertex {
+    x: f32,
+    y: f32,
+    coverage: f32
+}
 extern "C" {
     fn pathbuilder_new() -> *mut c_void;
+    fn pathbuilder_line_to(ptr: *mut c_void, x: f32, y: f32);
+    fn pathbuilder_move_to(ptr: *mut c_void, x: f32, y: f32);
+    fn pathbuilder_curve_to(ptr: *mut c_void, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32);
+    fn pathbuilder_close(ptr: *mut c_void);
+    fn pathbuilder_rasterize(ptr: *mut c_void, out_len: *mut usize) -> *mut OutputVertex;
     fn pathbuilder_delete(ptr: *mut c_void);
 }
 
@@ -11,6 +23,23 @@ pub struct PathBuilder {
 impl PathBuilder {
     pub fn new() -> Self {
         Self { ptr: unsafe { pathbuilder_new() } }
+    }
+    pub fn line_to(&mut self, x: f32, y: f32) {
+        unsafe { pathbuilder_line_to(self.ptr, x, y); }
+    }
+    pub fn move_to(&mut self, x: f32, y: f32) {
+        unsafe { pathbuilder_move_to(self.ptr, x, y); }
+    }
+    pub fn curve_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
+        unsafe { pathbuilder_curve_to(self.ptr, c1x, c1y, c2x, c2y, x, y); }
+    }
+    pub fn close(&mut self) {
+        unsafe { pathbuilder_close(self.ptr); }
+    }
+    pub fn rasterize_to_tri_strip(&mut self) -> Box<[OutputVertex]> {
+        let mut len = 0;
+        let ptr = unsafe { pathbuilder_rasterize(self.ptr, &mut len) };
+        unsafe { Box::from_raw(std::slice::from_raw_parts_mut(ptr, len)) }
     }
 }
 
