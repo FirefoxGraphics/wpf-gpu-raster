@@ -372,7 +372,6 @@ typedef INT_PTR PERFMETERTAG;
 #include "MILRect.h"
 #include "BaseMatrix.h"
 #include "MILMatrix.h"
-#include "scanoperation.h"
 #include "mem.h"
 
 #include "real.h"

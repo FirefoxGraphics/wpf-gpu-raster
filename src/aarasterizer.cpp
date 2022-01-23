@@ -250,13 +250,13 @@ AssertActiveListOrder(
 
 #endif
 
+#if 0
 static VOID MIL_FORCEINLINE ScalePPAACoverage_32bppPBGRA_Out_Slow(
 	__in_ecount(1) const PipelineParams *pPP,
 	__in_ecount(1) const ScanOpParams *pSOP,
 	bool fHasAlpha,
 	bool fUseComplementFactor
 	);
-
 //+-----------------------------------------------------------------------------
 //
 //  Class:     CAntialiasedFiller
@@ -290,7 +290,7 @@ VOID MIL_FORCEINLINE ScalePPAACoverage_32bppPBGRA_Out_Slow(
 	bool fHasAlpha,
 	bool fUseComplementFactor
 	);
-#if 0
+
 class CAntialiasedFiller : public OpSpecificData
 {
 private:

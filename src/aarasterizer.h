@@ -334,7 +334,7 @@ RasterizePath(
     );
 
 // Functions supporting per-primitive antialiasing (PPAA).
-
+#if 0
 ScanOpFunc GetOp_ScalePPAACoverage(
     MilPixelFormat::Enum fmtColorData,
         // Color data format, either 32bppPARGB, 32bppRGB, or 128bppPABGR.
@@ -353,7 +353,7 @@ BOOL IsPPAAMode(
 __ecount(1) OpSpecificData *DowncastFiller(
     __in_ecount(1) CAntialiasedFiller *pFiller
     );
-
+#endif
 //
 // Inlines
 //
