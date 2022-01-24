@@ -1,5 +1,5 @@
 #include <math.h>
-inline int _isnan(float x) { isnan(x); }
+inline int _isnan(float x) { return isnan(x); }
 #define FORCE_TRIANGLES true
 
 
