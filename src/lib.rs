@@ -1,3 +1,5 @@
+mod bezier;
+
 use std::ffi::c_void;
 #[repr(C)]
 #[derive(Debug)]
