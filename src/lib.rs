@@ -6,6 +6,15 @@ pub struct OutputVertex {
     y: f32,
     coverage: f32
 }
+
+impl std::hash::Hash for OutputVertex {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.x.to_bits().hash(state);
+        self.y.to_bits().hash(state);
+        self.coverage.to_bits().hash(state);
+    }
+}
+
 extern "C" {
     fn pathbuilder_new() -> *mut c_void;
     fn pathbuilder_line_to(ptr: *mut c_void, x: f32, y: f32);
@@ -46,5 +55,28 @@ impl PathBuilder {
 impl Drop for PathBuilder {
     fn drop(&mut self) {
         unsafe { pathbuilder_delete(self.ptr); }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::{hash::{Hash, Hasher}, collections::hash_map::DefaultHasher};
+    use crate::*;
+    fn calculate_hash<T: Hash>(t: &T) -> u64 {
+        let mut s = DefaultHasher::new();
+        t.hash(&mut s);
+        s.finish()
+    }
+    #[test]
+    fn basic() {
+        let mut p = PathBuilder::new();
+        p.move_to(10., 10.);
+        p.line_to(10., 30.);
+        p.line_to(30., 30.);
+        p.line_to(30., 10.);
+        p.close();
+        let result = p.rasterize_to_tri_strip();
+        assert_eq!(dbg!(calculate_hash(&result)), 0x91582a1f5e431eb6);
     }
 }
