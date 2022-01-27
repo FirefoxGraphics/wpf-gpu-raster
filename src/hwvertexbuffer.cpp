@@ -584,7 +584,6 @@ CHwTVertexMappings<TVertex>::CHwTVertexMappings()
     {
         m_rgWaffleMode[i] = WaffleModeNone;
     }
-    m_fAreWaffling = false;
 
     m_matPos2DTransform.SetIdentity();
 }
@@ -682,47 +681,6 @@ CHwTVertexMappings<TVertex>::SetTextureMapping(
     m_mvfMapped |= mvfLocation;     // Remember this field has been mapped
 
 Cleanup:
-    RRETURN(hr);
-}
-
-//+----------------------------------------------------------------------------
-//
-//  Member:    CHwTVertexMappings<TVertex>::SetWaffling
-//
-//  Synopsis:  Remember the waffling parameters for the
-//             coordinates at the given index
-//
-
-template <class TVertex>
-HRESULT
-CHwTVertexMappings<TVertex>::SetWaffling(
-    DWORD dwCoordIndex,
-    __in_ecount(1) const CMilPointAndSizeF *pSubrect,
-    WaffleModeFlags waffleMode
-    )
-{
-    HRESULT hr = S_OK;
-
-    m_rgSubrect[dwCoordIndex] = *pSubrect;
-    m_rgWaffleMode[dwCoordIndex] = waffleMode;
-
-    if (waffleMode & WaffleModeEnabled)
-    {
-        m_fAreWaffling = true;
-    }
-    else
-    {
-        m_fAreWaffling = false;
-        for (int i = 0; i < NUM_OF_VERTEX_TEXTURE_COORDS(TVertex); ++i)
-        {
-            if (m_rgWaffleMode[i] & WaffleModeEnabled)
-            {
-                m_fAreWaffling = true;
-                break;
-            }
-        }
-    }
-
     RRETURN(hr);
 }
 
@@ -1108,34 +1066,6 @@ CHwTVertexBuffer<TVertex>::Builder::SetTextureMapping(
         dwSourceCoordIndex,
         pmatDevicePointToTextureUV
         ));
-    
-Cleanup:
-    RRETURN(hr);
-}
-
-//+----------------------------------------------------------------------------
-//
-//  Member:    CHwTVertexBuffer<TVertex>::Builder::SetWaffling
-//
-//  Synopsis:  Delegate texture waffling sets to CHwTVertexMappings
-//
-//-----------------------------------------------------------------------------
-
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::SetWaffling(
-    DWORD dwCoordIndex,
-    __in_ecount(1) const CMilPointAndSizeF *pSubrect,
-    WaffleModeFlags waffleMode
-    )
-{
-    HRESULT hr = S_OK;
-
-    IFC(m_map.SetWaffling(
-            dwCoordIndex,
-            pSubrect,
-            waffleMode
-            ));
     
 Cleanup:
     RRETURN(hr);

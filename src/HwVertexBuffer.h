@@ -558,11 +558,6 @@ public:
         __in_ecount(1) const MILMatrix3x2 *pmatDevicePointToTextureUV
         ) PURE;
 
-    virtual HRESULT SetWaffling(
-        DWORD dwCoordIndex,
-        __in_ecount(1) const CMilPointAndSizeF *pSubrect,
-        WaffleModeFlags waffleMode
-        ) PURE;
 
     //+------------------------------------------------------------------------
     //
@@ -779,12 +774,6 @@ public:
         __in_ecount(1) const MILMatrix3x2 *pmatDevicePointToTextureUV
         );
 
-    HRESULT SetWaffling(
-        DWORD dwCoordIndex,
-        __in_ecount(1) const CMilPointAndSizeF *pSubrect,
-        WaffleModeFlags waffleMode
-        );
-        
     void PointToUV(
         __in_ecount(1) const MilPoint2F &ptIn,
         __bound UINT uIndex,
@@ -793,7 +782,7 @@ public:
     
     MIL_FORCEINLINE bool AreWaffling() const
     {
-        return m_fAreWaffling;
+        return false;
     }
 
 private:
@@ -811,7 +800,6 @@ public:
     CMilPointAndSizeF m_rgSubrect[s_numOfVertexTextureCoords];
     WaffleModeFlags m_rgWaffleMode[s_numOfVertexTextureCoords];
 
-    bool m_fAreWaffling;
 
     TVertex m_vStatic;
 };
@@ -855,12 +843,6 @@ public:
         DWORD dwDestinationCoordIndex,
         DWORD dwSourceCoordIndex,
         __in_ecount(1) const MILMatrix3x2 *pmatDevicePointToTextureUV
-        );
-
-    HRESULT SetWaffling(
-        DWORD dwCoordIndex,
-        __in_ecount(1) const CMilPointAndSizeF *pSubrect,
-        WaffleModeFlags waffleMode
         );
 
     HRESULT FinalizeMappings(
