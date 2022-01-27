@@ -717,47 +717,7 @@ CHwTVertexMappings<TVertex>::PointToUV(
 //
 //-----------------------------------------------------------------------------
 
-//+----------------------------------------------------------------------------
-//
-//  Table:      CHwTVertexBuffer<TVertex>::Builder::PFN_ExpandVertices
-//
-//  Synopsis:   Lookup table of optimized vertex expansion methods
-//
-//-----------------------------------------------------------------------------
 
-template <class TVertex>
-const typename CHwTVertexBuffer<TVertex>::Builder::PFN_ExpandVertices
-CHwTVertexBuffer<TVertex>::Builder::sc_pfnExpandVerticesTable[8*2] =
-{
-
-//
-// [pfx_parse] - workaround for PREfix parse problems
-//
-#ifndef _PREFIX_
-
-    // No Falloff computations
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrNone, MILVFAttrNone>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrZ,    MILVFAttrNone>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrNone | MILVFAttrDiffuse, MILVFAttrNone>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrZ    | MILVFAttrDiffuse, MILVFAttrNone>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrNone | MILVFAttrUV1, MILVFAttrNone>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrZ    | MILVFAttrUV1, MILVFAttrNone>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrNone | MILVFAttrDiffuse | MILVFAttrUV1, MILVFAttrNone>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrZ    | MILVFAttrDiffuse | MILVFAttrUV1, MILVFAttrNone>,
-
-    // AntiAliasing via Alpha Falloff
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrNone, MILVFAttrDiffuse>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrZ,    MILVFAttrDiffuse>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrNone | MILVFAttrDiffuse, MILVFAttrDiffuse>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrZ    | MILVFAttrDiffuse, MILVFAttrDiffuse>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrNone | MILVFAttrUV1, MILVFAttrDiffuse>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrZ    | MILVFAttrUV1, MILVFAttrDiffuse>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrNone | MILVFAttrDiffuse | MILVFAttrUV1, MILVFAttrDiffuse>,
-    &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrZ    | MILVFAttrDiffuse | MILVFAttrUV1, MILVFAttrDiffuse>,
-
-#endif // !_PREFIX_
-
-};
 
 
 //+----------------------------------------------------------------------------
@@ -867,49 +827,6 @@ CHwTVertexBuffer<TVertex>::Builder::SetupConverter(
     m_mvfaAntiAliasScaleLocation = mvfaAntiAliasScaleLocation;
 
     Assert(!(m_mvfGenerated & MILVFAttrXY));
-
-    m_pfnExpandVertices = NULL;
-
-    const MilVertexFormat mvfFastSupport =
-        MILVFAttrZ | MILVFAttrDiffuse | MILVFAttrUV1;
-
-    if ((m_mvfGenerated & ~mvfFastSupport) == 0)
-    {
-        UINT uConvIndex =
-              ((m_mvfGenerated & MILVFAttrZ)        ? 1 : 0)
-            + ((m_mvfGenerated & MILVFAttrDiffuse)  ? 2 : 0)
-            + ((m_mvfGenerated & MILVFAttrUV1)      ? 4 : 0);
-
-        Assert(uConvIndex < ARRAY_SIZE(sc_pfnExpandVerticesTable)/2);
-
-        uConvIndex += ((m_mvfaAntiAliasScaleLocation & MILVFAttrDiffuse) ?
-                       ARRAY_SIZE(sc_pfnExpandVerticesTable)/2 : 0);
-
-        m_pfnExpandVertices = sc_pfnExpandVerticesTable[uConvIndex];
-    }
-    else if (m_mvfGenerated == (MILVFAttrZ | MILVFAttrUV8))
-    {
-        if (mvfIn == MILVFAttrXY)
-        {
-            m_pfnExpandVertices = &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrZ | MILVFAttrUV8, MILVFAttrNone>;
-        }
-        else if (   (mvfIn == (MILVFAttrXY | MILVFAttrDiffuse)) 
-                 && (mvfaAntiAliasScaleLocation == MILVFAttrDiffuse)
-                )
-        {
-            m_pfnExpandVertices = &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesFast<MILVFAttrZ | MILVFAttrUV8, MILVFAttrDiffuse>;
-        }
-    }
-    else if (m_mvfGenerated & (MILVFAttrNormal | MILVFAttrSpecular))
-    {
-        m_pfnExpandVertices = &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesInvalid;
-        IFC(E_NOTIMPL);
-    }
-
-    if (!m_pfnExpandVertices)
-    {
-        m_pfnExpandVertices = &CHwTVertexBuffer<TVertex>::Builder::ExpandVerticesGeneral;
-    }
 
 Cleanup:
     RRETURN(hr);
