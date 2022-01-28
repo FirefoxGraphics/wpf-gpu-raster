@@ -285,6 +285,7 @@ OutputVertex *PathBuilder::rasterize(size_t *outLen, int clip_x, int clip_y, int
                                          &m_pHP->m_dbScratch,
                                          &vertexBuilder
                                         );
+        //vertexBuilder->SetOutsideBounds();
         vertexBuilder->BeginBuilding();
         rasterizer.SendGeometry(vertexBuilder);
         CHwVertexBuffer *m_pVB;

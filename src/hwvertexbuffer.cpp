@@ -518,51 +518,6 @@ Cleanup:
 
 //+----------------------------------------------------------------------------
 //
-//  Member:    CHwVertexBuffer::Builder::TransferUIntIndicesAsWords
-//
-//  Synopsis:  Move indices from one buffer to another while converting them
-//             from UINT to WORD.
-//
-//-----------------------------------------------------------------------------
-void
-CHwVertexBuffer::Builder::TransferUIntIndicesAsWords(
-    __in_ecount(cIndices) const UINT *rguInputIndices,
-    __out_ecount_full(cIndices) WORD *rgwOutputIndices,
-    __range(1, UINT_MAX) UINT cIndices
-    )
-{
-    // Align write pointer to at least four bytes
-    UINT_PTR uOutAddress =
-        reinterpret_cast<UINT_PTR>(static_cast<void *>(rgwOutputIndices));
-    Assert( !(uOutAddress & 0x1) );
-    if (uOutAddress & 0x2)
-    {
-        *rgwOutputIndices++ = static_cast<WORD>(*rguInputIndices++);
-        cIndices--;
-    }
-
-    // Write and many double words as possible
-    while (cIndices > 1)
-    {
-        DWORD dwTwoWordIndices = *rguInputIndices++ & 0xFFFF;
-        dwTwoWordIndices |= *rguInputIndices++ << 16;
-        *reinterpret_cast<DWORD *>(rgwOutputIndices) = dwTwoWordIndices;
-        rgwOutputIndices += 2;
-        cIndices -= 2;
-    }
-
-    // Write any remaining single index
-    if (cIndices)
-    {
-        *rgwOutputIndices = static_cast<WORD>(*rguInputIndices);
-    }
-}
-
-
-
-
-//+----------------------------------------------------------------------------
-//
 //  Class:     THwTVertexMappings<class TVertex>
 //
 //-----------------------------------------------------------------------------

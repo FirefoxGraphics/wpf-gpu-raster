@@ -709,12 +709,6 @@ protected:
         ) PURE;
 
 
-    static void TransferUIntIndicesAsWords(
-        __in_ecount(cIndices) const UINT *rguInputIndices,
-        __out_ecount_full(cIndices) WORD *rgwOutputIndices,
-        __range(1, UINT_MAX) UINT cIndices
-        );
-
     CHwPipeline *m_pPipelineNoRef;
     CD3DDeviceLevel1 *m_pDeviceNoRef;
 
