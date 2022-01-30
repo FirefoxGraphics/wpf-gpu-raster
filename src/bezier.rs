@@ -147,6 +147,7 @@ const HFD32_MAX_SIZE: LONGLONG = 0xffffc000;
 // 
 // In vDoubleStepSize we know that abs(e2), abs(e3) < HFD32_TEST_MAGNITUDE/4, otherwise we
 // would not have doubled the step.
+#[derive(Default, Clone)]
 struct POINT {
     x: LONG,
     y: LONG
@@ -198,7 +199,7 @@ impl HfdBasis32 {
         self.e2 = 6 * (p2 - p3 - p3 + p4);
         self.e3 = 6 * (p1 - p2 - p2 + p3);
 
-        if (lError() >= HFD32_MAX_ERROR)
+        if (self.lError() >= HFD32_MAX_ERROR)
         {
             // Large error, will require too many subdivision for this 32 bit hfd
             return false;
@@ -223,7 +224,7 @@ impl HfdBasis32 {
         self.e0 <<= HFD32_ADDITIONAL_SHIFT;
         self.e1 <<= HFD32_ADDITIONAL_SHIFT;
     
-        let lShift = cShift - HFD32_ADDITIONAL_SHIFT;
+        let mut lShift = cShift - HFD32_ADDITIONAL_SHIFT;
     
         if (lShift < 0)
         {
@@ -329,7 +330,7 @@ fn bInit(&mut self,
 
     self.rcfxBound = vBoundBox(aptfxBez);
 
-    aptfx = aptfxBez;
+    aptfx = aptfxBez.clone();
 
     {
         let mut fxOr;
@@ -399,7 +400,7 @@ fn cFlatten(&mut self,
     mut pptfx: &mut [POINT],
     pbMore: &mut bool) -> i32
 {
-    let cptfx = pptfx.len();
+    let mut cptfx = pptfx.len();
     assert!(cptfx > 0);
 
     let cptfxOriginal = cptfx;
@@ -438,9 +439,9 @@ fn cFlatten(&mut self,
         // bring the new max(|e2|,|e3|) back to within HFD32_TEST_MAGNITUDE, so:
         assert!(self.x.lError().max(self.y.lError()) <= HFD32_TEST_MAGNITUDE as LONG);
     
-        while (!(self.cSteps & 1) &&
-               self.x.lParentErrorDividedBy4() <= (HFD32_TEST_MAGNITUDE >> 2) &&
-               self.y.lParentErrorDividedBy4() <= (HFD32_TEST_MAGNITUDE >> 2))
+        while (!(self.cSteps & 1 != 0) &&
+               self.x.lParentErrorDividedBy4() <= (HFD32_TEST_MAGNITUDE as LONG >> 2) &&
+               self.y.lParentErrorDividedBy4() <= (HFD32_TEST_MAGNITUDE as LONG >> 2))
         {
             self.x.vDoubleStepSize();
             self.y.vDoubleStepSize();
@@ -455,7 +456,7 @@ fn cFlatten(&mut self,
     } {}
 
     *pbMore = true;
-    return cptfxOriginal;
+    return cptfxOriginal as i32;
 }
 }
 
@@ -489,6 +490,7 @@ fn cFlatten(&mut self,
 // its starting error is less than 2^11, we can reduce error to 2^-7 before
 // overflowing!  We'll start a low HFD after every step of the high HFD.
 ////////////////////////////////////////////////////////////////////////////
+#[derive(Default)]
 struct HfdBasis64
 {
     e0: LONGLONG,
@@ -512,7 +514,7 @@ fn fxValue(&self) -> INT
 {
 // Convert from 36.28 and round:
 
-    let eq = self.e0;
+    let mut eq = self.e0;
     eq += (1 << (BEZIER64_FRACTION - 1));
     eq >>= BEZIER64_FRACTION;
     return eq as LONG as INT;
@@ -545,8 +547,8 @@ fn vInit(&mut self, p1: INT, p2: INT, p3: INT, p4: INT)
     eqTmp = self.e3; self.e3 += eqTmp; self.e3 += eqTmp; self.e3 <<= (BEZIER64_FRACTION + 1);
 }
 
-fn vUntransform(&self,
-    afx: &mut [LONG; 7])
+fn vUntransform<F: Fn(&mut POINT) -> &mut LONG>(&self,
+    afx: &mut [POINT; 4], field: F)
 {
 // Declare some temps to hold our operations, since we can't modify e0..e3.
 
@@ -589,10 +591,10 @@ fn vUntransform(&self,
 
 // Convert from 36.28 format with rounding:
 
-    eqP0 += (1L << (BEZIER64_FRACTION - 1)); eqP0 >>= BEZIER64_FRACTION; afx[0] = (LONG) eqP0;
-    eqP1 += (1L << (BEZIER64_FRACTION - 1)); eqP1 >>= BEZIER64_FRACTION; afx[2] = (LONG) eqP1;
-    eqP2 += (1L << (BEZIER64_FRACTION - 1)); eqP2 >>= BEZIER64_FRACTION; afx[4] = (LONG) eqP2;
-    eqP3 += (1L << (BEZIER64_FRACTION - 1)); eqP3 >>= BEZIER64_FRACTION; afx[6] = (LONG) eqP3;
+    eqP0 += (1 << (BEZIER64_FRACTION - 1)); eqP0 >>= BEZIER64_FRACTION; *field(&mut afx[0]) = eqP0 as LONG;
+    eqP1 += (1 << (BEZIER64_FRACTION - 1)); eqP1 >>= BEZIER64_FRACTION; *field(&mut afx[1]) = eqP1 as LONG;
+    eqP2 += (1 << (BEZIER64_FRACTION - 1)); eqP2 >>= BEZIER64_FRACTION; *field(&mut afx[2]) = eqP2 as LONG;
+    eqP3 += (1 << (BEZIER64_FRACTION - 1)); eqP3 >>= BEZIER64_FRACTION; *field(&mut afx[3]) = eqP3 as LONG;
 }
 
 fn vHalveStepSize(&mut self)
@@ -650,7 +652,7 @@ const LONGLONG geqErrorLow = (LONGLONG)(4) << 32;
 const geqErrorLow: LONGLONG = (3) << 31;
 
 //#endif
-
+#[derive(Default)]
 struct Bezier64
 {
     xLow: HfdBasis64,
@@ -668,15 +670,13 @@ struct Bezier64
 impl Bezier64 {
 
 fn vInit(&mut self, 
-    aptfx: &[POINT; 6],
+    aptfx: &[POINT; 4],
         // Pointer to 4 control points
     prcfxVis: Option<&RECT>,
         // Pointer to bound box of visible area (may be NULL)
     eqError: LONGLONG)
         // Fractional maximum error (32.32 format)
 {
-    let eqTmp;
-
     self.cStepsHigh = 1;
     self.cStepsLow  = 0;
 
@@ -699,13 +699,13 @@ fn vInit(&mut self,
 }
 
 fn cFlatten(
-    &self,
-    pptfx: &mut [POINT],
-    cptfx: INT,
+    &mut self,
+    mut pptfx: &mut [POINT],
     pbMore: &mut bool) -> INT
 {
-    let aptfx: [POINT; 4];
-    let rcfxBound: RECT;
+    let mut aptfx: [POINT; 4] = Default::default();
+    let mut cptfx = pptfx.len();
+    let mut rcfxBound: RECT;
     let eqTmp: LONGLONG;
     let cptfxOriginal = cptfx;
 
@@ -718,17 +718,14 @@ fn cFlatten(
         // intersect with the bound box of the visible area, render entire
         // curve as a single line:
     
-            self.xHigh.vUntransform(&aptfx[0].x);
-            self.yHigh.vUntransform(&aptfx[0].y);
+            self.xHigh.vUntransform(&mut aptfx, |p| &mut p.x);
+            self.yHigh.vUntransform(&mut aptfx, |p| &mut p.y);
     
             self.xLow.vInit(aptfx[0].x, aptfx[1].x, aptfx[2].x, aptfx[3].x);
             self.yLow.vInit(aptfx[0].y, aptfx[1].y, aptfx[2].y, aptfx[3].y);
             self.cStepsLow = 1;
     
-            if  let Some(prcfxClip) = self.rcfxClip {
-                rcfxBound = vBoundBox(&aptfx);
-            }
-            if (match self.rcfxClip { None => true, Some(clip) => bIntersect(&rcfxBound, &clip)})
+            if (match &self.rcfxClip { None => true, Some(clip) => {rcfxBound = vBoundBox(&aptfx); bIntersect(&rcfxBound, &clip)}})
             {
                 while (((self.xLow.vError()) > self.eqErrorLow) ||
                        ((self.yLow.vError()) > self.eqErrorLow))
@@ -780,7 +777,7 @@ fn cFlatten(
 
             // '+1' because we haven't decremented 'cptfx' yet:
 
-            return(cptfxOriginal - cptfx + 1);
+            return(cptfxOriginal - cptfx + 1) as INT;
         }
     
         if ((self.xLow.vError() > self.eqErrorLow) ||
@@ -799,11 +796,12 @@ fn cFlatten(
             self.yLow.vDoubleStepSize();
             self.cStepsLow >>= 1;
         }
-        --cptfx != 0
+        cptfx -= 1;
+        cptfx != 0
     } {};
 
     *pbMore = true;
-    return(cptfxOriginal);
+    return(cptfxOriginal) as INT;
 }
 }
 
@@ -844,12 +842,12 @@ impl CMILBezier {
     // All coordinates must be in 28.4 format:
     fn new(aptfxBez: &[POINT; 4], prcfxClip: Option<&RECT>) -> Self {
         let mut bez32 = Bezier32::default();
-        let bBez32 = bez32.bInit(aptfxBex, prcfxClip);
-        if bBex32 {
+        let bBez32 = bez32.bInit(aptfxBez, prcfxClip);
+        if bBez32 {
             CMILBezier::Bezier32(bez32)
         } else {
             let mut bez64 = Bezier64::default();
-            bez64.vInit(aptfx, prcfxClip, geqErrorLow);
+            bez64.vInit(aptfxBez, prcfxClip, geqErrorLow);
             CMILBezier::Bezier64(bez64)
         }
     }
@@ -859,13 +857,12 @@ impl CMILBezier {
     // The last point returned may not be exactly the last control
     //            point. The workaround is for calling code to add an extra
     //            point if this is the case.
-    fn Flatten(    &self,
+    fn Flatten(    &mut self,
         pptfx: &mut [POINT],
-        cptfx: INT,
         pbMore: &mut bool) -> INT {
             match self {
-                CMILBezier::Bezier32(bez) => bez.cFlatten(pptfx, cptfx, pbMore),
-                CMILBezier::Bezier64(bez) => bez.cFlatten(pptfx, cptfx, pbMore)
+                CMILBezier::Bezier32(bez) => bez.cFlatten(pptfx, pbMore),
+                CMILBezier::Bezier64(bez) => bez.cFlatten(pptfx, pbMore)
             }
         }
 }
