@@ -1,4 +1,7 @@
 mod bezier;
+mod hwrasterizer;
+mod aarasterizer;
+mod helpers;
 
 use std::ffi::c_void;
 #[repr(C)]
