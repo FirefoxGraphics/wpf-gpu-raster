@@ -2,9 +2,9 @@ use std::ffi::c_void;
 #[repr(C)]
 #[derive(Debug)]
 pub struct OutputVertex {
-    x: f32,
-    y: f32,
-    coverage: f32
+    pub x: f32,
+    pub y: f32,
+    pub coverage: f32
 }
 
 impl std::hash::Hash for OutputVertex {
@@ -45,9 +45,9 @@ impl PathBuilder {
     pub fn close(&mut self) {
         unsafe { pathbuilder_close(self.ptr); }
     }
-    pub fn rasterize_to_tri_strip(&mut self) -> Box<[OutputVertex]> {
+    pub fn rasterize_to_tri_strip(&mut self, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
         let mut len = 0;
-        let ptr = unsafe { pathbuilder_rasterize(self.ptr, &mut len, 0, 0, 100, 100) };
+        let ptr = unsafe { pathbuilder_rasterize(self.ptr, &mut len, 0, 0, clip_width, clip_height) };
         unsafe { Box::from_raw(std::slice::from_raw_parts_mut(ptr, len)) }
     }
 }
@@ -76,7 +76,7 @@ mod tests {
         p.line_to(30., 30.);
         p.line_to(30., 10.);
         p.close();
-        let result = p.rasterize_to_tri_strip();
+        let result = p.rasterize_to_tri_strip(100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x91582a1f5e431eb6);
     }
 }

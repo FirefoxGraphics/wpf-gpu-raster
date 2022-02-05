@@ -10,3 +10,8 @@ debug = true
 
 [build-dependencies]
 cc = "1.0"
+
+[dependencies]
+png = "0.17.2"
+usvg = "0.4"
+euclid = "0.22.6"
