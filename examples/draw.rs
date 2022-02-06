@@ -146,6 +146,9 @@ struct TGAImage {
 impl TGAImage {
     fn new(width: u32, height: u32) -> Self { Self { width, height, buf: vec![0; (width * height * 3) as usize] } }
     fn set(&mut self, x: i32, y: i32, color: TGAColor) {
+        if x >= self.width as i32 || y >= self.height as i32 {
+            return;
+        }
         self.buf[((x + y * self.width as i32) * 3) as usize] = color.0;
         self.buf[((x + y * self.width as i32) * 3 + 1) as usize] = color.1;
         self.buf[((x + y * self.width as i32) * 3 + 2) as usize] = color.2;
@@ -219,55 +222,14 @@ fn triangle(pts: &[Vec4f], shader: &Shader, image: &mut TGAImage) {
         }
     }
 }
-/* 
-int main(int argc, char** argv) {
-    if (2==argc) {
-        model = new Model(argv[1]);
-    } else {
-        std::cerr << "Missing obj file\n";
-        return -1;
-    }
-
-    TGAImage image(width, height, TGAImage::RGB);
-
-    Shader shader;
-    for (int i=0; i<model->nfaces(); i++) {
-        Vec4f screen_coords[3];
-        for (int j=0; j<3; j++) {
-            screen_coords[j] = shader.vertex(i, j);
-        }
-        triangle(screen_coords, shader, image);
-    }
-
-    image.flip_vertically(); // to place the origin in the bottom left corner of the image
-    image.write_tga_file("output.tga");
-
-    delete model;
-    return 0;
-}
-
-void output_obj_file(OutputVertex *data, size_t len) {
-    for (size_t i = 0; i < len; i++) {
-            float color = data[i].coverage;
-            printf("v %f %f %f %f %f %f\n", data[i].x, data[i].y, 0., color, color, color);
-    }
-
-    // output a standard triangle strip face list
-    for (int n = 1; n < len-1; n++) {
-            if (n % 2 == 1) {
-                    printf("f %d %d %d\n", n, n+1, n+2);
-            } else {
-                    printf("f %d %d %d\n", n+1, n, n+2);
-            }
-    }
-
-}*/
 
 fn main() {
     let opt = usvg::Options::default();
-    let mut builder = PathBuilder::new();
 
     let rtree = usvg::Tree::from_file("tiger.svg", &opt).unwrap();
+
+    let mut image = TGAImage::new(WIDTH, HEIGHT);
+    for _ in 0..100 {
     for node in rtree.root().descendants() {
         use usvg::NodeExt;
         let t = node.transform();
@@ -279,6 +241,7 @@ fn main() {
 
         let s = 1.;
         if let usvg::NodeKind::Path(ref usvg_path) = *node.borrow() {
+            let mut builder = PathBuilder::new();
             for segment in &usvg_path.segments {
                 match *segment {
                     usvg::PathSegment::MoveTo { x, y } => {
@@ -304,39 +267,40 @@ fn main() {
                     }
                 }
             }
-            dbg!(usvg_path);
-            break;
-        }
-    }
-
-    let result = builder.rasterize_to_tri_strip(WIDTH as i32, HEIGHT as i32);
-    let mut model = Model::new();
-
-    for vertex in result.iter() {
-        model.vertices.push(Vec3f::new(&[vertex.x, vertex.y, 0.]));
-        let color = vertex.coverage;
-        model.colors.push(Vec3f::new(&[color, color, color]));
-    }
-    for n in 0..result.len()-2 {
-        if (n % 2 == 0) {
-            model.faces.push(vec![n, n+1, n+2]);
-        } else {
-            model.faces.push(vec![n+1, n, n+2]);
-        }
-    }
-
-
-    let mut image = TGAImage::new(WIDTH, HEIGHT);
-
-    let mut shader = Shader::new();
-    for i in 0..model.nfaces() {
-        let mut screen_coords: [Vec4f; 3] = Default::default();
-        for j in 0..3 {
-            screen_coords[j as usize] = shader.vertex(&model, i, j);
+            let result = builder.rasterize_to_tri_strip(WIDTH as i32, HEIGHT as i32);
+            println!("vertices {}", result.len());
+            if result.len() == 0 {
+                continue;
+            }
+            let mut model = Model::new();
         
+            for vertex in result.iter() {
+                model.vertices.push(Vec3f::new(&[vertex.x, vertex.y, 0.]));
+                let color = vertex.coverage;
+                model.colors.push(Vec3f::new(&[color, color, color]));
+            }
+            for n in 0..result.len()-2 {
+                if (n % 2 == 0) {
+                    model.faces.push(vec![n, n+1, n+2]);
+                } else {
+                    model.faces.push(vec![n+1, n, n+2]);
+                }
+            }
+        
+            let mut shader = Shader::new();
+            for i in 0..model.nfaces() {
+                let mut screen_coords: [Vec4f; 3] = Default::default();
+                for j in 0..3 {
+                    screen_coords[j as usize] = shader.vertex(&model, i, j);
+                
+                }
+                triangle(&screen_coords, &shader, &mut image);
+            }
         }
-        triangle(&screen_coords, &shader, &mut image);
     }
+    }
+
+
     image.write("out.png");
 
 }

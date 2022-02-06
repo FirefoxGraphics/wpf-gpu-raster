@@ -1,6 +1,7 @@
 fn main() {
     cc::Build::new()
         .cpp(true)
+        .debug(true)
         .file("src/BufferDispenser.cpp")
         .file("src/real.cpp")
         .file("src/hwvertexbuffer.cpp")

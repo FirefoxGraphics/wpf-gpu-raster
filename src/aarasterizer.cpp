@@ -1738,7 +1738,6 @@ InitializeEdges(
     // We're done with this batch.  Let the store know how many edges
     // we ended up with:
 
-    printf("bufferCount %d\n", bufferCount);
     store->EndAddBuffer(edgeBuffer, bufferCount);
 
     pEdgeContext->MaxY = yMax;
