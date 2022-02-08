@@ -17,6 +17,12 @@
 //
 
 
+macro_rules! IFC {
+    ($e: expr) => {
+        $e;
+    }
+}
+
 
 //
 // Optimize for speed instead of size for these critical methods
@@ -381,7 +387,9 @@ ComputeDistanceLowerBound(
     return nSubpixelXDistanceLowerBound;
 }
 struct CHwRasterizer {
-    m_pIGeometrySink: Rc<IGeometrySink>
+    m_pIGeometrySink: Rc<IGeometrySink>,
+    m_prgPoints: Option<&mut Vec<MilPoint2F>>,
+    m_prgTypes: Option<&mut Vec<BYTE>>,
     /* 
 DynArray<MilPoint2F> *m_prgPoints;
 DynArray<BYTE>       *m_prgTypes;
@@ -482,7 +490,7 @@ fn RasterizePath(
     fillMode: MilFillMode
     ) -> HERSULT
 {
-    let hr = S_OK;
+    let mut hr = S_OK;
     let inactiveArrayStack: [CInactiveEdge; INACTIVE_LIST_NUMBER];
     CInactiveEdge *pInactiveArray;
     CInactiveEdge *pInactiveArrayAllocation = NULL;
@@ -588,13 +596,13 @@ fn RasterizePath(
         &edgeTail
         );
 
-    INT nSubpixelYBottom; nSubpixelYBottom = edgeContext.MaxY;
+    let nSubpixelYBottom = edgeContext.MaxY;
 
-    Assert(nSubpixelYBottom > 0);
+    assert!(nSubpixelYBottom > 0);
 
     // Skip the head sentinel on the inactive array:
 
-    pInactiveArray++;
+    pInactiveArray += 1;
 
     //
     // Rasterize the path
@@ -609,7 +617,7 @@ fn RasterizePath(
     // clipped out (RasterizeEdges assumes there's at least one edge
     // to be drawn):
 
-    Assert(nSubpixelYBottom > nSubpixelYCurrent);
+    assert!(nSubpixelYBottom > nSubpixelYCurrent);
 
     IFC(RasterizeEdges(
         pEdgeActiveList,
@@ -625,7 +633,7 @@ Cleanup:
     // Free coverage buffer
     m_coverageBuffer.Destroy();
 
-    RRETURN(hr);
+    return hr;
 }
 
 //-------------------------------------------------------------------------
@@ -637,36 +645,36 @@ Cleanup:
 //      2. Convert path to internal format
 //
 //-------------------------------------------------------------------------
-fn Setup(
-    __in_ecount(1)       CD3DDeviceLevel1 *pD3DDevice,
-    __in_ecount(1) const IShapeData       *pShape,
-    __inout_ecount(1) DynArray<MilPoint2F> *prgPointsScratch,
-    __inout_ecount(1) DynArray<BYTE>      *prgTypesScratch,
-    __in_ecount_opt(1) const CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device> *pmatWorldToDevice
+fn Setup(&mut self,
+    pD3DDevice: Rc<CD3DDeviceLevel1>,
+    pShape: Rc<IShapeData>,
+    prgPointsScratch: &mut DynArray<MilPoint2F>,
+    prgTypesScratch: &mut DynArray<BYTE>,
+    pmatWorldToDevice: Option<&CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device>>
     ) -> HRESULT
 {
-    HRESULT hr = S_OK;
+    let hr = S_OK;
 
     //
     // Setup scratch buffers
     //
 
-    m_prgPoints = prgPointsScratch;
-    m_prgTypes  = prgTypesScratch;
+    self.m_prgPoints = Some(prgPointsScratch);
+    self.m_prgTypes  = Some(prgTypesScratch);
 
     //
     // Initialize our state
     //
 
-    m_prgPoints->Reset(FALSE /* fReset */);
-    m_prgTypes->Reset(FALSE /* fReset */);
+    self.m_prgPoints.Reset(FALSE /* fReset */);
+    self.m_prgTypes.Reset(FALSE /* fReset */);
     ZeroMemory(&m_rcClipBounds, sizeof(m_rcClipBounds));
-    m_pIGeometrySink = NULL;
+    self.m_pIGeometrySink = NULL;
 
     // Initialize the coverage buffer
-    m_coverageBuffer.Initialize();
+    self.m_coverageBuffer.Initialize();
 
-    m_pDeviceNoRef = pD3DDevice;
+    self.m_pDeviceNoRef = Some(pD3DDevice);
 
     //
     // PS#856364-2003/07/01-ashrafm  Remove pixel center fixup
@@ -683,8 +691,8 @@ fn Setup(
     // antialiased rendering.
     //
 
-    CMILMatrix matWorldHPCToDeviceIPC;
-    if (pmatWorldToDevice)
+    let matWorldHPCToDeviceIPC;
+    if let Some(pmatWorldToDevice) = pmatWorldToDevice
     {
         matWorldHPCToDeviceIPC = *pmatWorldToDevice;
     }
@@ -692,27 +700,26 @@ fn Setup(
     {
         matWorldHPCToDeviceIPC.SetToIdentity();
     }
-    matWorldHPCToDeviceIPC.SetDx(matWorldHPCToDeviceIPC.GetDx() - 0.5f);
-    matWorldHPCToDeviceIPC.SetDy(matWorldHPCToDeviceIPC.GetDy() - 0.5f);
+    matWorldHPCToDeviceIPC.SetDx(matWorldHPCToDeviceIPC.GetDx() - 0.5);
+    matWorldHPCToDeviceIPC.SetDy(matWorldHPCToDeviceIPC.GetDy() - 0.5);
 
     //
     // Set local state.
     //
 
-    pD3DDevice->GetClipRect(&m_rcClipBounds);
+    pD3DDevice.GetClipRect(&m_rcClipBounds);
 
-    IFC(pShape->ConvertToGpPath(*m_prgPoints, *m_prgTypes));
+    IFC(pShape.ConvertToGpPath(*m_prgPoints, *m_prgTypes));
 
-    m_matWorldToDevice = matWorldHPCToDeviceIPC;
-    m_fillMode = pShape->GetFillMode();
+    self.m_matWorldToDevice = matWorldHPCToDeviceIPC;
+    self.m_fillMode = pShape.GetFillMode();
 
     //  There's an opportunity for early clipping here
     //
     // However, since the rasterizer itself does a reasonable job of clipping some
     // cases, we don't early clip yet.
 
-Cleanup:
-    RRETURN(hr);
+    return hr;
 }
 
 //-------------------------------------------------------------------------
@@ -740,7 +747,7 @@ fn SendGeometry(&self,
     // Rasterize the path
     //
 
-    IFC(RasterizePath(
+    IFC!(RasterizePath(
         m_prgPoints->GetDataBuffer(),
         m_prgTypes->GetDataBuffer(),
         m_prgPoints->GetCount(),

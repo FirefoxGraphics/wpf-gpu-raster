@@ -120,7 +120,7 @@ impl CEdgeStore {
     self.CurrentBuffer.Next = newBuffer;
     self.CurrentBuffer = newBuffer;
 
-    *ppCurrentEdge = self.CurrentEdge = &newBuffer->EdgeArray[0];
+    *ppCurrentEdge = self.CurrentEdge = &newBuffer.EdgeArray[0];
     *puRemaining = self.CurrentRemaining = EDGE_STORE_ALLOCATION_NUMBER;
 
     return hr
@@ -722,8 +722,8 @@ InitializeEdges(
 
             // Advance to handle the next edge:
 
-            edgeBuffer++;
-            bufferCount--;
+            edgeBuffer += 1;
+            bufferCount -= 1;
         }
         pointArray = &pointArray[1..];
         edgeCount -= 1;
@@ -1019,12 +1019,12 @@ FixedPointPathEnumerate(
             }
             else
             {
-                Assert(iStart + 3 <= cPoints);
-                Assert((rgTypes[iStart] & PathPointTypePathTypeMask)
+                assert!(iStart + 3 <= cPoints);
+                assert!((rgTypes[iStart] & PathPointTypePathTypeMask)
                         == PathPointTypeBezier);
-                Assert((rgTypes[iStart + 1] & PathPointTypePathTypeMask)
+                assert!((rgTypes[iStart + 1] & PathPointTypePathTypeMask)
                         == PathPointTypeBezier);
-                Assert((rgTypes[iStart + 2] & PathPointTypePathTypeMask)
+                assert!((rgTypes[iStart + 2] & PathPointTypePathTypeMask)
                         == PathPointTypeBezier);
 
                 IFC(TransformRasterizerPointsTo28_4(matrix, &rgpt[iStart - 1], 4, &bezierBuffer));
@@ -1093,7 +1093,7 @@ FixedPointPathEnumerate(
         let verticesInBatch = ENUMERATE_BUFFER_NUMBER - bufferSize;
         if (verticesInBatch > 1)
         {
-            IFC(InitializeEdges(
+            IFC!(InitializeEdges(
                 enumerateContext,
                 bufferStart,
                 static_cast<UINT>(verticesInBatch)
@@ -1149,11 +1149,11 @@ const QUICKSORT_THRESHOLD: u32 = 8;
 
 fn
 QuickSortEdges(
-    __inout_xcount(f - l + 1 elements) CInactiveEdge *f,
-    __inout_xcount(array starts at f) CInactiveEdge *l
+    /*__inout_xcount(f - l + 1 elements)*/ CInactiveEdge *f,
+    /*__inout_xcount(array starts at f)*/ CInactiveEdge *l
     )
 {
-    CEdge *e;
+    let e: *const CEdge;
     let y: LONGLONG;
     let first: LONGLONG;
     let second: LONGLONG;
