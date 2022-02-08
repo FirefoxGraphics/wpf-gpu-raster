@@ -361,6 +361,16 @@ fn main() {
 
     println!("total vertex count {}", total_vertex_count);
 
+
     image.write("out.png");
+    use std::{hash::{Hash, Hasher}, collections::hash_map::DefaultHasher};
+    use crate::*;
+    fn calculate_hash<T: Hash>(t: &T) -> u64 {
+        let mut s = DefaultHasher::new();
+        t.hash(&mut s);
+        s.finish()
+    }
+    assert_eq!(calculate_hash(&image.buf), 0xec7dfa0cb4ba18e);
+
 
 }
