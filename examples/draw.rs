@@ -122,19 +122,46 @@ impl Model {
 const  WIDTH: u32  = 800;
 const HEIGHT: u32  = 800;
 
-struct TGAColor(u8, u8, u8);
+#[derive(Clone, Copy)]
+struct TGAColor(u8, u8, u8, u8);
 
 
 impl TGAColor {
-    fn new(r: u8, g: u8, b: u8) -> Self { TGAColor(r, g, b) }
+    fn new(a: u8, r: u8, g: u8, b: u8) -> Self { TGAColor(a, r, g, b) }
 }
 
 impl Mul<f32> for TGAColor {
     type Output = TGAColor;
 
     fn mul(self, rhs: f32) -> Self::Output {
-        TGAColor((self.0 as f32 * rhs) as u8, (self.1 as f32 * rhs) as u8, (self.2 as f32 * rhs) as u8)
+        TGAColor((self.0 as f32 * rhs) as u8, (self.1 as f32 * rhs) as u8, (self.2 as f32 * rhs) as u8, (self.3 as f32 * rhs) as u8)
     }
+}
+
+fn over(src: u32, dst: u32) -> u32 {
+    let a = src >> 24;
+    let a = 255 - a;
+    let mask = 0xff00ff;
+    let t = (dst & mask) * a + 0x800080;
+    let mut rb = (t + ((t >> 8) & mask)) >> 8;
+    rb &= mask;
+
+    rb += src & mask;
+
+    // saturate
+    rb |= 0x1000100 - ((rb >> 8) & mask);
+    rb &= mask;
+
+    let t = ((dst >> 8) & mask) * a + 0x800080;
+    let mut ag = (t + ((t >> 8) & mask)) >> 8;
+    ag &= mask;
+    ag += (src >> 8) & mask;
+
+    // saturate
+    ag |= 0x1000100 - ((ag >> 8) & mask);
+    ag &= mask;
+
+    (ag << 8) + rb
 }
 
 struct TGAImage {
@@ -152,6 +179,24 @@ impl TGAImage {
         self.buf[((x + y * self.width as i32) * 3) as usize] = color.0;
         self.buf[((x + y * self.width as i32) * 3 + 1) as usize] = color.1;
         self.buf[((x + y * self.width as i32) * 3 + 2) as usize] = color.2;
+    }
+    fn blend(&mut self, x: i32, y: i32, color: TGAColor) {
+        if x >= self.width as i32 || y >= self.height as i32 {
+            return;
+        }
+        let index = ((x + y * self.width as i32) * 3) as usize;
+        let dst = 0xff << 24 |
+                     (self.buf[index] as u32) << 16 |
+                     (self.buf[index + 1] as u32) << 8 |
+                     (self.buf[index + 2] as u32);
+        let src = (color.0 as u32) << 24 |
+                     (color.1 as u32) << 16 |
+                     (color.2  as u32) << 8 |
+                     color.3 as u32;
+        let dst = over(src, dst);
+        self.buf[index] = ((dst >> 16) & 0xff) as u8;
+        self.buf[index + 1] = ((dst >> 8) & 0xff) as u8;
+        self.buf[index + 2] = ((dst >> 0) & 0xff) as u8;
     }
     fn write(&self, path: &str) {
         use std::path::Path;
@@ -181,9 +226,9 @@ impl Shader {
         return gl_Vertex;
     }
 
-    fn fragment(&self, bar: Vec3f) -> TGAColor {
+    fn fragment(&self, bar: Vec3f, color: TGAColor) -> TGAColor {
         let intensity = self.coverage*bar;   // interpolate intensity for the current pixel
-        return TGAColor::new(255, 255, 255)*intensity; // well duh
+        return color*intensity; // well duh
     }
 }
 
@@ -201,7 +246,7 @@ fn barycentric(A: Vec2f, B: Vec2f, C: Vec2f, P: Vec2f) -> Vec3f {
     return Vec3f::new(&[-1.,1.,1.]); // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
 
-fn triangle(pts: &[Vec4f], shader: &Shader, image: &mut TGAImage) {
+fn triangle(pts: &[Vec4f], shader: &Shader, image: &mut TGAImage, color: TGAColor) {
     let mut bboxmin = Vec2f::new( &[f32::MAX,  f32::MAX]);
     let mut bboxmax = Vec2f::new(&[-f32::MAX, -f32::MAX]);
     for i in 0..3 {
@@ -217,8 +262,8 @@ fn triangle(pts: &[Vec4f], shader: &Shader, image: &mut TGAImage) {
             P[1] = y;
             let c = barycentric(proj::<_, 2, 4>(&(pts[0]/pts[0][3])), proj::<_, 2, 4>(&(pts[1]/pts[1][3])), proj::<_, 2, 4>(&(pts[2]/pts[2][3])), proj::<_, 2, 2>(&P.into()));
             if (c[0]<0. || c[1]<0. || c[2]<0.) { continue };
-            let color = shader.fragment(c);
-            image.set(P[0], P[1], color);
+            let color = shader.fragment(c, color);
+            image.blend(P[0], P[1], color);
         }
     }
 }
@@ -227,9 +272,10 @@ fn main() {
     let opt = usvg::Options::default();
 
     let rtree = usvg::Tree::from_file("tiger.svg", &opt).unwrap();
+    let mut total_vertex_count = 0;
 
     let mut image = TGAImage::new(WIDTH, HEIGHT);
-    for _ in 0..100 {
+    for _ in 0..1 {
     for node in rtree.root().descendants() {
         use usvg::NodeExt;
         let t = node.transform();
@@ -239,8 +285,20 @@ fn main() {
             t.e as f32, t.f as f32,
         );
 
+
         let s = 1.;
         if let usvg::NodeKind::Path(ref usvg_path) = *node.borrow() {
+            let color = match usvg_path.fill {
+                Some(ref fill) => {
+                    match fill.paint {
+                        usvg::Paint::Color(c) => TGAColor::new(255, c.red, c.green, c.blue),
+                        _ => TGAColor::new(255, 0, 255, 0),
+                    }
+                }
+                None => {
+                    continue;
+                }
+            };
             let mut builder = PathBuilder::new();
             for segment in &usvg_path.segments {
                 match *segment {
@@ -269,6 +327,7 @@ fn main() {
             }
             let result = builder.rasterize_to_tri_strip(WIDTH as i32, HEIGHT as i32);
             println!("vertices {}", result.len());
+            total_vertex_count += result.len();
             if result.len() == 0 {
                 continue;
             }
@@ -294,12 +353,13 @@ fn main() {
                     screen_coords[j as usize] = shader.vertex(&model, i, j);
                 
                 }
-                triangle(&screen_coords, &shader, &mut image);
+                triangle(&screen_coords, &shader, &mut image, color);
             }
         }
     }
     }
 
+    println!("total vertex count {}", total_vertex_count);
 
     image.write("out.png");
 
