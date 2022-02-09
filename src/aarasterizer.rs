@@ -55,7 +55,7 @@ macro_rules! QUOTIENT_REMAINDER_64_32 {
 
 // SWAP macro:
 macro_rules! SWAP {
-    ($temp: ident, $a: ident, $b: ident) => { $temp = $a; $a = $b; $b = $temp; }
+    ($temp: ident, $a: expr, $b: expr) => { $temp = $a; $a = $b; $b = $temp; }
 }
 
 /**************************************************************************\
@@ -1149,11 +1149,11 @@ const QUICKSORT_THRESHOLD: u32 = 8;
 
 fn
 QuickSortEdges(
-    /*__inout_xcount(f - l + 1 elements)*/ CInactiveEdge *f,
-    /*__inout_xcount(array starts at f)*/ CInactiveEdge *l
+    /*__inout_xcount(f - l + 1 elements)*/f: *mut CInactiveEdge,
+    /*__inout_xcount(array starts at f)*/ l: *mut CInactiveEdge
     )
 {
-    let e: *const CEdge;
+    let e: *mut CEdge;
     let y: LONGLONG;
     let first: LONGLONG;
     let second: LONGLONG;
@@ -1163,64 +1163,68 @@ QuickSortEdges(
 
     CInactiveEdge *m = f + ((l - f) >> 1);
 
-    SWAP(y, (f + 1)->Yx, m->Yx);
-    SWAP(e, (f + 1)->Edge, m->Edge);
+    SWAP!(y, (f + 1).Yx, m.Yx);
+    SWAP!(e, (f + 1).Edge, m.Edge);
 
-    if ((second = (f + 1)->Yx) > (last = l->Yx))
+    if ((second = (f + 1).Yx) > (last = l.Yx))
     {
-        (f + 1)->Yx = last;
-        l->Yx = second;
+        (f + 1).Yx = last;
+        l.Yx = second;
 
-        SWAP(e, (f + 1)->Edge, l->Edge);
+        SWAP(e, (f + 1).Edge, l.Edge);
     }
-    if ((first = f->Yx) > (last = l->Yx))
+    if ((first = f.Yx) > (last = l.Yx))
     {
-        f->Yx = last;
-        l->Yx = first;
+        f.Yx = last;
+        l.Yx = first;
 
-        SWAP(e, f->Edge, l->Edge);
+        SWAP(e, f.Edge, l.Edge);
     }
-    if ((second = (f + 1)->Yx) > (first = f->Yx))
+    if ((second = (f + 1).Yx) > (first = f.Yx))
     {
-        (f + 1)->Yx = first;
-        f->Yx = second;
+        (f + 1).Yx = first;
+        f.Yx = second;
 
-        SWAP(e, (f + 1)->Edge, f->Edge);
+        SWAP(e, (f + 1).Edge, f.Edge);
     }
 
     // f->Yx is now the desired median, and (f + 1)->Yx <= f->Yx <= l->Yx
 
     assert!(((f + 1)->Yx <= f->Yx) && (f->Yx <= l->Yx));
 
-    LONGLONG median = f->Yx;
+    let median = f.Yx;
 
-    CInactiveEdge *i = f + 2;
-    while (i->Yx < median)
-        i++;
+    let i: *mut CInactiveEdge = f + 2;
+    while (i.Yx < median) {
+        i += 1;
+    }
 
     CInactiveEdge *j = l - 1;
-    while (j->Yx > median)
-        j--;
+    while (j.Yx > median) {
+        j -= 1;
+    }
 
     while (i < j)
     {
-        SWAP(y, i->Yx, j->Yx);
-        SWAP(e, i->Edge, j->Edge);
+        SWAP(y, i.Yx, j.Yx);
+        SWAP(e, i.Edge, j.Edge);
 
-        do {
-            i++;
-        } while (i->Yx < median);
+        while {
+            i += 1;
+            i.Yx < median
+        } {}
 
-        do {
-            j--;
-        } while (j->Yx > median);
+        while {
+            j -= 1;
+            j.Yx > median
+        } {}
     }
 
-    SWAP(y, f->Yx, j->Yx);
-    SWAP(e, f->Edge, j->Edge);
+    SWAP(y, f.Yx, j.Yx);
+    SWAP(e, f.Edge, j.Edge);
 
-    size_t a = j - f;
-    size_t b = l - j;
+    let a = j - f;
+    let b = l - j;
 
     // Use less stack space by recursing on the shorter subtable.  Also,
     // have the less-overhead insertion-sort handle small subtables.
@@ -1268,53 +1272,55 @@ QuickSortEdges(
 *
 \**************************************************************************/
 
-VOID
-FASTCALL
+fn
 InsertionSortEdges(
-    __inout_xcount(count forward & -1 back) CInactiveEdge *inactive,
-    INT count
+    /* __inout_xcount(count forward & -1 back)*/ inactive: *mut CInactiveEdge,
+    count: INT
     )
 {
-    CInactiveEdge *p;
-    CEdge *e;
-    LONGLONG y;
-    LONGLONG yPrevious;
+    let p: *mut CInactiveEdge;
+    let e: *mut CEdge;
+    let y: LONGLONG;
+    let yPrevious: LONGLONG;
 
-    Assert((inactive - 1)->Yx == _I64_MIN);
-    Assert(count >= 2);
+    assert!((inactive - 1).Yx == _I64_MIN);
+    assert!(count >= 2);
 
-    inactive++;     // Skip first entry (by definition it's already in order!)
-    count--;
+    inactive += 1;     // Skip first entry (by definition it's already in order!)
+    count -= 1;
 
-    do {
+    while {
         p = inactive;
 
         // Copy the current stuff to temporary variables to make a hole:
 
-        e = inactive->Edge;
-        y = inactive->Yx;
+        e = inactive.Edge;
+        y = inactive.Yx;
 
         // Shift everything one slot to the right (effectively moving
         // the hole one position to the left):
 
-        while (y < (yPrevious = (p - 1)->Yx))
+        while (y < (yPrevious = (p - 1).Yx))
         {
-            p->Yx = yPrevious;
-            p->Edge = (p - 1)->Edge;
-            p--;
+            p.Yx = yPrevious;
+            p.Edge = (p - 1).Edge;
+            p -= 1;
         }
 
         // Drop the temporary stuff into the final hole:
 
-        p->Yx = y;
-        p->Edge = e;
+        p.Yx = y;
+        p.Edge = e;
 
         // The quicksort should have ensured that we don't have to move
         // any entry terribly far:
 
-        Assert(inactive - p <= QUICKSORT_THRESHOLD);
+        assert!(inactive - p <= QUICKSORT_THRESHOLD);
 
-    } while (inactive++, --count != 0);
+        inactive += 1;
+        count -= 0;
+        counnt != 0
+    } {}
 }
 
 
@@ -1332,33 +1338,35 @@ InsertionSortEdges(
 
 fn
 AssertInactiveArray(
-    __in_ecount(count) const CInactiveEdge *inactive,   // Annotation should allow the -1 element
-    INT count
+    /*__in_ecount(count)*/ inactive: *const CInactiveEdge,   // Annotation should allow the -1 element
+    count: INT
     )
 {
     // Verify the head:
 
-#if !ANALYSIS
+/*#if !ANALYSIS*/
     // #if needed because prefast don't know that the -1 element is avaliable
-    Assert((inactive - 1)->Yx == _I64_MIN);
-#endif
-    Assert(inactive->Yx != _I64_MIN);
+    assert!((inactive - 1).Yx == _I64_MIN);
+/*#endif*/
+    assert!(inactive->Yx != _I64_MIN);
 
-    do {
-        LONGLONG yx;
-        YX(inactive->Edge->X, inactive->Edge->StartY, &yx);
+    while {
+        let yx: LONGLONG;
+        YX(inactive.Edge.X, inactive.Edge.StartY, &yx);
 
-        Assert(inactive->Yx == yx);
-    #if !ANALYSIS
+        assert!(inactive.Yx == yx);
+    /*#if !ANALYSIS*/
         // #if needed because tools don't know that the -1 element is avaliable
-        Assert(inactive->Yx >= (inactive - 1)->Yx);
-    #endif
-
-    } while (inactive++, --count != 0);
+        assert!(inactive.Yx >= (inactive - 1).Yx);
+    /*#endif*/
+        inactive += 1;
+        count -= 1;
+        count != 0
+    } {}
 
     // Verify that the tail is setup appropriately:
 
-    Assert(inactive->Edge->StartY == INT_MAX);
+    assert!(inactive.Edge.StartY == INT_MAX);
 }
 
 
