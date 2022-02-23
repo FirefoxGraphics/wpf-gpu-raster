@@ -148,10 +148,7 @@ const HFD32_MAX_SIZE: LONGLONG = 0xffffc000;
 // In vDoubleStepSize we know that abs(e2), abs(e3) < HFD32_TEST_MAGNITUDE/4, otherwise we
 // would not have doubled the step.
 #[derive(Default, Clone)]
-struct POINT {
-    x: LONG,
-    y: LONG
-}
+
 
 #[derive(Clone, Default)]
 struct RECT {
@@ -649,6 +646,8 @@ const LONGLONG geqErrorLow = (LONGLONG)(4) << 32;
 // The following is the default 1/4 error encoded as a 36.28 number,
 // multiplied by 6, and leaving 4 bits for fraction:
 
+use crate::types::POINT;
+
 const geqErrorLow: LONGLONG = (3) << 31;
 
 //#endif
@@ -832,7 +831,7 @@ fn cFlatten(
 //            returned.  Returns FALSE if the point is the end-point of the
 //            curve.
 //
-enum CMILBezier
+pub (crate) enum CMILBezier
 {
     Bezier64(Bezier64),
     Bezier32(Bezier32)

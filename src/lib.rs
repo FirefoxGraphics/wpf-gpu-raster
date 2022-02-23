@@ -1,7 +1,15 @@
+#![allow(unused_parens)]
+
 mod bezier;
 mod hwrasterizer;
 mod aarasterizer;
+mod aacoverage;
+mod hwvertexbuffer;
 mod helpers;
+mod types;
+mod geometry_sink;
+mod matrix;
+mod real;
 
 use std::ffi::c_void;
 #[repr(C)]

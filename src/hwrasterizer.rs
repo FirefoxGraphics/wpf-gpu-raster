@@ -2,6 +2,17 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+#![allow(unused_parens)]
+
+
+use std::ptr::NonNull;
+use std::rc::Rc;
+
+use crate::{aarasterizer::*, ASSERTACTIVELIST, IsTagEnabled, RRETURN1, RRETURN};
+use crate::geometry_sink::IGeometrySink;
+use crate::helpers::Int32x32To64;
+use crate::types::*;
+use cfor::cfor;
 
 //-----------------------------------------------------------------------------
 //
@@ -19,7 +30,13 @@
 
 macro_rules! IFC {
     ($e: expr) => {
-        $e;
+        assert_eq!($e, S_OK);
+    }
+}
+
+macro_rules! MIL_THR {
+    ($e: expr) => {
+        assert_eq!($e, S_OK);
     }
 }
 
@@ -28,10 +45,6 @@ macro_rules! IFC {
 // Optimize for speed instead of size for these critical methods
 //
 
-type LONG = i32;
-type INT = i32;
-type LONGLONG = i64;
-type BYTE = u8;
 
 //-------------------------------------------------------------------------
 //
@@ -209,7 +222,7 @@ AdvanceDDAMultipleSteps(
         // The delta should remain in range since it still represents a delta along the edge which
         // we know fits entirely in 28.4.  Note that we add one here since the error must end up
         // less than 0.
-        assert!(llSubpixelXLeftDelta < INT_MAX);
+        assert!(llSubpixelXLeftDelta < INT::MAX);
         let nSubpixelXLeftDelta: INT = (llSubpixelXLeftDelta as INT) + 1;
 
         nSubpixelXLeftBottom += nSubpixelXLeftDelta;
@@ -239,7 +252,7 @@ AdvanceDDAMultipleSteps(
         // The delta should remain in range since it still represents a delta along the edge which
         // we know fits entirely in 28.4.  Note that we add one here since the error must end up
         // less than 0.
-        assert!(llSubpixelXRightDelta < INT_MAX);
+        assert!(llSubpixelXRightDelta < INT::MAX);
         let nSubpixelXRightDelta: INT = (llSubpixelXRightDelta as INT) + 1;
 
         nSubpixelXRightBottom += nSubpixelXRightDelta;
@@ -280,7 +293,7 @@ ComputeDeltaUpperBound(
         // No errorUp, so simply compute bound based on dx value
         //
 
-        nSubpixelDeltaUpperBound = nSubpixelYAdvance*abs(pEdge.Dx);
+        nSubpixelDeltaUpperBound = nSubpixelYAdvance*(pEdge.Dx).abs();
     }
     else
     {
@@ -387,9 +400,12 @@ ComputeDistanceLowerBound(
     return nSubpixelXDistanceLowerBound;
 }
 struct CHwRasterizer {
-    m_pIGeometrySink: Rc<IGeometrySink>,
     m_prgPoints: Option<&mut Vec<MilPoint2F>>,
     m_prgTypes: Option<&mut Vec<BYTE>>,
+    m_rcClipBounds: MilPointAndSizeL,
+    m_matWorldToDevice: CMILMatrix,
+    m_pIGeometrySink: Rc<dyn IGeometrySink>,
+    m_fillMode: MilFillMode,
     /* 
 DynArray<MilPoint2F> *m_prgPoints;
 DynArray<BYTE>       *m_prgTypes;
@@ -405,6 +421,8 @@ MilFillMode::Enum     m_fillMode;
 CCoverageBuffer m_coverageBuffer;
 
 CD3DDeviceLevel1 * m_pDeviceNoRef;*/
+    m_coverageBuffer: CCoverageBuffer,
+    m_pDeviceNoRef: Option<&mut CCD3DDeviceLevel1>
 }
 impl CHwRasterizer {
 //-------------------------------------------------------------------------
@@ -416,10 +434,12 @@ impl CHwRasterizer {
 //-------------------------------------------------------------------------
 fn new() -> Self
 {
-    m_pDeviceNoRef = NULL;
+    Self {
+    m_pDeviceNoRef:  None,
 
     // State is cleared on the Setup call
-    m_matWorldToDevice.SetToIdentity();
+    m_matWorldToDevice: SetToIdentity(),
+    }
 }
 
 //-------------------------------------------------------------------------
@@ -483,16 +503,17 @@ fn ConvertSubpixelYToPixel(
 //
 //-------------------------------------------------------------------------
 fn RasterizePath(
+    &mut self,
     rgpt: &[MilPoint2F],
     rgTypes: &[BYTE],
     cPoints: UINT,
     pmatWorldTransform: &CMILMatrix,
     fillMode: MilFillMode
-    ) -> HERSULT
+    ) -> HRESULT
 {
     let mut hr = S_OK;
     let inactiveArrayStack: [CInactiveEdge; INACTIVE_LIST_NUMBER];
-    CInactiveEdge *pInactiveArray;
+    let pInactiveArray: &mut [CInactiveEdge];
     CInactiveEdge *pInactiveArrayAllocation = NULL;
     let edgeHead: CEdge;
     let edgeTail: CEdge;
@@ -528,10 +549,10 @@ fn RasterizePath(
     // scaling to 28.4 coordinates:
 
     let clipBounds : RECT;
-    clipBounds.left   = m_rcClipBounds.X * FIX4_ONE;
-    clipBounds.top    = m_rcClipBounds.Y * FIX4_ONE;
-    clipBounds.right  = (m_rcClipBounds.X + m_rcClipBounds.Width) * FIX4_ONE;
-    clipBounds.bottom = (m_rcClipBounds.Y + m_rcClipBounds.Height) * FIX4_ONE;
+    clipBounds.left   = self.m_rcClipBounds.X * FIX4_ONE;
+    clipBounds.top    = self.m_rcClipBounds.Y * FIX4_ONE;
+    clipBounds.right  = (self.m_rcClipBounds.X + self.m_rcClipBounds.Width) * FIX4_ONE;
+    clipBounds.bottom = (self.m_rcClipBounds.Y + self.m_rcClipBounds.Height) * FIX4_ONE;
 
     edgeContext.ClipRect = &clipBounds;
 
@@ -542,6 +563,11 @@ fn RasterizePath(
     AppendScaleToMatrix(&matrix, TOREAL(16), TOREAL(16));
 
     // Enumerate the path and construct the edge table:
+
+    let _coverage = scopeguard::guard(||
+        // Free coverage buffer
+        self.m_coverageBuffer.Destroy()
+    );
 
     MIL_THR!(FixedPointPathEnumerate(
         rgpt,
@@ -559,14 +585,14 @@ fn RasterizePath(
             // Draw nothing on value overflow and return
             hr = S_OK;
         }
-        goto Cleanup;
+        return;
     }
 
     let nTotalCount: UINT; nTotalCount = edgeStore.StartEnumeration();
     if (nTotalCount == 0)
     {
         hr = S_OK;     // We're outta here (empty path or entirely clipped)
-        goto Cleanup;
+        return;
     }
 
     // At this point, there has to be at least two edges.  If there's only
@@ -577,19 +603,14 @@ fn RasterizePath(
     pInactiveArray = &inactiveArrayStack[0];
     if (nTotalCount > (INACTIVE_LIST_NUMBER - 2))
     {
-        IFC!(HrMalloc(
-            Mt(HwRasterizerEdge),
-            sizeof(CInactiveEdge),
-            nTotalCount + 2,
-            (void **)&pInactiveArrayAllocation
-            ));
+        pInactiveArrayAllocation = vec![0; nTotalCount + 2];
 
         pInactiveArray = pInactiveArrayAllocation;
     }
 
     // Initialize and sort the inactive array:
 
-    INT nSubpixelYCurrent; nSubpixelYCurrent = InitializeInactiveArray(
+    let nSubpixelYCurrent = InitializeInactiveArray(
         &edgeStore,
         pInactiveArray,
         nTotalCount,
@@ -611,7 +632,7 @@ fn RasterizePath(
     // 'nPixelYClipBottom' is in screen space and needs to be converted to the
     // format we use for antialiasing.
 
-    nSubpixelYBottom = min(nSubpixelYBottom, nPixelYClipBottom << c_nShift);
+    nSubpixelYBottom = nSubpixelYBottom.min(nPixelYClipBottom << c_nShift);
 
     // 'nTotalCount' should have been zero if all the edges were
     // clipped out (RasterizeEdges assumes there's at least one edge
@@ -619,19 +640,12 @@ fn RasterizePath(
 
     assert!(nSubpixelYBottom > nSubpixelYCurrent);
 
-    IFC(RasterizeEdges(
+    IFC!(self.RasterizeEdges(
         pEdgeActiveList,
         pInactiveArray,
         nSubpixelYCurrent,
         nSubpixelYBottom
         ));
-
-Cleanup:
-    // Free any objects and get outta here:
-    GpFree(pInactiveArrayAllocation);
-
-    // Free coverage buffer
-    m_coverageBuffer.Destroy();
 
     return hr;
 }
@@ -747,10 +761,12 @@ fn SendGeometry(&self,
     // Rasterize the path
     //
 
+    _null_geom = scopeguard::guard((), || self.m_pIGeometrySink = NULL);
+
     IFC!(RasterizePath(
-        m_prgPoints->GetDataBuffer(),
-        m_prgTypes->GetDataBuffer(),
-        m_prgPoints->GetCount(),
+        m_prgPoints.GetDataBuffer(),
+        m_prgTypes.GetDataBuffer(),
+        m_prgPoints.GetCount(),
         &m_matWorldToDevice,
         m_fillMode
         ));
@@ -766,10 +782,8 @@ fn SendGeometry(&self,
         hr = WGXHR_EMPTYFILL;
     }
 
-Cleanup:
-    m_pIGeometrySink = NULL;
 
-    RRETURN1(hr, WGXHR_EMPTYFILL);
+    RRETURN1!(hr, WGXHR_EMPTYFILL);
 }
 
 //-------------------------------------------------------------------------
@@ -779,27 +793,24 @@ Cleanup:
 //  Synopsis:   Send an AA color source to the pipeline.
 //
 //-------------------------------------------------------------------------
-fn SendGeometryModifiers(
-    __inout_ecount(1) CHwPipelineBuilder *pPipelineBuilder
+fn SendGeometryModifiers(&self,
+    pPipelineBuilder: &mut CHwPipelineBuilder
     ) -> HRESULT
 {
-    HRESULT hr = S_OK;
+    let hr = S_OK;
 
-    CHwColorComponentSource *pAntiAliasColorSource = NULL;
+    let pAntiAliasColorSource = None;
 
-    m_pDeviceNoRef->GetColorComponentSource(
+    self.m_pDeviceNoRef.GetColorComponentSource(
         CHwColorComponentSource::Diffuse,
         &pAntiAliasColorSource
         );
 
-    IFC(pPipelineBuilder->Set_AAColorSource(
+    IFC!(pPipelineBuilder.Set_AAColorSource(
         pAntiAliasColorSource
         ));
 
-Cleanup:
-    ReleaseInterfaceNoNULL(pAntiAliasColorSource);
-
-    RRETURN(hr);
+    return hr;
 }
 
 //-------------------------------------------------------------------------
@@ -810,22 +821,21 @@ Cleanup:
 //      Collapse output and generate span data
 //
 //-------------------------------------------------------------------------
-MIL_FORCEINLINE HRESULT
-CHwRasterizer::GenerateOutputAndClearCoverage(
-    INT nSubpixelY
-    )
+fn
+GenerateOutputAndClearCoverage(&mut self,
+    nSubpixelY: INT
+    ) -> HRESULT
 {
-    HRESULT hr = S_OK;
-    INT nPixelY = nSubpixelY >> c_nShift;
+    let hr = S_OK;
+    let nPixelY = nSubpixelY >> c_nShift;
 
-    const CCoverageInterval *pIntervalSpanStart = m_coverageBuffer.m_pIntervalStart;
+    let pIntervalSpanStart: *const CCoverageInterval = self.m_coverageBuffer.m_pIntervalStart;
 
-    IFC(m_pIGeometrySink->AddComplexScan(nPixelY, pIntervalSpanStart));
+    IFC!(self.m_pIGeometrySink.AddComplexScan(nPixelY, pIntervalSpanStart));
 
-    m_coverageBuffer.Reset();
+    self.m_coverageBuffer.Reset();
 
-Cleanup:
-    RRETURN(hr);
+    return;
 }
 
 //-------------------------------------------------------------------------
@@ -872,21 +882,21 @@ Cleanup:
 //
 //-------------------------------------------------------------------------
 
-fn ComputeTrapezoidsEndScan(
-    __in_ecount(1) const CEdge *pEdgeCurrent,
-    INT nSubpixelYCurrent,
-    INT nSubpixelYNextInactive
+fn ComputeTrapezoidsEndScan(&mut self,
+    pEdgeCurrent: &CEdge,
+    nSubpixelYCurrent: INT,
+    nSubpixelYNextInactive: INT
     ) -> INT
 {
-    INT nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
-    const CEdge *pEdgeLeft;
-    const CEdge *pEdgeRight;
+    let nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
+    let pEdgeLeft: *const CEdge;
+    let pEdgeRight: *const CEdge;
 
     //
     // Trapezoids should always start at scanline boundaries
     //
 
-    Assert((nSubpixelYCurrent & c_nShiftMask) == 0);
+    assert!((nSubpixelYCurrent & c_nShiftMask) == 0);
 
     //
     // If we are doing a winding mode fill, check that we can ignore mode and do an
@@ -895,24 +905,24 @@ fn ComputeTrapezoidsEndScan(
     // winding directions.
     //
 
-    if (m_fillMode == MilFillMode::Winding)
+    if (self.m_fillMode == MilFillMode::Winding)
     {
-        for (const CEdge *pEdge = pEdgeCurrent; pEdge->EndY != INT_MIN; pEdge = pEdge->Next->Next)
+        cfor!{let pEdge = pEdgeCurrent; pEdge.EndY != INT::MIN; pEdge = pEdge.Next.Next;
         {
             // The active edge list always has an even number of edges which we actually
             // assert in ASSERTACTIVELIST.
 
-            Assert(pEdge->Next->EndY != INT_MIN);
+            assert!(pEdge.Next.EndY != INT::MIN);
 
             // If not alternating winding direction, we can't fill with alternate mode
 
-            if (pEdge->WindingDirection == pEdge->Next->WindingDirection)
+            if (pEdge.WindingDirection == pEdge.Next.WindingDirection)
             {
                 // Give up until we handle winding mode
                 nSubpixelYBottomTrapezoids = nSubpixelYCurrent;
                 goto Cleanup;
             }
-        }
+        }}
     }
 
     //
@@ -926,7 +936,7 @@ fn ComputeTrapezoidsEndScan(
 
     nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
 
-    for (const CEdge *pEdge = pEdgeCurrent; pEdge->EndY != INT_MIN; pEdge = pEdge->Next)
+    cfor!{let pEdge = pEdgeCurrent; pEdge->EndY != INT::MIN; pEdge = pEdge.Next; 
     {
         //
         // Step 1
@@ -937,7 +947,7 @@ fn ComputeTrapezoidsEndScan(
         // that pEdge->EndY <= nSubpixelYBottom so there is no need to check for that here.
         //
 
-        nSubpixelYBottomTrapezoids = min(nSubpixelYBottomTrapezoids, pEdge->EndY);
+        nSubpixelYBottomTrapezoids = nSubpixelYBottomTrapezoids.min(pEdge.EndY);
 
         //
         // Step 2
@@ -946,9 +956,9 @@ fn ComputeTrapezoidsEndScan(
         //
 
         pEdgeLeft = pEdge;
-        pEdgeRight = pEdge->Next;
+        pEdgeRight = pEdge.Next;
 
-        if (pEdgeRight->EndY != INT_MIN)
+        if (pEdgeRight.EndY != INT_MIN)
         {
             //
             //        __A__A'___________________B'_B__
@@ -970,7 +980,7 @@ fn ComputeTrapezoidsEndScan(
             // recognize trapezoid opportunities and isn't required for visual correctness.
             //
 
-            INT nSubpixelExpandDistanceUpperBound =
+            let nSubpixelExpandDistanceUpperBound: INT =
                 c_nShiftSize
                 + ComputeDeltaUpperBound(pEdgeLeft, c_nHalfShiftSize)
                 + ComputeDeltaUpperBound(pEdgeRight, c_nHalfShiftSize);
@@ -980,7 +990,7 @@ fn ComputeTrapezoidsEndScan(
             //   lowerbound(distance(A, B)) - nSubpixelExpandDistanceUpperBound
             //
 
-            INT nSubpixelXTopDistanceLowerBound =
+            let nSubpixelXTopDistanceLowerBound: INT =
                 ComputeDistanceLowerBound(pEdgeLeft, pEdgeRight) - nSubpixelExpandDistanceUpperBound;
 
             //
@@ -1012,31 +1022,31 @@ fn ComputeTrapezoidsEndScan(
             // the fact that the edges don't converge, so we can be too conservative here.
             //
 
-            if (pEdgeLeft->Dx > pEdgeRight->Dx
-                || ((pEdgeLeft->Dx == pEdgeRight->Dx)
-                    && IsFractionGreaterThan(pEdgeLeft->ErrorUp, pEdgeLeft->ErrorDown, pEdgeRight->ErrorUp, pEdgeRight->ErrorDown)))
+            if (pEdgeLeft.Dx > pEdgeRight.Dx
+                || ((pEdgeLeft.Dx == pEdgeRight.Dx)
+                    && IsFractionGreaterThan(pEdgeLeft.ErrorUp, pEdgeLeft.ErrorDown, pEdgeRight.ErrorUp, pEdgeRight.ErrorDown)))
             {
 
-                INT nSubpixelYAdvance =  nSubpixelYBottomTrapezoids - nSubpixelYCurrent;
-                Assert(nSubpixelYAdvance > 0);
+                let nSubpixelYAdvance: INT =  nSubpixelYBottomTrapezoids - nSubpixelYCurrent;
+                assert!(nSubpixelYAdvance > 0);
 
                 //
                 // Compute the edge position at nSubpixelYBottomTrapezoids
                 //
 
-                INT nSubpixelXLeftAdjustedBottom;
-                INT nSubpixelErrorLeftBottom;
-                INT nSubpixelXRightBottom;
-                INT nSubpixelErrorRightBottom;
+                let nSubpixelXLeftAdjustedBottom;
+                let nSubpixelErrorLeftBottom;
+                let nSubpixelXRightBottom;
+                let nSubpixelErrorRightBottom;
 
                 AdvanceDDAMultipleSteps(
-                    IN pEdgeLeft,
-                    IN pEdgeRight,
-                    IN nSubpixelYAdvance,
-                    OUT nSubpixelXLeftAdjustedBottom,
-                    OUT nSubpixelErrorLeftBottom,
-                    OUT nSubpixelXRightBottom,
-                    OUT nSubpixelErrorRightBottom
+                    pEdgeLeft,
+                    pEdgeRight,
+                    nSubpixelYAdvance,
+                    &mut nSubpixelXLeftAdjustedBottom,
+                    &mut nSubpixelErrorLeftBottom,
+                    &mut nSubpixelXRightBottom,
+                    &mut nSubpixelErrorRightBottom
                     );
 
                 //
@@ -1098,23 +1108,22 @@ fn ComputeTrapezoidsEndScan(
                     //         = nSubpixelXLeftAdjustedBottom - nSubpixelXRightBottom + 1
                     //
 
-                    INT nSubpixelXBottomDistanceUpperBound = nSubpixelXLeftAdjustedBottom - nSubpixelXRightBottom + 1;
+                    let nSubpixelXBottomDistanceUpperBound: INT = nSubpixelXLeftAdjustedBottom - nSubpixelXRightBottom + 1;
 
-                    Assert(nSubpixelXTopDistanceLowerBound >= 0);
-                    Assert(nSubpixelXBottomDistanceUpperBound > 0);
+                    assert!(nSubpixelXTopDistanceLowerBound >= 0);
+                    assert!(nSubpixelXBottomDistanceUpperBound > 0);
 
-#if DBG==1
-                    INT nDbgPreviousSubpixelXBottomTrapezoids = nSubpixelYBottomTrapezoids;
-#endif
+                    #[cfg(debug)]
+                    let nDbgPreviousSubpixelXBottomTrapezoids: INT = nSubpixelYBottomTrapezoids;
+
 
                     nSubpixelYBottomTrapezoids =
                         nSubpixelYCurrent +
                         (nSubpixelYAdvance * nSubpixelXTopDistanceLowerBound) /
                         (nSubpixelXTopDistanceLowerBound + nSubpixelXBottomDistanceUpperBound);
 
-#if DBG==1
-                    Assert(nDbgPreviousSubpixelXBottomTrapezoids >= nSubpixelYBottomTrapezoids);
-#endif
+                    #[cfg(debug)]
+                    assert!(nDbgPreviousSubpixelXBottomTrapezoids >= nSubpixelYBottomTrapezoids);
 
                     if (nSubpixelYBottomTrapezoids < nSubpixelYCurrent + c_nShiftSize)
                     {
@@ -1127,7 +1136,7 @@ fn ComputeTrapezoidsEndScan(
                 }
             }
         }
-    }
+    }};
 
     //
     // Snap to pixel boundary
@@ -1139,7 +1148,7 @@ fn ComputeTrapezoidsEndScan(
     // Ensure that we are never less than nSubpixelYCurrent
     //
 
-    Assert(nSubpixelYBottomTrapezoids >= nSubpixelYCurrent);
+    assert!(nSubpixelYBottomTrapezoids >= nSubpixelYCurrent);
 
     //
     // Return trapezoid end scan
@@ -1176,31 +1185,31 @@ Cleanup:
 //
 //-------------------------------------------------------------------------
 fn 
-CHwRasterizer::OutputTrapezoids(
-    __inout_ecount(1) CEdge *pEdgeCurrent,
-    INT nSubpixelYCurrent, // inclusive
-    INT nSubpixelYNext     // exclusive
+OutputTrapezoids(&mut self,
+    pEdgeCurrent: NonNull<CEdge>,
+    nSubpixelYCurrent: INT, // inclusive
+    nSubpixelYNext: INT     // exclusive
     ) -> HRESULT
 {
     let hr = S_OK;
-    INT nSubpixelYAdvance;
-    float rSubpixelLeftErrorDown;
-    float rSubpixelRightErrorDown;
-    float rPixelXLeft;
-    float rPixelXRight;
-    float rSubpixelLeftInvSlope;;
-    float rSubpixelLeftAbsInvSlope;
-    float rSubpixelRightInvSlope;
-    float rSubpixelRightAbsInvSlope;
-    float rPixelXLeftDelta;
-    float rPixelXRightDelta;
+    let nSubpixelYAdvance: INT;
+    let rSubpixelLeftErrorDown: f32;
+    let rSubpixelRightErrorDown: f32;
+    let rPixelXLeft: f32;
+    let rPixelXRight: f32;
+    let rSubpixelLeftInvSlope: f32;
+    let rSubpixelLeftAbsInvSlope: f32;
+    let rSubpixelRightInvSlope: f32;
+    let rSubpixelRightAbsInvSlope: f32;
+    let rPixelXLeftDelta: f32;
+    let rPixelXRightDelta: f32;
 
-    CEdge *pEdgeLeft = pEdgeCurrent;
-    CEdge *pEdgeRight = pEdgeCurrent->Next;
+    let pEdgeLeft = pEdgeCurrent;
+    let pEdgeRight = pEdgeCurrent.Next;
 
     assert!((nSubpixelYCurrent & c_nShiftMask) == 0);
-    assert!(pEdgeLeft->EndY != INT_MIN);
-    assert!(pEdgeRight->EndY != INT_MIN);
+    assert!(pEdgeLeft.EndY != INT::MIN);
+    assert!(pEdgeRight.EndY != INT::MIN);
 
     //
     // Compute the height our trapezoids
@@ -1212,73 +1221,73 @@ CHwRasterizer::OutputTrapezoids(
     // Output each trapezoid
     //
 
-    for (;;)
+    loop
     {
         //
         // Compute x/error for end of trapezoid
         //
 
-        INT nSubpixelXLeftBottom;
-        INT nSubpixelErrorLeftBottom;
-        INT nSubpixelXRightBottom;
-        INT nSubpixelErrorRightBottom;
+        let nSubpixelXLeftBottom: INT;
+        let nSubpixelErrorLeftBottom: INT;
+        let nSubpixelXRightBottom: INT;
+        let nSubpixelErrorRightBottom: INT;
 
         AdvanceDDAMultipleSteps(
-            IN pEdgeLeft,
-            IN pEdgeRight,
-            IN nSubpixelYAdvance,
-            OUT nSubpixelXLeftBottom,
-            OUT nSubpixelErrorLeftBottom,
-            OUT nSubpixelXRightBottom,
-            OUT nSubpixelErrorRightBottom
+            pEdgeLeft,
+            pEdgeRight,
+            nSubpixelYAdvance,
+            &mut nSubpixelXLeftBottom,
+            &mut nSubpixelErrorLeftBottom,
+            &mut nSubpixelXRightBottom,
+            &mut nSubpixelErrorRightBottom
             );
 
         // The above computation should ensure that we are a simple
         // trapezoid at this point
 
-        Assert(nSubpixelXLeftBottom <= nSubpixelXRightBottom);
+        assert!(nSubpixelXLeftBottom <= nSubpixelXRightBottom);
 
         // We know we have a simple trapezoid now.  Now, compute the end of our current trapezoid
 
-        Assert(nSubpixelYAdvance > 0);
+        assert!(nSubpixelYAdvance > 0);
 
         //
         // Computation of edge data
         //
 
-        rSubpixelLeftErrorDown  = static_cast<float>(pEdgeLeft->ErrorDown);
-        rSubpixelRightErrorDown = static_cast<float>(pEdgeRight->ErrorDown);
-        rPixelXLeft  = ConvertSubpixelXToPixel(pEdgeLeft->X, pEdgeLeft->Error, rSubpixelLeftErrorDown);
-        rPixelXRight = ConvertSubpixelXToPixel(pEdgeRight->X, pEdgeRight->Error, rSubpixelRightErrorDown);
+        rSubpixelLeftErrorDown  = (pEdgeLeft.ErrorDown) as f32;
+        rSubpixelRightErrorDown = (pEdgeRight.ErrorDown) as f32;
+        rPixelXLeft  = ConvertSubpixelXToPixel(pEdgeLeft.X, pEdgeLeft.Error, rSubpixelLeftErrorDown);
+        rPixelXRight = ConvertSubpixelXToPixel(pEdgeRight.X, pEdgeRight.Error, rSubpixelRightErrorDown);
 
-        rSubpixelLeftInvSlope     = static_cast<float>(pEdgeLeft->Dx) + static_cast<float>(pEdgeLeft->ErrorUp)/rSubpixelLeftErrorDown;
-        rSubpixelLeftAbsInvSlope  = fabsf(rSubpixelLeftInvSlope);
-        rSubpixelRightInvSlope    = static_cast<float>(pEdgeRight->Dx) + static_cast<float>(pEdgeRight->ErrorUp)/rSubpixelRightErrorDown;
-        rSubpixelRightAbsInvSlope = fabsf(rSubpixelRightInvSlope);
+        rSubpixelLeftInvSlope     = (pEdgeLeft.Dx) as f32 + (pEdgeLeft.ErrorUp) as f32/rSubpixelLeftErrorDown;
+        rSubpixelLeftAbsInvSlope  = rSubpixelLeftInvSlope.abs();
+        rSubpixelRightInvSlope    = (pEdgeRight.Dx) as f32 + (pEdgeRight.ErrorUp) as f32/rSubpixelRightErrorDown;
+        rSubpixelRightAbsInvSlope = rSubpixelRightInvSlope.abs();
 
-        rPixelXLeftDelta  = 0.5f + 0.5f * rSubpixelLeftAbsInvSlope;
-        rPixelXRightDelta = 0.5f + 0.5f * rSubpixelRightAbsInvSlope;
+        rPixelXLeftDelta  = 0.5 + 0.5 * rSubpixelLeftAbsInvSlope;
+        rPixelXRightDelta = 0.5 + 0.5 * rSubpixelRightAbsInvSlope;
 
-        float rPixelYTop         = ConvertSubpixelYToPixel(nSubpixelYCurrent);
-        float rPixelYBottom      = ConvertSubpixelYToPixel(nSubpixelYNext);
+        let rPixelYTop         = ConvertSubpixelYToPixel(nSubpixelYCurrent);
+        let rPixelYBottom      = ConvertSubpixelYToPixel(nSubpixelYNext);
 
-        float rPixelXBottomLeft  = ConvertSubpixelXToPixel(
+        let rPixelXBottomLeft  = ConvertSubpixelXToPixel(
                                         nSubpixelXLeftBottom,
                                         nSubpixelErrorLeftBottom,
-                                        static_cast<float>(pEdgeLeft->ErrorDown)
+                                        (pEdgeLeft.ErrorDown) as f32
                                         );
 
-        float rPixelXBottomRight = ConvertSubpixelXToPixel(
+        let rPixelXBottomRight = ConvertSubpixelXToPixel(
                                         nSubpixelXRightBottom,
                                         nSubpixelErrorRightBottom,
-                                        static_cast<float>(pEdgeRight->ErrorDown)
+                                        (pEdgeRight.ErrorDown) as f32
                                         );
 
         //
         // Output the trapezoid
         //
 
-        IFC(m_pIGeometrySink->AddTrapezoid(
+        IFC!(self.m_pIGeometrySink.AddTrapezoid(
             rPixelYTop,              // In: y coordinate of top of trapezoid
             rPixelXLeft,             // In: x coordinate for top left
             rPixelXRight,            // In: x coordinate for top right
@@ -1295,16 +1304,16 @@ CHwRasterizer::OutputTrapezoids(
 
         //  no need to do this if edges are stale
 
-        pEdgeLeft->X      = nSubpixelXLeftBottom;
-        pEdgeLeft->Error  = nSubpixelErrorLeftBottom;
-        pEdgeRight->X     = nSubpixelXRightBottom;
-        pEdgeRight->Error = nSubpixelErrorRightBottom;
+        pEdgeLeft.X      = nSubpixelXLeftBottom;
+        pEdgeLeft.Error  = nSubpixelErrorLeftBottom;
+        pEdgeRight.X     = nSubpixelXRightBottom;
+        pEdgeRight.Error = nSubpixelErrorRightBottom;
 
         //
         // Check for termination
         //
 
-        if (pEdgeRight->Next->EndY == INT_MIN)
+        if (pEdgeRight.Next.EndY == INT_MIN)
         {
             break;
         }
@@ -1313,13 +1322,12 @@ CHwRasterizer::OutputTrapezoids(
         // Advance edge data
         //
 
-        pEdgeLeft  = pEdgeRight->Next;
-        pEdgeRight = pEdgeLeft->Next;
+        pEdgeLeft  = pEdgeRight.Next;
+        pEdgeRight = pEdgeLeft.Next;
 
     }
 
-Cleanup:
-    RRETURN(hr);
+    return hr;
 }
 
 //-------------------------------------------------------------------------
@@ -1331,18 +1339,18 @@ Cleanup:
 //
 //-------------------------------------------------------------------------
 fn
-CHwRasterizer::RasterizeEdges(
-    __inout_ecount(1) CEdge         *pEdgeActiveList,
-    __inout_ecount(1) CInactiveEdge *pInactiveEdgeArray,
-    INT nSubpixelYCurrent,
-    INT nSubpixelYBottom
+RasterizeEdges(&mut self,
+    pEdgeActiveList: *mut CEdge,
+    pInactiveEdgeArray: &mut [CInactiveEdge],
+    nSubpixelYCurrent: INT,
+    nSubpixelYBottom: INT
     ) -> HRESULT
 {
-    HRESULT hr = S_OK;
-    CEdge *pEdgePrevious;
-    CEdge *pEdgeCurrent;
-    INT nSubpixelYNextInactive;
-    INT nSubpixelYNext;
+    let hr: HRESULT = S_OK;
+    let pEdgePrevious: *mut CEdge;
+    let pEdgeCurrent: *mut CEdge;
+    let nSubpixelYNextInactive: INT;
+    let nSubpixelYNext: INT;
 
     InsertNewEdges(
         pEdgeActiveList,
@@ -1353,25 +1361,25 @@ CHwRasterizer::RasterizeEdges(
 
     while (nSubpixelYCurrent < nSubpixelYBottom)
     {
-        ASSERTACTIVELIST(pEdgeActiveList, nSubpixelYCurrent);
+        ASSERTACTIVELIST!(pEdgeActiveList, nSubpixelYCurrent);
 
         //
         // Detect trapezoidal case
         //
 
         pEdgePrevious = pEdgeActiveList;
-        pEdgeCurrent = pEdgeActiveList->Next;
+        pEdgeCurrent = pEdgeActiveList.Next;
 
         nSubpixelYNext = nSubpixelYCurrent;
 
-        if (!IsTagEnabled(tagDisableTrapezoids)
+        if (!IsTagEnabled!(tagDisableTrapezoids)
             && (nSubpixelYCurrent & c_nShiftMask) == 0
-            && pEdgeCurrent->EndY != INT_MIN
+            && pEdgeCurrent.EndY != INT::MIN
             && nSubpixelYNextInactive >= nSubpixelYCurrent + c_nShiftSize
             )
         {
             // Edges are paired, so we can assert we have another one
-            Assert(pEdgeCurrent->Next->EndY != INT_MIN);
+            assert!(pEdgeCurrent.Next.EndY != INT::MIN);
 
             //
             // Given an active edge list, we compute the furthest we can go in the y direction
@@ -1380,7 +1388,7 @@ CHwRasterizer::RasterizeEdges(
             //
 
             nSubpixelYNext = ComputeTrapezoidsEndScan(pEdgeCurrent, nSubpixelYCurrent, nSubpixelYNextInactive);
-            Assert(nSubpixelYNext >= nSubpixelYCurrent);
+            assert!(nSubpixelYNext >= nSubpixelYCurrent);
 
             //
             // Attempt to output a trapezoid.  If it turns out we don't have any
@@ -1390,7 +1398,7 @@ CHwRasterizer::RasterizeEdges(
 
             if (nSubpixelYNext >= nSubpixelYCurrent + c_nShiftSize)
             {
-                IFC(OutputTrapezoids(
+                IFC!(OutputTrapezoids(
                     pEdgeCurrent,
                     nSubpixelYCurrent,
                     nSubpixelYNext
@@ -1406,7 +1414,7 @@ CHwRasterizer::RasterizeEdges(
         {
             // If we advance, it must be by at least one scan line
 
-            Assert(nSubpixelYNext - nSubpixelYCurrent >= c_nShiftSize);
+            assert!(nSubpixelYNext - nSubpixelYCurrent >= c_nShiftSize);
 
             // Advance nSubpixelYCurrent
 
@@ -1414,21 +1422,21 @@ CHwRasterizer::RasterizeEdges(
 
             // Remove stale edges.  Note that the DDA is incremented in OutputTrapezoids.
 
-            while (pEdgeCurrent->EndY != INT_MIN)
+            while (pEdgeCurrent.EndY != INT::MIN)
             {
-                if (pEdgeCurrent->EndY <= nSubpixelYCurrent)
+                if (pEdgeCurrent.EndY <= nSubpixelYCurrent)
                 {
                     // Unlink and advance
 
-                    pEdgeCurrent = pEdgeCurrent->Next;
-                    pEdgePrevious->Next = pEdgeCurrent;
+                    pEdgeCurrent = pEdgeCurrent.Next;
+                    pEdgePrevious.Next = pEdgeCurrent;
                 }
                 else
                 {
                     // Advance
 
                     pEdgePrevious = pEdgeCurrent;
-                    pEdgeCurrent = pEdgeCurrent->Next;
+                    pEdgeCurrent = pEdgeCurrent.Next;
                 }
             }
         }
@@ -1440,7 +1448,7 @@ CHwRasterizer::RasterizeEdges(
             //   2) fall back to scan rasterization
             //
 
-            if (pEdgeCurrent->EndY == INT_MIN)
+            if (pEdgeCurrent.EndY == INT::MIN)
             {
                 nSubpixelYNext = nSubpixelYNextInactive;
             }
@@ -1449,18 +1457,18 @@ CHwRasterizer::RasterizeEdges(
                 nSubpixelYNext = nSubpixelYCurrent + 1;
                 if (m_fillMode == MilFillMode::Alternate)
                 {
-                    IFC(m_coverageBuffer.FillEdgesAlternating(pEdgeActiveList, nSubpixelYCurrent));
+                    IFC!(m_coverageBuffer.FillEdgesAlternating(pEdgeActiveList, nSubpixelYCurrent));
                 }
                 else
                 {
-                    IFC(m_coverageBuffer.FillEdgesWinding(pEdgeActiveList, nSubpixelYCurrent));
+                    IFC!(m_coverageBuffer.FillEdgesWinding(pEdgeActiveList, nSubpixelYCurrent));
                 }
             }
 
             // If the next scan is done, output what's there:
             if (nSubpixelYNext > (nSubpixelYCurrent | c_nShiftMask))
             {
-                IFC(GenerateOutputAndClearCoverage(nSubpixelYCurrent));
+                IFC!(GenerateOutputAndClearCoverage(nSubpixelYCurrent));
             }
 
             // Advance nSubpixelYCurrent
@@ -1491,12 +1499,11 @@ CHwRasterizer::RasterizeEdges(
 
     if ((nSubpixelYCurrent & c_nShiftMask) != 0)
     {
-        IFC(GenerateOutputAndClearCoverage(nSubpixelYCurrent));
+        IFC!(GenerateOutputAndClearCoverage(nSubpixelYCurrent));
     }
 
-Cleanup:
-    RRETURN(hr);
+    RRETURN!(hr);
 }
 
 
-
+}
