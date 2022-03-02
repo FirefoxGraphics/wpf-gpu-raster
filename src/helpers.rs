@@ -30,7 +30,7 @@ macro_rules! __analysis_assume {
 #[macro_export]
 macro_rules! IFCOOM {
     ($e: expr) => {
-        assert_eq!($e, S_OK);
+        assert_ne!($e, NULL());
     }
 }
 

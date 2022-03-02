@@ -5,14 +5,18 @@
 #![allow(unused_parens)]
 
 
+use std::default;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::{aarasterizer::*, ASSERTACTIVELIST, IsTagEnabled, RRETURN1, RRETURN};
+use crate::aacoverage::{CCoverageBuffer, c_rInvShiftSize, c_antiAliasMode, c_nShift, CCoverageInterval, c_nShiftMask, c_nShiftSize, c_nHalfShiftSize};
+use crate::matrix::{CMILMatrix, CMatrix};
+use crate::{aarasterizer::*, ASSERTACTIVELIST, IsTagEnabled, RRETURN1, RRETURN, INACTIVE_LIST_NUMBER, FIX4_ONE, FIX4_PRECISION, TOREAL, EDGE_STORE_STACK_NUMBER};
 use crate::geometry_sink::IGeometrySink;
 use crate::helpers::Int32x32To64;
 use crate::types::*;
 use cfor::cfor;
+use scopeguard::defer;
 
 //-----------------------------------------------------------------------------
 //
@@ -158,8 +162,8 @@ IsFractionLessThan(
 //-------------------------------------------------------------------------
 fn
 AdvanceDDAMultipleSteps(
-    pEdgeLeft: NonNull<CEdge>,         // Left edge from active edge list
-    pEdgeRight: NonNull<CEdge>,        // Right edge from active edge list
+    pEdgeLeft: &CEdge,         // Left edge from active edge list
+    pEdgeRight: &CEdge,        // Right edge from active edge list
     nSubpixelYAdvance: INT,                    // Number of steps to advance the DDA
     nSubpixelXLeftBottom: &mut INT,     // Resulting left x position
     nSubpixelErrorLeftBottom: &mut INT, // Resulting left x position error
@@ -210,11 +214,11 @@ AdvanceDDAMultipleSteps(
     //
 
     // Since each point on the edge is withing 28.4 space, the following computation can't overflow.
-    nSubpixelXLeftBottom = pEdgeLeft.X + nSubpixelYAdvance*pEdgeLeft.Dx;
+    *nSubpixelXLeftBottom = pEdgeLeft.X + nSubpixelYAdvance*pEdgeLeft.Dx;
 
     // Since the error values can be close to 2^30, we can get an overflow by multiplying with yAdvance.
     // So, we need to use a 64-bit temporary in this case.
-    let llSubpixelErrorBottom = pEdgeLeft.Error + Int32x32To64(nSubpixelYAdvance, pEdgeLeft.ErrorUp);
+    let llSubpixelErrorBottom: LONGLONG = pEdgeLeft.Error as LONGLONG + Int32x32To64(nSubpixelYAdvance, pEdgeLeft.ErrorUp);
     if (llSubpixelErrorBottom >= 0)
     {
         let llSubpixelXLeftDelta = llSubpixelErrorBottom / (pEdgeLeft.ErrorDown as LONGLONG);
@@ -222,17 +226,17 @@ AdvanceDDAMultipleSteps(
         // The delta should remain in range since it still represents a delta along the edge which
         // we know fits entirely in 28.4.  Note that we add one here since the error must end up
         // less than 0.
-        assert!(llSubpixelXLeftDelta < INT::MAX);
+        assert!(llSubpixelXLeftDelta < INT::MAX as LONGLONG);
         let nSubpixelXLeftDelta: INT = (llSubpixelXLeftDelta as INT) + 1;
 
-        nSubpixelXLeftBottom += nSubpixelXLeftDelta;
+        *nSubpixelXLeftBottom += nSubpixelXLeftDelta;
         llSubpixelErrorBottom -= Int32x32To64(pEdgeLeft.ErrorDown, nSubpixelXLeftDelta);
     }
 
     // At this point, the subtraction above should have generated an error that is within
     // (-pLeft->ErrorDown, 0)
 
-    assert!((llSubpixelErrorBottom > -pEdgeLeft.ErrorDown) && (llSubpixelErrorBottom < 0));
+    assert!((llSubpixelErrorBottom > -pEdgeLeft.ErrorDown as LONGLONG) && (llSubpixelErrorBottom < 0));
     *nSubpixelErrorLeftBottom = (llSubpixelErrorBottom as INT);
 
     //
@@ -240,11 +244,11 @@ AdvanceDDAMultipleSteps(
     //
 
     // Since each point on the edge is withing 28.4 space, the following computation can't overflow.
-    nSubpixelXRightBottom = pEdgeRight.X + nSubpixelYAdvance*pEdgeRight.Dx;
+    *nSubpixelXRightBottom = pEdgeRight.X + nSubpixelYAdvance*pEdgeRight.Dx;
 
     // Since the error values can be close to 2^30, we can get an overflow by multiplying with yAdvance.
     // So, we need to use a 64-bit temporary in this case.
-    llSubpixelErrorBottom = pEdgeRight.Error + Int32x32To64(nSubpixelYAdvance, pEdgeRight.ErrorUp);
+    llSubpixelErrorBottom = pEdgeRight.Error as LONGLONG + Int32x32To64(nSubpixelYAdvance, pEdgeRight.ErrorUp);
     if (llSubpixelErrorBottom >= 0)
     {
         let llSubpixelXRightDelta: LONGLONG = llSubpixelErrorBottom / (pEdgeRight.ErrorDown as LONGLONG);
@@ -252,17 +256,17 @@ AdvanceDDAMultipleSteps(
         // The delta should remain in range since it still represents a delta along the edge which
         // we know fits entirely in 28.4.  Note that we add one here since the error must end up
         // less than 0.
-        assert!(llSubpixelXRightDelta < INT::MAX);
+        assert!(llSubpixelXRightDelta < INT::MAX as LONGLONG);
         let nSubpixelXRightDelta: INT = (llSubpixelXRightDelta as INT) + 1;
 
-        nSubpixelXRightBottom += nSubpixelXRightDelta;
+        *nSubpixelXRightBottom += nSubpixelXRightDelta;
         llSubpixelErrorBottom -= Int32x32To64(pEdgeRight.ErrorDown, nSubpixelXRightDelta);
     }
 
     // At this point, the subtraction above should have generated an error that is within
     // (-pRight->ErrorDown, 0)
 
-    assert!((llSubpixelErrorBottom > -pEdgeRight.ErrorDown) && (llSubpixelErrorBottom < 0));
+    assert!((llSubpixelErrorBottom > -pEdgeRight.ErrorDown as LONGLONG) && (llSubpixelErrorBottom < 0));
     *nSubpixelErrorRightBottom = (llSubpixelErrorBottom as INT);
 }
 
@@ -277,7 +281,7 @@ AdvanceDDAMultipleSteps(
 //-------------------------------------------------------------------------
 fn
 ComputeDeltaUpperBound(
-    pEdge: NonNull<CEdge>,  // Edge containing 1/m value used for computation
+    pEdge: &CEdge,  // Edge containing 1/m value used for computation
     nSubpixelYAdvance: INT          // Multiplier in synopsis expression
     ) -> INT
 {
@@ -350,8 +354,8 @@ ComputeDeltaUpperBound(
 //-------------------------------------------------------------------------
 fn
 ComputeDistanceLowerBound(
-    pEdgeLeft: NonNull<CEdge>, // Left edge containing the position for the distance computation
-    pEdgeRight: NonNull<CEdge> // Right edge containing the position for the distance computation
+    pEdgeLeft: &CEdge, // Left edge containing the position for the distance computation
+    pEdgeRight: &CEdge // Right edge containing the position for the distance computation
     ) -> INT
 {
     //
@@ -399,12 +403,12 @@ ComputeDistanceLowerBound(
 
     return nSubpixelXDistanceLowerBound;
 }
-struct CHwRasterizer {
-    m_prgPoints: Option<&mut Vec<MilPoint2F>>,
-    m_prgTypes: Option<&mut Vec<BYTE>>,
+struct CHwRasterizer<'a> {
+    m_prgPoints: Option<&'a mut Vec<MilPoint2F>>,
+    m_prgTypes: Option<&'a mut Vec<BYTE>>,
     m_rcClipBounds: MilPointAndSizeL,
     m_matWorldToDevice: CMILMatrix,
-    m_pIGeometrySink: Rc<dyn IGeometrySink>,
+    m_pIGeometrySink: Option<Rc<dyn IGeometrySink>>,
     m_fillMode: MilFillMode,
     /* 
 DynArray<MilPoint2F> *m_prgPoints;
@@ -422,24 +426,7 @@ CCoverageBuffer m_coverageBuffer;
 
 CD3DDeviceLevel1 * m_pDeviceNoRef;*/
     m_coverageBuffer: CCoverageBuffer,
-    m_pDeviceNoRef: Option<&mut CCD3DDeviceLevel1>
-}
-impl CHwRasterizer {
-//-------------------------------------------------------------------------
-//
-//  Function:   CHwRasterizer::CHwRasterizer
-//
-//  Synopsis:   ctor
-//
-//-------------------------------------------------------------------------
-fn new() -> Self
-{
-    Self {
-    m_pDeviceNoRef:  None,
-
-    // State is cleared on the Setup call
-    m_matWorldToDevice: SetToIdentity(),
-    }
+    m_pDeviceNoRef: Option<&'a mut CD3DDeviceLevel1>
 }
 
 //-------------------------------------------------------------------------
@@ -477,6 +464,30 @@ fn ConvertSubpixelYToPixel(
     return (nSubpixel as f32)*c_rInvShiftSize;
 }
 
+impl<'a> CHwRasterizer<'a> {
+    //-------------------------------------------------------------------------
+    //
+    //  Function:   CHwRasterizer::CHwRasterizer
+    //
+    //  Synopsis:   ctor
+    //
+    //-------------------------------------------------------------------------
+    fn new() -> Self
+    {
+        Self {
+        m_pDeviceNoRef:  None,
+        m_prgPoints: None,
+        m_prgTypes: None,
+        m_fillMode: MilFillMode::Alternate,
+        m_coverageBuffer: None,
+        m_rcClipBounds: Default::default(),
+        m_pIGeometrySink: None,
+    
+        // State is cleared on the Setup call
+        m_matWorldToDevice: Default::default(),
+        }
+    }
+    
 //-------------------------------------------------------------------------
 //
 //  Function:   CHwRasterizer::RasterizePath
@@ -512,9 +523,9 @@ fn RasterizePath(
     ) -> HRESULT
 {
     let mut hr = S_OK;
-    let inactiveArrayStack: [CInactiveEdge; INACTIVE_LIST_NUMBER];
+    let inactiveArrayStack: [CInactiveEdge; INACTIVE_LIST_NUMBER!()];
     let pInactiveArray: &mut [CInactiveEdge];
-    CInactiveEdge *pInactiveArrayAllocation = NULL;
+    let pInactiveArrayAllocation: Vec<CInactiveEdge>;
     let edgeHead: CEdge;
     let edgeTail: CEdge;
     let pEdgeActiveList: *const CEdge;
@@ -543,16 +554,16 @@ fn RasterizePath(
         return S_OK;
     }
 
-    let nPixelYClipBottom: INT = m_rcClipBounds.Y + m_rcClipBounds.Height;
+    let nPixelYClipBottom: INT = self.m_rcClipBounds.Y + self.m_rcClipBounds.Height;
 
     // Scale the clip bounds rectangle by 16 to account for our
     // scaling to 28.4 coordinates:
 
     let clipBounds : RECT;
-    clipBounds.left   = self.m_rcClipBounds.X * FIX4_ONE;
-    clipBounds.top    = self.m_rcClipBounds.Y * FIX4_ONE;
-    clipBounds.right  = (self.m_rcClipBounds.X + self.m_rcClipBounds.Width) * FIX4_ONE;
-    clipBounds.bottom = (self.m_rcClipBounds.Y + self.m_rcClipBounds.Height) * FIX4_ONE;
+    clipBounds.left   = self.m_rcClipBounds.X * FIX4_ONE!();
+    clipBounds.top    = self.m_rcClipBounds.Y * FIX4_ONE!();
+    clipBounds.right  = (self.m_rcClipBounds.X + self.m_rcClipBounds.Width) * FIX4_ONE!();
+    clipBounds.bottom = (self.m_rcClipBounds.Y + self.m_rcClipBounds.Height) * FIX4_ONE!();
 
     edgeContext.ClipRect = &clipBounds;
 
@@ -560,14 +571,14 @@ fn RasterizePath(
     // Convert all our points to 28.4 fixed point:
 
     let matrix: CMILMatrix = (*pmatWorldTransform);
-    AppendScaleToMatrix(&matrix, TOREAL(16), TOREAL(16));
+    AppendScaleToMatrix(&mut matrix, TOREAL!(16), TOREAL!(16));
 
     // Enumerate the path and construct the edge table:
 
-    let _coverage = scopeguard::guard(||
+    defer! {
         // Free coverage buffer
         self.m_coverageBuffer.Destroy()
-    );
+    }
 
     MIL_THR!(FixedPointPathEnumerate(
         rgpt,
@@ -585,27 +596,27 @@ fn RasterizePath(
             // Draw nothing on value overflow and return
             hr = S_OK;
         }
-        return;
+        return hr;
     }
 
     let nTotalCount: UINT; nTotalCount = edgeStore.StartEnumeration();
     if (nTotalCount == 0)
     {
         hr = S_OK;     // We're outta here (empty path or entirely clipped)
-        return;
+        return hr;
     }
 
     // At this point, there has to be at least two edges.  If there's only
     // one, it means that we didn't do the trivially rejection properly.
 
-    assert!((nTotalCount >= 2) && (nTotalCount <= (UINT_MAX - 2)));
+    assert!((nTotalCount >= 2) && (nTotalCount <= (UINT::MAX - 2)));
 
     pInactiveArray = &inactiveArrayStack[0];
-    if (nTotalCount > (INACTIVE_LIST_NUMBER - 2))
+    if (nTotalCount > (INACTIVE_LIST_NUMBER!() - 2))
     {
-        pInactiveArrayAllocation = vec![0; nTotalCount + 2];
+        pInactiveArrayAllocation = vec![0; nTotalCount as usize + 2];
 
-        pInactiveArray = pInactiveArrayAllocation;
+        pInactiveArray = &mut pInactiveArrayAllocation;
     }
 
     // Initialize and sort the inactive array:
@@ -661,7 +672,7 @@ fn RasterizePath(
 //-------------------------------------------------------------------------
 fn Setup(&mut self,
     pD3DDevice: Rc<CD3DDeviceLevel1>,
-    pShape: Rc<IShapeData>,
+    pShape: Rc<dyn IShapeData>,
     prgPointsScratch: &mut DynArray<MilPoint2F>,
     prgTypesScratch: &mut DynArray<BYTE>,
     pmatWorldToDevice: Option<&CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device>>
@@ -680,10 +691,10 @@ fn Setup(&mut self,
     // Initialize our state
     //
 
-    self.m_prgPoints.Reset(FALSE /* fReset */);
-    self.m_prgTypes.Reset(FALSE /* fReset */);
-    ZeroMemory(&m_rcClipBounds, sizeof(m_rcClipBounds));
-    self.m_pIGeometrySink = NULL;
+    self.m_prgPoints.Reset(false /* fReset */);
+    self.m_prgTypes.Reset(false /* fReset */);
+    self.m_rcClipBounds = Default::default();
+    self.m_pIGeometrySink = NULL();
 
     // Initialize the coverage buffer
     self.m_coverageBuffer.Initialize();
@@ -721,9 +732,9 @@ fn Setup(&mut self,
     // Set local state.
     //
 
-    pD3DDevice.GetClipRect(&m_rcClipBounds);
+    pD3DDevice.GetClipRect(&self.m_rcClipBounds);
 
-    IFC(pShape.ConvertToGpPath(*m_prgPoints, *m_prgTypes));
+    IFC!(pShape.ConvertToGpPath(*self.m_prgPoints, *self.m_prgTypes));
 
     self.m_matWorldToDevice = matWorldHPCToDeviceIPC;
     self.m_fillMode = pShape.GetFillMode();
@@ -745,7 +756,7 @@ fn Setup(&mut self,
 //
 //-------------------------------------------------------------------------
 fn SendGeometry(&self,
-    pIGeometrySink: Rc<IGeometrySink>
+    pIGeometrySink: Rc<dyn IGeometrySink>
     ) -> HRESULT
 {
     let hr = S_OK;
@@ -761,14 +772,14 @@ fn SendGeometry(&self,
     // Rasterize the path
     //
 
-    _null_geom = scopeguard::guard((), || self.m_pIGeometrySink = NULL);
+    let _null_geom = scopeguard::guard((), || self.m_pIGeometrySink = NULL);
 
-    IFC!(RasterizePath(
-        m_prgPoints.GetDataBuffer(),
-        m_prgTypes.GetDataBuffer(),
-        m_prgPoints.GetCount(),
-        &m_matWorldToDevice,
-        m_fillMode
+    IFC!(self.RasterizePath(
+        self.m_prgPoints.GetDataBuffer(),
+        self.m_prgTypes.GetDataBuffer(),
+        self.m_prgPoints.GetCount(),
+        &self.m_matWorldToDevice,
+        self.m_fillMode
         ));
 
     //
@@ -785,7 +796,7 @@ fn SendGeometry(&self,
 
     RRETURN1!(hr, WGXHR_EMPTYFILL);
 }
-
+/*
 //-------------------------------------------------------------------------
 //
 //  Function:   CHwRasterizer::SendGeometryModifiers
@@ -811,7 +822,7 @@ fn SendGeometryModifiers(&self,
         ));
 
     return hr;
-}
+}*/
 
 //-------------------------------------------------------------------------
 //
@@ -920,7 +931,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
             {
                 // Give up until we handle winding mode
                 nSubpixelYBottomTrapezoids = nSubpixelYCurrent;
-                goto Cleanup;
+                return;
             }
         }}
     }
@@ -936,7 +947,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
     nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
 
-    cfor!{let pEdge = pEdgeCurrent; pEdge->EndY != INT::MIN; pEdge = pEdge.Next; 
+    cfor!{let pEdge = pEdgeCurrent; pEdge.EndY != INT::MIN; pEdge = pEdge.Next; 
     {
         //
         // Step 1
@@ -958,7 +969,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
         pEdgeLeft = pEdge;
         pEdgeRight = pEdge.Next;
 
-        if (pEdgeRight.EndY != INT_MIN)
+        if (pEdgeRight.EndY != INT::MIN)
         {
             //
             //        __A__A'___________________B'_B__
@@ -1003,7 +1014,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
                 // start a trapezoid on this scanline
 
                 nSubpixelYBottomTrapezoids = nSubpixelYCurrent;
-                goto Cleanup;
+                return;
             }
 
             //
@@ -1131,7 +1142,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
                         // abort
 
                         nSubpixelYBottomTrapezoids = nSubpixelYCurrent;
-                        goto Cleanup;
+                        return;
                     }
                 }
             }
@@ -1142,7 +1153,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
     // Snap to pixel boundary
     //
 
-    nSubpixelYBottomTrapezoids = nSubpixelYBottomTrapezoids & (~c_nShiftMask);
+    nSubpixelYBottomTrapezoids = nSubpixelYBottomTrapezoids & (!c_nShiftMask);
 
     //
     // Ensure that we are never less than nSubpixelYCurrent
@@ -1154,7 +1165,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
     // Return trapezoid end scan
     //
 
-Cleanup:
+//Cleanup:
     return nSubpixelYBottomTrapezoids;
 }
 
@@ -1313,7 +1324,7 @@ OutputTrapezoids(&mut self,
         // Check for termination
         //
 
-        if (pEdgeRight.Next.EndY == INT_MIN)
+        if (pEdgeRight.Next.EndY == INT::MIN)
         {
             break;
         }
@@ -1387,7 +1398,7 @@ RasterizeEdges(&mut self,
             // can't even go one scanline, then nSubpixelYNext == nSubpixelYCurrent
             //
 
-            nSubpixelYNext = ComputeTrapezoidsEndScan(pEdgeCurrent, nSubpixelYCurrent, nSubpixelYNextInactive);
+            nSubpixelYNext = self.ComputeTrapezoidsEndScan(pEdgeCurrent, nSubpixelYCurrent, nSubpixelYNextInactive);
             assert!(nSubpixelYNext >= nSubpixelYCurrent);
 
             //
@@ -1398,7 +1409,7 @@ RasterizeEdges(&mut self,
 
             if (nSubpixelYNext >= nSubpixelYCurrent + c_nShiftSize)
             {
-                IFC!(OutputTrapezoids(
+                IFC!(self.OutputTrapezoids(
                     pEdgeCurrent,
                     nSubpixelYCurrent,
                     nSubpixelYNext
@@ -1455,20 +1466,20 @@ RasterizeEdges(&mut self,
             else
             {
                 nSubpixelYNext = nSubpixelYCurrent + 1;
-                if (m_fillMode == MilFillMode::Alternate)
+                if (self.m_fillMode == MilFillMode::Alternate)
                 {
-                    IFC!(m_coverageBuffer.FillEdgesAlternating(pEdgeActiveList, nSubpixelYCurrent));
+                    IFC!(self.m_coverageBuffer.FillEdgesAlternating(pEdgeActiveList, nSubpixelYCurrent));
                 }
                 else
                 {
-                    IFC!(m_coverageBuffer.FillEdgesWinding(pEdgeActiveList, nSubpixelYCurrent));
+                    IFC!(self.m_coverageBuffer.FillEdgesWinding(pEdgeActiveList, nSubpixelYCurrent));
                 }
             }
 
             // If the next scan is done, output what's there:
             if (nSubpixelYNext > (nSubpixelYCurrent | c_nShiftMask))
             {
-                IFC!(GenerateOutputAndClearCoverage(nSubpixelYCurrent));
+                IFC!(self.GenerateOutputAndClearCoverage(nSubpixelYCurrent));
             }
 
             // Advance nSubpixelYCurrent
@@ -1499,7 +1510,7 @@ RasterizeEdges(&mut self,
 
     if ((nSubpixelYCurrent & c_nShiftMask) != 0)
     {
-        IFC!(GenerateOutputAndClearCoverage(nSubpixelYCurrent));
+        IFC!(self.GenerateOutputAndClearCoverage(nSubpixelYCurrent));
     }
 
     RRETURN!(hr);

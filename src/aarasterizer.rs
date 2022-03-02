@@ -9,7 +9,7 @@ use crate::aacoverage::c_nShift;
 use crate::helpers::Int32x32To64;
 use crate::matrix::CMILMatrix;
 use crate::real::CFloatFPU;
-use crate::{types::*, IFC, IFCOOM, TraceTag, __analysis_assume};
+use crate::{types::*, IFC, IFCOOM, TraceTag, __analysis_assume, ASSERTACTIVELISTORDER};
 use crate::types::PathPointType::*;
 use crate::bezier::CMILBezier;
 use cfor::cfor;
@@ -17,10 +17,12 @@ use cfor::cfor;
 const S_OK: HRESULT = 0;
 
 #[cfg(debug)]
+#[macro_export]
 macro_rules! EDGE_STORE_STACK_NUMBER { () => { 10 } }
 #[cfg(debug)]
 macro_rules! EDGE_STORE_ALLOCATION_NUMBER { () => { 11 } }
 #[cfg(debug)]
+#[macro_export]
 macro_rules! INACTIVE_LIST_NUMBER { () => { 12 } }
 #[cfg(debug)]
 macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 15 } }
@@ -30,10 +32,12 @@ macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 15 } }
 macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 4 } }
 
 #[cfg(not(debug))]
-macro_rules! EDGE_STORE_STACK_NUMBER { () => { 1600 / std::mem::size_of::<CEdge>() } }
+#[macro_export]
+macro_rules! EDGE_STORE_STACK_NUMBER { () => { (1600 / std::mem::size_of::<CEdge>()) as _ } }
 #[cfg(not(debug))]
-macro_rules! EDGE_STORE_ALLOCATION_NUMBER { () => { 4032 / std::mem::size_of::<CEdge>() } }
+macro_rules! EDGE_STORE_ALLOCATION_NUMBER { () => { (4032 / std::mem::size_of::<CEdge>()) as _ } }
 #[cfg(not(debug))]
+#[macro_export]
 macro_rules! INACTIVE_LIST_NUMBER { () => { EDGE_STORE_STACK_NUMBER!() } }
 #[cfg(not(debug))]
 macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 32 } }
@@ -48,16 +52,22 @@ macro_rules! ASSERTACTIVELIST {
 }
 pub struct CEdge
 {
-    Next: *mut CEdge,           // Next active edge (don't check for NULL,
+    pub Next: *mut CEdge,           // Next active edge (don't check for NULL,
                                 //   look for tail sentinel instead)
-    X: INT,                      // Current X location
-    Dx: INT,                     // X increment
-    Error: INT,                  // Current DDA error
-    ErrorUp: INT,                // Error increment
-    ErrorDown: INT,              // Error decrement when the error rolls over
-    StartY: INT,                 // Y-row start
-    EndY: INT,                   // Y-row end
-    WindingDirection: INT,       // -1 or 1
+    pub X: INT,                      // Current X location
+    pub Dx: INT,                     // X increment
+    pub Error: INT,                  // Current DDA error
+    pub ErrorUp: INT,                // Error increment
+    pub ErrorDown: INT,              // Error decrement when the error rolls over
+    pub StartY: INT,                 // Y-row start
+    pub EndY: INT,                   // Y-row end
+    pub WindingDirection: INT,       // -1 or 1
+}
+
+impl std::default::Default for CEdge {
+    fn default() -> Self {
+        Self { Next: NULL(), X: Default::default(), Dx: Default::default(), Error: Default::default(), ErrorUp: Default::default(), ErrorDown: Default::default(), StartY: Default::default(), EndY: Default::default(), WindingDirection: Default::default() }
+    }
 }
 
 // We the inactive-array separate from the edge allocations so that
@@ -67,6 +77,90 @@ pub struct CInactiveEdge
 {
     Edge: *mut CEdge,            // Associated edge
     Yx: LONGLONG,                // Sorting key, StartY and X packed into an lword
+}
+
+impl Default for CInactiveEdge {
+    fn default() -> Self {
+        Self { Edge: NULL(), Yx: Default::default() }
+    }
+}
+
+/**************************************************************************\
+*
+* Function Description:
+*
+* Advance DDA and update active edge list
+*
+* Created:
+*
+*   06/20/2003 ashrafm
+*
+\**************************************************************************/
+pub fn
+AdvanceDDAAndUpdateActiveEdgeList(
+    nSubpixelYCurrent: INT,
+    pEdgeActiveList: *mut CEdge
+    )
+{
+    unsafe {
+    let nOutOfOrderCount: INT = 0;
+    let pEdgePrevious: *mut CEdge = pEdgeActiveList;
+    let pEdgeCurrent: *mut CEdge = (*pEdgeActiveList).Next;
+
+    // Advance DDA and update edge list
+
+    loop
+    {
+        if ((*pEdgeCurrent).EndY <= nSubpixelYCurrent)
+        {
+            // If we've hit the sentinel, our work here is done:
+
+            if ((*pEdgeCurrent).EndY == INT::MIN) {
+                break;              // ============>
+            }
+            // This edge is stale, remove it from the list:
+
+            pEdgeCurrent = (*pEdgeCurrent).Next;
+            (*pEdgePrevious).Next = pEdgeCurrent;
+            continue;               // ============>
+        }
+
+        // Advance the DDA:
+
+        (*pEdgeCurrent).X += (*pEdgeCurrent).Dx;
+        (*pEdgeCurrent).Error += (*pEdgeCurrent).ErrorUp;
+        if ((*pEdgeCurrent).Error >= 0)
+        {
+            (*pEdgeCurrent).Error -= (*pEdgeCurrent).ErrorDown;
+            (*pEdgeCurrent).X+=1;
+        }
+
+        // Is this entry out-of-order with respect to the previous one?
+
+        nOutOfOrderCount += (((*pEdgePrevious).X > (*pEdgeCurrent).X)) as i32;
+
+        // Advance:
+
+        pEdgePrevious = pEdgeCurrent;
+        pEdgeCurrent = (*pEdgeCurrent).Next;
+    }
+
+    // It turns out that having any out-of-order edges at this point
+    // is extremely rare in practice, so only call the bubble-sort
+    // if it's truly needed.
+    //
+    // NOTE: If you're looking at this code trying to fix a bug where
+    //       the edges are out of order when the filler is called, do
+    //       NOT simply change the code to always do the bubble-sort!
+    //       Instead, figure out what caused our 'outOfOrder' logic
+    //       above to get messed up.
+
+    if (nOutOfOrderCount != 0)
+    {
+        SortActiveEdges(pEdgeActiveList);
+    }
+    ASSERTACTIVELISTORDER!(pEdgeActiveList);
+    }
 }
 
 //+----------------------------------------------------------------------------
@@ -108,8 +202,8 @@ macro_rules! QUOTIENT_REMAINDER {
 
 macro_rules! QUOTIENT_REMAINDER_64_32 {
     ($ulNumerator: ident, $ulDenominator: ident, $ulQuotient: ident, $ulRemainder: ident) => {
-        $ulQuotient  = (($ulNumerator as ULONGLONG) / ($ulDenominator as ULONG)) as ULONGLONG;
-        $ulRemainder = (($ulNumerator as ULONGLONG) % ($ulDenominator as ULONG)) as ULONGLONG;
+        $ulQuotient  = (($ulNumerator as ULONGLONG) / (($ulDenominator as ULONG) as ULONGLONG));
+        $ulRemainder = (($ulNumerator as ULONGLONG) % (($ulDenominator as ULONG) as ULONGLONG));
     }
 }
 
@@ -139,16 +233,21 @@ pub struct CEdgeStore
 }
 
 impl CEdgeStore {
-    fn new()  -> CEdgeStore
+    pub fn new()  -> CEdgeStore
     {
-        Self {TotalCount: 0,
-        CurrentBuffer: &EdgeHead,
-        CurrentEdge: &EdgeHead.EdgeArray[0],
+        let result = Self {TotalCount: 0,
+        CurrentBuffer: NULL(),
+        CurrentEdge: NULL(),
+        Enumerator: NULL(),
         CurrentRemaining: EDGE_STORE_STACK_NUMBER!(),
 
         EdgeHead: CEdgeAllocation { Count: EDGE_STORE_STACK_NUMBER!(),
-        Next },
-        }
+            EdgeArray: [CEdge::default(); EDGE_STORE_STACK_NUMBER!()],
+        Next: NULL() },
+        };
+        result.CurrentBuffer = &result.EdgeHead;
+        result.CurrentEdge = &result.EdgeHead.EdgeArray[0];
+        result
     }
 }
 
@@ -161,26 +260,26 @@ impl Drop for CEdgeStore {
         let mut allocation: *mut CEdgeAllocation = self.EdgeHead.Next;
         while (allocation != NULL())
         {
-            let next = allocation.Next;
-            GpFree(allocation);
+            let next = (*allocation).Next;
+            drop(unsafe { Box::from_raw(allocation) });
             allocation = next;
         }
     }
 }
 
 impl CEdgeStore {
-    fn StartEnumeration(&mut self) /*__range(<=, UINT_MAX - 2) */ -> UINT 
+    pub fn StartEnumeration(&mut self) /*__range(<=, UINT_MAX - 2) */ -> UINT 
     {
         self.Enumerator = &self.EdgeHead;
 
         // Update the count and make sure nothing more gets added (in
         // part because this Count would have to be re-computed):
 
-        self.CurrentBuffer.Count -= self.CurrentRemaining;
+        (*self.CurrentBuffer).Count -= self.CurrentRemaining;
 
         // This will never overflow because NextAddBuffer always ensures that TotalCount has
         // space remaining to describe the capacity of all new buffers added to the edge list.
-        self.TotalCount += self.CurrentBuffer.Count;
+        self.TotalCount += (*self.CurrentBuffer).Count;
 
         // Prevent this from being called again, because bad things would
         // happen:
@@ -202,7 +301,7 @@ impl CEdgeStore {
         *ppStartEdge = &enumerator.EdgeArray[0];
         *ppEndEdge   = *ppStartEdge + enumerator.Count;
 
-        return((self.Enumerator = enumerator.Next) != NULL());
+        return((self.Enumerator = (*enumerator).Next) != NULL());
     }
 
     fn StartAddBuffer(&self,
@@ -246,7 +345,7 @@ impl CEdgeStore {
     fn NextAddBuffer(&self,
     /*__deref_out_ecount(*puRemaining)*/ ppCurrentEdge: &mut &[CEdge],
     puRemaining: &mut UINT
-    )
+    ) -> HRESULT
 {
     let hr = S_OK;
 
@@ -257,7 +356,7 @@ impl CEdgeStore {
     assert!(*puRemaining == 0);
 
     // Check to make sure that "TotalCount" will be able to represent the current capacity
-    cNewTotalCount = self.TotalCount + self.CurrentBuffer.Count;
+    cNewTotalCount = self.TotalCount + (*self.CurrentBuffer).Count;
 
     if (cNewTotalCount < self.TotalCount)
     {
@@ -275,7 +374,7 @@ impl CEdgeStore {
     // We have to grow our data structure by adding a new buffer
     // and adding it to the list:
 
-    let newBuffer: CEdgeAllocation = panic!();/*static_cast<CEdgeAllocation*>
+    let newBuffer: *mut CEdgeAllocation = panic!();/*static_cast<CEdgeAllocation*>
         (GpMalloc(Mt(MAARasterizerEdge),
                   sizeof(CEdgeAllocation) +
                   sizeof(CEdge) * (EDGE_STORE_ALLOCATION_NUMBER
@@ -287,7 +386,7 @@ impl CEdgeStore {
 
     self.TotalCount = cNewTotalCount;
 
-    self.CurrentBuffer.Next = newBuffer;
+    (*self.CurrentBuffer).Next = newBuffer;
     self.CurrentBuffer = newBuffer;
 
     *ppCurrentEdge = self.CurrentEdge = &newBuffer.EdgeArray[0];
@@ -370,7 +469,12 @@ AssertActiveList(
 *   03/25/2000 andrewgo
 *
 \**************************************************************************/
-
+#[macro_export]
+macro_rules! ASSERTACTIVELISTORDER {
+    ($list: expr) => {
+        AssertActiveListOrder($list)
+    }
+}
 fn
 AssertActiveListOrder(
     list: *const CEdge
@@ -417,22 +521,22 @@ AssertActiveListOrder(
 \**************************************************************************/
 fn
 ClipEdge(
-    edgeBuffer: *const CEdge,
+    edgeBuffer: &mut CEdge,
     yClipTopInteger: INT,
     dMOriginal: INT
     )
 {
-    let xDelta;
-    let error;
+    let xDelta: INT;
+    let error: INT;
 
     // Cases where bigNumerator will exceed 32-bits in precision
     // will be rare, but could happen, and we can't fall over
     // in those cases.
 
-    let dN = edgeBuffer.ErrorDown;
-    let bigNumerator = Int32x32To64(dMOriginal,
+    let dN: INT = edgeBuffer.ErrorDown;
+    let bigNumerator: LONGLONG = Int32x32To64(dMOriginal,
                                          yClipTopInteger - edgeBuffer.StartY)
-                          + (edgeBuffer.Error + dN);
+                          + (edgeBuffer.Error + dN) as LONGLONG;
     if (bigNumerator >= 0)
     {
         QUOTIENT_REMAINDER_64_32!(bigNumerator, dN, xDelta, error);
@@ -562,13 +666,13 @@ pub fn AppendScaleToMatrix(
 *
 \**************************************************************************/
 
-struct CInitializeEdgesContext<'a>
+pub struct CInitializeEdgesContext<'a>
 {
-    MaxY: INT,                      // Maximum 'y' found, should be INT_MIN on
+    pub MaxY: INT,                      // Maximum 'y' found, should be INT_MIN on
                                    //   first call to 'InitializeEdges'
-    ClipRect: &'a mut RECT,                // Bounding clip rectangle in 28.4 format
-    Store: &'a mut CEdgeStore,             // Where to stick the edges
-    AntiAliasMode: MilAntiAliasMode,
+    pub ClipRect: &'a RECT,                // Bounding clip rectangle in 28.4 format
+    pub Store: &'a mut CEdgeStore,             // Where to stick the edges
+    pub AntiAliasMode: MilAntiAliasMode,
 }
 
 fn
@@ -1663,16 +1767,16 @@ InsertNewEdges(
     iCurrentY: INT,
     /*__deref_inout_xcount(array terminated by an edge with StartY != iCurrentY)*/
     ppInactiveEdge: &&[CInactiveEdge],
-   pYNextInactive: &mut INT
+    pYNextInactive: &mut INT
         // will be INT_MAX when no more
     )
 {
-    CInactiveEdge *inactive = *ppInactiveEdge;
+    let inactive: *mut CInactiveEdge = *ppInactiveEdge;
 
-    assert!(inactive->Edge->StartY == iCurrentY);
+    assert!(inactive.Edge.StartY == iCurrentY);
 
     while {
-        CEdge *newActive = inactive.Edge;
+        let newActive: *mut CEdge = inactive.Edge;
 
         // The activeList edge list sentinel has X = INT_MAX, so this always
         // terminates:
@@ -1725,14 +1829,14 @@ SortActiveEdges(
     )
 {
     let mut swapOccurred: bool;
-    CEdge *tmp;
+    let tmp: *mut CEdge;
 
     // We should never be called with an empty active edge list:
 
     assert!(list.Next.X != INT::MAX);
 
     while {
-        swapOccurred = FALSE;
+        swapOccurred = false;
 
         let previous = list;
         let current = list.Next;

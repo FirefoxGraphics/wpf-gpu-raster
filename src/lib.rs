@@ -10,6 +10,7 @@ mod types;
 mod geometry_sink;
 mod matrix;
 mod real;
+mod fix;
 
 use std::ffi::c_void;
 #[repr(C)]

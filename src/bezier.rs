@@ -47,9 +47,8 @@ const HFD32_ADDITIONAL_SHIFT: i32 = 3;
 
 #else
 */
-type LONG = i32;
-type INT = i32;
-type LONGLONG = i64;
+use crate::types::*;
+
 // Flatten to an error of 1/4.  During initial phase, use 18.14 format.
 
 const TEST_MAGNITUDE_INITIAL: i32 =   (6 * 0x00001000);
@@ -147,16 +146,6 @@ const HFD32_MAX_SIZE: LONGLONG = 0xffffc000;
 // 
 // In vDoubleStepSize we know that abs(e2), abs(e3) < HFD32_TEST_MAGNITUDE/4, otherwise we
 // would not have doubled the step.
-#[derive(Default, Clone)]
-
-
-#[derive(Clone, Default)]
-struct RECT {
-    left: LONG,
-    top: LONG,
-    right: LONG,
-    bottom: LONG
-}
 
 struct BEZIERCONTROLS {
     ptfx: [POINT; 4],
