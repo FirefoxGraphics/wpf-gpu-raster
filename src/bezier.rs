@@ -828,7 +828,7 @@ pub (crate) enum CMILBezier
 
 impl CMILBezier {
     // All coordinates must be in 28.4 format:
-    fn new(aptfxBez: &[POINT; 4], prcfxClip: Option<&RECT>) -> Self {
+    pub fn new(aptfxBez: &[POINT; 4], prcfxClip: Option<&RECT>) -> Self {
         let mut bez32 = Bezier32::default();
         let bBez32 = bez32.bInit(aptfxBez, prcfxClip);
         if bBez32 {
@@ -845,7 +845,7 @@ impl CMILBezier {
     // The last point returned may not be exactly the last control
     //            point. The workaround is for calling code to add an extra
     //            point if this is the case.
-    fn Flatten(    &mut self,
+    pub fn Flatten(    &mut self,
         pptfx: &mut [POINT],
         pbMore: &mut bool) -> INT {
             match self {

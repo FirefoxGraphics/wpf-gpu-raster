@@ -72,7 +72,7 @@ impl std::default::Default for CEdge {
 
 // We the inactive-array separate from the edge allocations so that
 // we can more easily do in-place sorts on it:
-
+#[derive(Clone)]
 pub struct CInactiveEdge
 {
     Edge: *mut CEdge,            // Associated edge
@@ -202,8 +202,8 @@ macro_rules! QUOTIENT_REMAINDER {
 
 macro_rules! QUOTIENT_REMAINDER_64_32 {
     ($ulNumerator: ident, $ulDenominator: ident, $ulQuotient: ident, $ulRemainder: ident) => {
-        $ulQuotient  = (($ulNumerator as ULONGLONG) / (($ulDenominator as ULONG) as ULONGLONG));
-        $ulRemainder = (($ulNumerator as ULONGLONG) % (($ulDenominator as ULONG) as ULONGLONG));
+        $ulQuotient  = (($ulNumerator as ULONGLONG) / (($ulDenominator as ULONG) as ULONGLONG)) as _;
+        $ulRemainder = (($ulNumerator as ULONGLONG) % (($ulDenominator as ULONG) as ULONGLONG)) as _;
     }
 }
 
@@ -245,8 +245,8 @@ impl CEdgeStore {
             EdgeArray: [CEdge::default(); EDGE_STORE_STACK_NUMBER!()],
         Next: NULL() },
         };
-        result.CurrentBuffer = &result.EdgeHead;
-        result.CurrentEdge = &result.EdgeHead.EdgeArray[0];
+        result.CurrentBuffer = &mut result.EdgeHead;
+        result.CurrentEdge = &mut result.EdgeHead.EdgeArray[0];
         result
     }
 }
@@ -260,7 +260,7 @@ impl Drop for CEdgeStore {
         let mut allocation: *mut CEdgeAllocation = self.EdgeHead.Next;
         while (allocation != NULL())
         {
-            let next = (*allocation).Next;
+            let next = unsafe { (*allocation).Next };
             drop(unsafe { Box::from_raw(allocation) });
             allocation = next;
         }
@@ -270,7 +270,8 @@ impl Drop for CEdgeStore {
 impl CEdgeStore {
     pub fn StartEnumeration(&mut self) /*__range(<=, UINT_MAX - 2) */ -> UINT 
     {
-        self.Enumerator = &self.EdgeHead;
+        unsafe {
+        self.Enumerator = &mut self.EdgeHead;
 
         // Update the count and make sure nothing more gets added (in
         // part because this Count would have to be re-computed):
@@ -287,6 +288,7 @@ impl CEdgeStore {
         self.CurrentBuffer = NULL();
 
         return self.TotalCount;
+        }
     }
 
     fn Enumerate(&self,
@@ -294,14 +296,16 @@ impl CEdgeStore {
         /* __deref_out_ecount(0) */ ppEndEdge: &mut *mut CEdge,
         ) -> bool
     {
+        unsafe {
         let enumerator: *mut CEdgeAllocation = self.Enumerator;
 
         // Might return startEdge == endEdge:
 
-        *ppStartEdge = &enumerator.EdgeArray[0];
-        *ppEndEdge   = *ppStartEdge + enumerator.Count;
+        *ppStartEdge = &(*enumerator).EdgeArray[0];
+        *ppEndEdge   = *ppStartEdge + (*enumerator).Count;
 
         return((self.Enumerator = (*enumerator).Next) != NULL());
+        }
     }
 
     fn StartAddBuffer(&self,
@@ -670,7 +674,7 @@ pub struct CInitializeEdgesContext<'a>
 {
     pub MaxY: INT,                      // Maximum 'y' found, should be INT_MIN on
                                    //   first call to 'InitializeEdges'
-    pub ClipRect: &'a RECT,                // Bounding clip rectangle in 28.4 format
+    pub ClipRect: Option<&'a RECT>,                // Bounding clip rectangle in 28.4 format
     pub Store: &'a mut CEdgeStore,             // Where to stick the edges
     pub AntiAliasMode: MilAntiAliasMode,
 }
@@ -716,7 +720,7 @@ InitializeEdges(
     let edgeCount = vertexCount - 1;
     assert!(edgeCount >= 1);
 
-    if (clipRect != NULL)
+    if (clipRect != NULL())
     {
         yClipTopInteger = clipRect.top >> 4;
         yClipTop = clipRect.top;
@@ -1207,7 +1211,7 @@ FixedPointPathEnumerate(
     rgTypes: &[BYTE],
     cPoints: UINT,
     matrix: &CMILMatrix,
-    clipRect: &RECT,       // In scaled 28.4 format
+    clipRect: Option<&RECT>,       // In scaled 28.4 format
     enumerateContext: &mut CInitializeEdgesContext
     ) -> HRESULT
 {
