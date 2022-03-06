@@ -4,84 +4,134 @@
 
 #![allow(unused_parens)]
 
-
 use crate::aacoverage::c_nShift;
+use crate::bezier::CMILBezier;
 use crate::helpers::Int32x32To64;
 use crate::matrix::CMILMatrix;
 use crate::real::CFloatFPU;
-use crate::{types::*, IFC, IFCOOM, TraceTag, __analysis_assume, ASSERTACTIVELISTORDER};
 use crate::types::PathPointType::*;
-use crate::bezier::CMILBezier;
+use crate::{types::*, TraceTag, __analysis_assume, ASSERTACTIVELISTORDER, IFC, IFCOOM};
 use cfor::cfor;
 
 const S_OK: HRESULT = 0;
 
 #[cfg(debug)]
 #[macro_export]
-macro_rules! EDGE_STORE_STACK_NUMBER { () => { 10 } }
+macro_rules! EDGE_STORE_STACK_NUMBER {
+    () => {
+        10
+    };
+}
 #[cfg(debug)]
-macro_rules! EDGE_STORE_ALLOCATION_NUMBER { () => { 11 } }
+macro_rules! EDGE_STORE_ALLOCATION_NUMBER {
+    () => {
+        11
+    };
+}
 #[cfg(debug)]
 #[macro_export]
-macro_rules! INACTIVE_LIST_NUMBER { () => { 12 } }
+macro_rules! INACTIVE_LIST_NUMBER {
+    () => {
+        12
+    };
+}
 #[cfg(debug)]
-macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 15 } }
+macro_rules! ENUMERATE_BUFFER_NUMBER {
+    () => {
+        15
+    };
+}
 
 // Must be at least 4
 #[cfg(debug)]
-macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 4 } }
+macro_rules! ENUMERATE_BUFFER_NUMBER {
+    () => {
+        4
+    };
+}
 
 #[cfg(not(debug))]
 #[macro_export]
-macro_rules! EDGE_STORE_STACK_NUMBER { () => { (1600 / std::mem::size_of::<CEdge>()) as _ } }
+macro_rules! EDGE_STORE_STACK_NUMBER {
+    () => {
+        (1600 / std::mem::size_of::<CEdge>()) as _
+    };
+}
 #[cfg(not(debug))]
-macro_rules! EDGE_STORE_ALLOCATION_NUMBER { () => { (4032 / std::mem::size_of::<CEdge>()) as _ } }
+macro_rules! EDGE_STORE_ALLOCATION_NUMBER {
+    () => {
+        (4032 / std::mem::size_of::<CEdge>()) as _
+    };
+}
 #[cfg(not(debug))]
 #[macro_export]
-macro_rules! INACTIVE_LIST_NUMBER { () => { EDGE_STORE_STACK_NUMBER!() } }
+macro_rules! INACTIVE_LIST_NUMBER {
+    () => {
+        EDGE_STORE_STACK_NUMBER!()
+    };
+}
 #[cfg(not(debug))]
-macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 32 } }
+macro_rules! ENUMERATE_BUFFER_NUMBER {
+    () => {
+        32
+    };
+}
 #[cfg(not(debug))]
-macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 32 } }
+macro_rules! ENUMERATE_BUFFER_NUMBER {
+    () => {
+        32
+    };
+}
 
 #[macro_export]
 macro_rules! ASSERTACTIVELIST {
     ($list: expr, $y: expr) => {
         AssertActiveList($list, $y);
-    }
+    };
 }
-pub struct CEdge
-{
-    pub Next: *mut CEdge,           // Next active edge (don't check for NULL,
-                                //   look for tail sentinel instead)
-    pub X: INT,                      // Current X location
-    pub Dx: INT,                     // X increment
-    pub Error: INT,                  // Current DDA error
-    pub ErrorUp: INT,                // Error increment
-    pub ErrorDown: INT,              // Error decrement when the error rolls over
-    pub StartY: INT,                 // Y-row start
-    pub EndY: INT,                   // Y-row end
-    pub WindingDirection: INT,       // -1 or 1
+pub struct CEdge {
+    pub Next: *mut CEdge, // Next active edge (don't check for NULL,
+    //   look for tail sentinel instead)
+    pub X: INT,                // Current X location
+    pub Dx: INT,               // X increment
+    pub Error: INT,            // Current DDA error
+    pub ErrorUp: INT,          // Error increment
+    pub ErrorDown: INT,        // Error decrement when the error rolls over
+    pub StartY: INT,           // Y-row start
+    pub EndY: INT,             // Y-row end
+    pub WindingDirection: INT, // -1 or 1
 }
 
 impl std::default::Default for CEdge {
     fn default() -> Self {
-        Self { Next: NULL(), X: Default::default(), Dx: Default::default(), Error: Default::default(), ErrorUp: Default::default(), ErrorDown: Default::default(), StartY: Default::default(), EndY: Default::default(), WindingDirection: Default::default() }
+        Self {
+            Next: NULL(),
+            X: Default::default(),
+            Dx: Default::default(),
+            Error: Default::default(),
+            ErrorUp: Default::default(),
+            ErrorDown: Default::default(),
+            StartY: Default::default(),
+            EndY: Default::default(),
+            WindingDirection: Default::default(),
+        }
     }
 }
 
 // We the inactive-array separate from the edge allocations so that
 // we can more easily do in-place sorts on it:
 #[derive(Clone)]
-pub struct CInactiveEdge
-{
-    Edge: *mut CEdge,            // Associated edge
-    Yx: LONGLONG,                // Sorting key, StartY and X packed into an lword
+pub struct CInactiveEdge {
+    Edge: *mut CEdge, // Associated edge
+    Yx: LONGLONG,     // Sorting key, StartY and X packed into an lword
 }
 
 impl Default for CInactiveEdge {
     fn default() -> Self {
-        Self { Edge: NULL(), Yx: Default::default() }
+        Self {
+            Edge: NULL(),
+            Yx: Default::default(),
+        }
     }
 }
 
@@ -96,70 +146,61 @@ impl Default for CInactiveEdge {
 *   06/20/2003 ashrafm
 *
 \**************************************************************************/
-pub fn
-AdvanceDDAAndUpdateActiveEdgeList(
-    nSubpixelYCurrent: INT,
-    pEdgeActiveList: *mut CEdge
-    )
-{
+pub fn AdvanceDDAAndUpdateActiveEdgeList(nSubpixelYCurrent: INT, pEdgeActiveList: *mut CEdge) {
     unsafe {
-    let nOutOfOrderCount: INT = 0;
-    let pEdgePrevious: *mut CEdge = pEdgeActiveList;
-    let pEdgeCurrent: *mut CEdge = (*pEdgeActiveList).Next;
+        let nOutOfOrderCount: INT = 0;
+        let pEdgePrevious: *mut CEdge = pEdgeActiveList;
+        let pEdgeCurrent: *mut CEdge = (*pEdgeActiveList).Next;
 
-    // Advance DDA and update edge list
+        // Advance DDA and update edge list
 
-    loop
-    {
-        if ((*pEdgeCurrent).EndY <= nSubpixelYCurrent)
-        {
-            // If we've hit the sentinel, our work here is done:
+        loop {
+            if ((*pEdgeCurrent).EndY <= nSubpixelYCurrent) {
+                // If we've hit the sentinel, our work here is done:
 
-            if ((*pEdgeCurrent).EndY == INT::MIN) {
-                break;              // ============>
+                if ((*pEdgeCurrent).EndY == INT::MIN) {
+                    break; // ============>
+                }
+                // This edge is stale, remove it from the list:
+
+                pEdgeCurrent = (*pEdgeCurrent).Next;
+                (*pEdgePrevious).Next = pEdgeCurrent;
+                continue; // ============>
             }
-            // This edge is stale, remove it from the list:
 
+            // Advance the DDA:
+
+            (*pEdgeCurrent).X += (*pEdgeCurrent).Dx;
+            (*pEdgeCurrent).Error += (*pEdgeCurrent).ErrorUp;
+            if ((*pEdgeCurrent).Error >= 0) {
+                (*pEdgeCurrent).Error -= (*pEdgeCurrent).ErrorDown;
+                (*pEdgeCurrent).X += 1;
+            }
+
+            // Is this entry out-of-order with respect to the previous one?
+
+            nOutOfOrderCount += ((*pEdgePrevious).X > (*pEdgeCurrent).X) as i32;
+
+            // Advance:
+
+            pEdgePrevious = pEdgeCurrent;
             pEdgeCurrent = (*pEdgeCurrent).Next;
-            (*pEdgePrevious).Next = pEdgeCurrent;
-            continue;               // ============>
         }
 
-        // Advance the DDA:
+        // It turns out that having any out-of-order edges at this point
+        // is extremely rare in practice, so only call the bubble-sort
+        // if it's truly needed.
+        //
+        // NOTE: If you're looking at this code trying to fix a bug where
+        //       the edges are out of order when the filler is called, do
+        //       NOT simply change the code to always do the bubble-sort!
+        //       Instead, figure out what caused our 'outOfOrder' logic
+        //       above to get messed up.
 
-        (*pEdgeCurrent).X += (*pEdgeCurrent).Dx;
-        (*pEdgeCurrent).Error += (*pEdgeCurrent).ErrorUp;
-        if ((*pEdgeCurrent).Error >= 0)
-        {
-            (*pEdgeCurrent).Error -= (*pEdgeCurrent).ErrorDown;
-            (*pEdgeCurrent).X+=1;
+        if (nOutOfOrderCount != 0) {
+            SortActiveEdges(pEdgeActiveList);
         }
-
-        // Is this entry out-of-order with respect to the previous one?
-
-        nOutOfOrderCount += (((*pEdgePrevious).X > (*pEdgeCurrent).X)) as i32;
-
-        // Advance:
-
-        pEdgePrevious = pEdgeCurrent;
-        pEdgeCurrent = (*pEdgeCurrent).Next;
-    }
-
-    // It turns out that having any out-of-order edges at this point
-    // is extremely rare in practice, so only call the bubble-sort
-    // if it's truly needed.
-    //
-    // NOTE: If you're looking at this code trying to fix a bug where
-    //       the edges are out of order when the filler is called, do
-    //       NOT simply change the code to always do the bubble-sort!
-    //       Instead, figure out what caused our 'outOfOrder' logic
-    //       above to get messed up.
-
-    if (nOutOfOrderCount != 0)
-    {
-        SortActiveEdges(pEdgeActiveList);
-    }
-    ASSERTACTIVELISTORDER!(pEdgeActiveList);
+        ASSERTACTIVELISTORDER!(pEdgeActiveList);
     }
 }
 
@@ -175,13 +216,11 @@ AdvanceDDAAndUpdateActiveEdgeList(
 //   pursue reduced code duplication
 //
 
-
 // This option may potentially increase performance for many
 // paths that have edges adjacent at their top point and cover
 // more than one span.  The code has been tested, but performance
 // has not been thoroughly investigated.
 const SORT_EDGES_INCLUDING_SLOPE: bool = false;
-
 
 /////////////////////////////////////////////////////////////////////////
 // The x86 C compiler insists on making a divide and modulus operation
@@ -195,55 +234,58 @@ const SORT_EDGES_INCLUDING_SLOPE: bool = false;
 
 macro_rules! QUOTIENT_REMAINDER {
     ($ulNumerator: ident, $ulDenominator: ident, $ulQuotient: ident, $ulRemainder: ident) => {
-        $ulQuotient  = ($ulNumerator as ULONG) / ($ulDenominator as ULONG);
+        $ulQuotient = ($ulNumerator as ULONG) / ($ulDenominator as ULONG);
         $ulRemainder = ($ulNumerator as ULONG) % ($ulDenominator as ULONG);
-    }
+    };
 }
 
 macro_rules! QUOTIENT_REMAINDER_64_32 {
     ($ulNumerator: ident, $ulDenominator: ident, $ulQuotient: ident, $ulRemainder: ident) => {
-        $ulQuotient  = (($ulNumerator as ULONGLONG) / (($ulDenominator as ULONG) as ULONGLONG)) as _;
-        $ulRemainder = (($ulNumerator as ULONGLONG) % (($ulDenominator as ULONG) as ULONGLONG)) as _;
-    }
+        $ulQuotient = (($ulNumerator as ULONGLONG) / (($ulDenominator as ULONG) as ULONGLONG)) as _;
+        $ulRemainder =
+            (($ulNumerator as ULONGLONG) % (($ulDenominator as ULONG) as ULONGLONG)) as _;
+    };
 }
 
 // SWAP macro:
 macro_rules! SWAP {
-    ($temp: ident, $a: expr, $b: expr) => { $temp = $a; $a = $b; $b = $temp; }
+    ($temp: ident, $a: expr, $b: expr) => {
+        $temp = $a;
+        $a = $b;
+        $b = $temp;
+    };
 }
 
-
-
-struct CEdgeAllocation
-{
-    Next: *mut CEdgeAllocation,    // Next allocation batch (may be NULL)
+struct CEdgeAllocation {
+    Next: *mut CEdgeAllocation, // Next allocation batch (may be NULL)
     /*__field_range(<=, EDGE_STORE_ALLOCATION_NUMBER)*/ Count: UINT,
     EdgeArray: [CEdge; EDGE_STORE_STACK_NUMBER!()],
 }
 
-
-pub struct CEdgeStore
-{
-    /* __field_range(<=, UINT_MAX - 2) */ TotalCount: UINT,                       // Total edge count in store
-    /* __field_range(<=, CurrentBuffer->Count) */ CurrentRemaining: UINT, // How much room remains in current buffer
-    CurrentBuffer: *mut CEdgeAllocation,  // Current buffer
-    CurrentEdge: *mut CEdge,              // Current edge in current buffer
-    Enumerator: *mut CEdgeAllocation,     // For enumerating all the edges
-    EdgeHead: CEdgeAllocation,            // Our built-in allocation
+pub struct CEdgeStore {
+    /* __field_range(<=, UINT_MAX - 2) */ TotalCount: UINT, // Total edge count in store
+    /* __field_range(<=, CurrentBuffer->Count) */
+    CurrentRemaining: UINT, // How much room remains in current buffer
+    CurrentBuffer: *mut CEdgeAllocation, // Current buffer
+    CurrentEdge: *mut CEdge, // Current edge in current buffer
+    Enumerator: *mut CEdgeAllocation, // For enumerating all the edges
+    EdgeHead: CEdgeAllocation, // Our built-in allocation
 }
 
 impl CEdgeStore {
-    pub fn new()  -> CEdgeStore
-    {
-        let result = Self {TotalCount: 0,
-        CurrentBuffer: NULL(),
-        CurrentEdge: NULL(),
-        Enumerator: NULL(),
-        CurrentRemaining: EDGE_STORE_STACK_NUMBER!(),
+    pub fn new() -> CEdgeStore {
+        let result = Self {
+            TotalCount: 0,
+            CurrentBuffer: NULL(),
+            CurrentEdge: NULL(),
+            Enumerator: NULL(),
+            CurrentRemaining: EDGE_STORE_STACK_NUMBER!(),
 
-        EdgeHead: CEdgeAllocation { Count: EDGE_STORE_STACK_NUMBER!(),
-            EdgeArray: [CEdge::default(); EDGE_STORE_STACK_NUMBER!()],
-        Next: NULL() },
+            EdgeHead: CEdgeAllocation {
+                Count: EDGE_STORE_STACK_NUMBER!(),
+                EdgeArray: [CEdge::default(); EDGE_STORE_STACK_NUMBER!()],
+                Next: NULL(),
+            },
         };
         result.CurrentBuffer = &mut result.EdgeHead;
         result.CurrentEdge = &mut result.EdgeHead.EdgeArray[0];
@@ -252,14 +294,12 @@ impl CEdgeStore {
 }
 
 impl Drop for CEdgeStore {
-    fn drop(&mut self)
-    {
+    fn drop(&mut self) {
         // Free our allocation list, skipping the head, which is not
         // dynamically allocated:
 
         let mut allocation: *mut CEdgeAllocation = self.EdgeHead.Next;
-        while (allocation != NULL())
-        {
+        while (allocation != NULL()) {
             let next = unsafe { (*allocation).Next };
             drop(unsafe { Box::from_raw(allocation) });
             allocation = next;
@@ -268,69 +308,67 @@ impl Drop for CEdgeStore {
 }
 
 impl CEdgeStore {
-    pub fn StartEnumeration(&mut self) /*__range(<=, UINT_MAX - 2) */ -> UINT 
-    {
+    pub fn StartEnumeration(&mut self) -> UINT {
         unsafe {
-        self.Enumerator = &mut self.EdgeHead;
+            self.Enumerator = &mut self.EdgeHead;
 
-        // Update the count and make sure nothing more gets added (in
-        // part because this Count would have to be re-computed):
+            // Update the count and make sure nothing more gets added (in
+            // part because this Count would have to be re-computed):
 
-        (*self.CurrentBuffer).Count -= self.CurrentRemaining;
+            (*self.CurrentBuffer).Count -= self.CurrentRemaining;
 
-        // This will never overflow because NextAddBuffer always ensures that TotalCount has
-        // space remaining to describe the capacity of all new buffers added to the edge list.
-        self.TotalCount += (*self.CurrentBuffer).Count;
+            // This will never overflow because NextAddBuffer always ensures that TotalCount has
+            // space remaining to describe the capacity of all new buffers added to the edge list.
+            self.TotalCount += (*self.CurrentBuffer).Count;
 
-        // Prevent this from being called again, because bad things would
-        // happen:
+            // Prevent this from being called again, because bad things would
+            // happen:
 
-        self.CurrentBuffer = NULL();
+            self.CurrentBuffer = NULL();
 
-        return self.TotalCount;
+            return self.TotalCount;
         }
     }
 
-    fn Enumerate(&self,
+    fn Enumerate(
+        &self,
         /*__deref_out_ecount(*ppEndEdge - *ppStartEdge)*/ ppStartEdge: &mut *mut CEdge,
         /* __deref_out_ecount(0) */ ppEndEdge: &mut *mut CEdge,
-        ) -> bool
-    {
+    ) -> bool {
         unsafe {
-        let enumerator: *mut CEdgeAllocation = self.Enumerator;
+            let enumerator: *mut CEdgeAllocation = self.Enumerator;
 
-        // Might return startEdge == endEdge:
+            // Might return startEdge == endEdge:
 
-        *ppStartEdge = &(*enumerator).EdgeArray[0];
-        *ppEndEdge   = *ppStartEdge + (*enumerator).Count;
+            *ppStartEdge = &mut (*enumerator).EdgeArray[0];
+            *ppEndEdge = (*ppStartEdge).offset((*enumerator).Count as isize);
 
-        return((self.Enumerator = (*enumerator).Next) != NULL());
+            self.Enumerator = (*enumerator).Next;
+            return (self.Enumerator != NULL());
         }
     }
 
-    fn StartAddBuffer(&self,
+    fn StartAddBuffer(
+        &self,
         /*__deref_out_ecount(*puRemaining)*/ ppCurrentEdge: &mut *const CEdge,
-        /* __deref_out_range(==, (this->CurrentRemaining)) */ puRemaining: &mut UINT
-        )
-    {
+        /* __deref_out_range(==, (this->CurrentRemaining)) */ puRemaining: &mut UINT,
+    ) {
         *ppCurrentEdge = self.CurrentEdge;
         *puRemaining = self.CurrentRemaining;
     }
 
-    fn EndAddBuffer(&mut self,
-        /*__in_ecount(remaining) */ pCurrentEdge: *const CEdge,
-        /* __range(0, (this->CurrentBuffer->Count)) */ remaining: UINT
-        )
-    {
+    fn EndAddBuffer(
+        &mut self,
+        /*__in_ecount(remaining) */ pCurrentEdge: *mut CEdge,
+        /* __range(0, (this->CurrentBuffer->Count)) */ remaining: UINT,
+    ) {
         self.CurrentEdge = pCurrentEdge;
         self.CurrentRemaining = remaining;
     }
 
-
     // Disable instrumentation checks within all methods of this class
     //SET_MILINSTRUMENTATION_FLAGS(MILINSTRUMENTATIONFLAGS_DONOTHING);
 }
-
 
 /**************************************************************************\
 *
@@ -346,60 +384,61 @@ impl CEdgeStore {
 \**************************************************************************/
 
 impl CEdgeStore {
-    fn NextAddBuffer(&self,
-    /*__deref_out_ecount(*puRemaining)*/ ppCurrentEdge: &mut &[CEdge],
-    puRemaining: &mut UINT
-    ) -> HRESULT
-{
-    let hr = S_OK;
+    fn NextAddBuffer(
+        &self,
+        /*__deref_out_ecount(*puRemaining)*/ ppCurrentEdge: &mut *const CEdge,
+        puRemaining: &mut UINT,
+    ) -> HRESULT {
+        unsafe {
+            let hr = S_OK;
 
-    let cNewTotalCount = 0;
+            let cNewTotalCount: u32 = 0;
 
-    // The caller has completely filled up this chunk:
+            // The caller has completely filled up this chunk:
 
-    assert!(*puRemaining == 0);
+            assert!(*puRemaining == 0);
 
-    // Check to make sure that "TotalCount" will be able to represent the current capacity
-    cNewTotalCount = self.TotalCount + (*self.CurrentBuffer).Count;
+            // Check to make sure that "TotalCount" will be able to represent the current capacity
+            cNewTotalCount = self.TotalCount + (*self.CurrentBuffer).Count;
 
-    if (cNewTotalCount < self.TotalCount)
-    {
-        return WINCODEC_ERR_VALUEOVERFLOW;
+            if (cNewTotalCount < self.TotalCount) {
+                return WINCODEC_ERR_VALUEOVERFLOW;
+            }
+
+            // And that it can represent the new capacity as well, with at least 2 to spare.
+            // This "magic" 2 comes from the fact that the usage pattern of this class has callers
+            // needing to allocate space for TotalCount + 2 edges.
+            if (cNewTotalCount + ((EDGE_STORE_ALLOCATION_NUMBER!() + 2) as UINT) < cNewTotalCount) {
+                return WINCODEC_ERR_VALUEOVERFLOW;
+            }
+
+            // We have to grow our data structure by adding a new buffer
+            // and adding it to the list:
+
+            let newBuffer: *mut CEdgeAllocation = panic!(); /*static_cast<CEdgeAllocation*>
+                                                            (GpMalloc(Mt(MAARasterizerEdge),
+                                                                      sizeof(CEdgeAllocation) +
+                                                                      sizeof(CEdge) * (EDGE_STORE_ALLOCATION_NUMBER
+                                                                                      - EDGE_STORE_STACK_NUMBER)));*/
+            IFCOOM!(newBuffer);
+
+            (*newBuffer).Next = NULL();
+            (*newBuffer).Count = EDGE_STORE_ALLOCATION_NUMBER!();
+
+            self.TotalCount = cNewTotalCount;
+
+            (*self.CurrentBuffer).Next = newBuffer;
+            self.CurrentBuffer = newBuffer;
+
+            self.CurrentEdge = &mut (*newBuffer).EdgeArray[0];
+            *ppCurrentEdge = self.CurrentEdge;
+            self.CurrentRemaining = EDGE_STORE_ALLOCATION_NUMBER!();
+            *puRemaining = EDGE_STORE_ALLOCATION_NUMBER!();
+
+            return hr;
+        }
     }
-
-    // And that it can represent the new capacity as well, with at least 2 to spare.
-    // This "magic" 2 comes from the fact that the usage pattern of this class has callers
-    // needing to allocate space for TotalCount + 2 edges.
-    if (cNewTotalCount + ((EDGE_STORE_ALLOCATION_NUMBER!() + 2) as UINT) < cNewTotalCount)
-    {
-        return WINCODEC_ERR_VALUEOVERFLOW;
-    }
-
-    // We have to grow our data structure by adding a new buffer
-    // and adding it to the list:
-
-    let newBuffer: *mut CEdgeAllocation = panic!();/*static_cast<CEdgeAllocation*>
-        (GpMalloc(Mt(MAARasterizerEdge),
-                  sizeof(CEdgeAllocation) +
-                  sizeof(CEdge) * (EDGE_STORE_ALLOCATION_NUMBER
-                                  - EDGE_STORE_STACK_NUMBER)));*/
-    IFCOOM!(newBuffer);
-
-    newBuffer.Next = NULL();
-    newBuffer.Count = EDGE_STORE_ALLOCATION_NUMBER!();
-
-    self.TotalCount = cNewTotalCount;
-
-    (*self.CurrentBuffer).Next = newBuffer;
-    self.CurrentBuffer = newBuffer;
-
-    *ppCurrentEdge = self.CurrentEdge = &newBuffer.EdgeArray[0];
-    *puRemaining = self.CurrentRemaining = EDGE_STORE_ALLOCATION_NUMBER!();
-
-    return hr
 }
-}
-
 
 /**************************************************************************\
 *
@@ -413,39 +452,34 @@ impl CEdgeStore {
 *
 \**************************************************************************/
 
-pub fn 
-AssertActiveList(
-    mut list: *const CEdge,
-    yCurrent: INT
-    ) -> bool
-{
+pub fn AssertActiveList(mut list: *const CEdge, yCurrent: INT) -> bool {
+    unsafe {
     let b = true;
     let activeCount = 0;
 
-    assert!(list.X == INT::MIN);
-    b &= (list.X == INT::MIN);
+    assert!((*list).X == INT::MIN);
+    b &= ((*list).X == INT::MIN);
 
     // Skip the head sentinel:
 
-    list = list.Next;
+    list = (*list).Next;
 
-    while (list.X != INT::MAX)
-    {
-        assert!(list.X != INT::MIN);
-        b &= (list.X != INT::MIN);
+    while ((*list).X != INT::MAX) {
+        assert!((*list).X != INT::MIN);
+        b &= ((*list).X != INT::MIN);
 
-        assert!(list.X <= list.Next.X);
-        b &= (list.X <= list.Next.X);
+        assert!((*list).X <= (*(*list).Next).X);
+        b &= ((*list).X <= (*(*list).Next).X);
 
-        assert!((list.StartY <= yCurrent) && (yCurrent < list.EndY));
-        b &= ((list.StartY <= yCurrent) && (yCurrent < list.EndY));
+        assert!(((*list).StartY <= yCurrent) && (yCurrent < (*list).EndY));
+        b &= (((*list).StartY <= yCurrent) && (yCurrent < (*list).EndY));
 
-        activeCount+=1;
-        list = list.Next;
+        activeCount += 1;
+        list = (*list).Next;
     }
 
-    assert!(list.X == INT::MAX);
-    b &= (list.X == INT::MAX);
+    assert!((*list).X == INT::MAX);
+    b &= ((*list).X == INT::MAX);
 
     // There should always be a multiple of 2 edges in the active list.
     //
@@ -459,7 +493,8 @@ AssertActiveList(
     assert!((activeCount & 1) == 0);
     b &= ((activeCount & 1) == 0);
 
-    return(b);
+    return (b);
+    }
 }
 
 /**************************************************************************\
@@ -477,33 +512,29 @@ AssertActiveList(
 macro_rules! ASSERTACTIVELISTORDER {
     ($list: expr) => {
         AssertActiveListOrder($list)
-    }
+    };
 }
-fn
-AssertActiveListOrder(
-    list: *const CEdge
-    )
-{
+fn AssertActiveListOrder(list: *const CEdge) {
+unsafe {
     let activeCount = 0;
 
-    assert!(list.X == INT::MIN);
+    assert!((*list).X == INT::MIN);
 
     // Skip the head sentinel:
 
-    list = list.Next;
+    list = (*list).Next;
 
-    while (list.X != INT::MAX)
-    {
-        assert!(list.X != INT::MIN);
-        assert!(list.X <= list.Next.X);
+    while ((*list).X != INT::MAX) {
+        assert!((*list).X != INT::MIN);
+        assert!((*list).X <= (*(*list).Next).X);
 
         activeCount += 1;
-        list = list.Next;
+        list = (*list).Next;
     }
 
-    assert!(list.X == INT::MAX);
+    assert!((*list).X == INT::MAX);
 }
-
+}
 
 /**************************************************************************\
 *
@@ -523,13 +554,7 @@ AssertActiveListOrder(
 *   03/25/2000 andrewgo
 *
 \**************************************************************************/
-fn
-ClipEdge(
-    edgeBuffer: &mut CEdge,
-    yClipTopInteger: INT,
-    dMOriginal: INT
-    )
-{
+fn ClipEdge(edgeBuffer: &mut CEdge, yClipTopInteger: INT, dMOriginal: INT) {
     let xDelta: INT;
     let error: INT;
 
@@ -538,21 +563,16 @@ ClipEdge(
     // in those cases.
 
     let dN: INT = edgeBuffer.ErrorDown;
-    let bigNumerator: LONGLONG = Int32x32To64(dMOriginal,
-                                         yClipTopInteger - edgeBuffer.StartY)
-                          + (edgeBuffer.Error + dN) as LONGLONG;
-    if (bigNumerator >= 0)
-    {
+    let bigNumerator: LONGLONG = Int32x32To64(dMOriginal, yClipTopInteger - edgeBuffer.StartY)
+        + (edgeBuffer.Error + dN) as LONGLONG;
+    if (bigNumerator >= 0) {
         QUOTIENT_REMAINDER_64_32!(bigNumerator, dN, xDelta, error);
-    }
-    else
-    {
+    } else {
         bigNumerator = -bigNumerator;
         QUOTIENT_REMAINDER_64_32!(bigNumerator, dN, xDelta, error);
 
         xDelta = -xDelta;
-        if (error != 0)
-        {
+        if (error != 0) {
             xDelta -= 1;
             error = dN - error;
         }
@@ -560,9 +580,9 @@ ClipEdge(
 
     // Update the edge data structure with the results:
 
-    edgeBuffer.StartY  = yClipTopInteger;
-    edgeBuffer.X      += xDelta;
-    edgeBuffer.Error   = error - dN;      // Renormalize error
+    edgeBuffer.StartY = yClipTopInteger;
+    edgeBuffer.X += xDelta;
+    edgeBuffer.Error = error - dN; // Renormalize error
 }
 //+-----------------------------------------------------------------------------
 //
@@ -575,15 +595,13 @@ ClipEdge(
 //------------------------------------------------------------------------------
 fn TransformRasterizerPointsTo28_4(
     pmat: &CMILMatrix,
-        // Transform to take us to 28.4
+    // Transform to take us to 28.4
     mut pPtsSource: &[MilPoint2F],
-        // Source points
+    // Source points
     cPoints: UINT,
-        // Count of points
-    mut pPtsDest: &mut [POINT]
-        // Destination points
-    ) -> HRESULT
-{
+    // Count of points
+    mut pPtsDest: &mut [POINT], // Destination points
+) -> HRESULT {
     let hr = S_OK;
 
     assert!(cPoints > 0);
@@ -606,23 +624,24 @@ fn TransformRasterizerPointsTo28_4(
     let rPixelCoordinateMax = (1 << (26 - c_nShift)) as f32;
     let rPixelCoordinateMin = -rPixelCoordinateMax;
 
-    while
-    {
+    while {
         //
         // Transform coordinates
         //
 
-        let rPixelX = (pmat.GetM11() * pPtsSource.X) + (pmat.GetM21() * pPtsSource.Y) + pmat.GetDx();
-        let rPixelY = (pmat.GetM12() * pPtsSource.X) + (pmat.GetM22() * pPtsSource.Y) + pmat.GetDy();
+        let rPixelX =
+            (pmat.GetM11() * pPtsSource[0].X) + (pmat.GetM21() * pPtsSource[0].Y) + pmat.GetDx();
+        let rPixelY =
+            (pmat.GetM12() * pPtsSource[0].X) + (pmat.GetM22() * pPtsSource[0].Y) + pmat.GetDy();
 
         //
         // Check for NaNs or overflow
         //
 
-        if (!(rPixelX <= rPixelCoordinateMax &&
-            rPixelX >= rPixelCoordinateMin &&
-            rPixelY <= rPixelCoordinateMax &&
-            rPixelY >= rPixelCoordinateMin))
+        if (!(rPixelX <= rPixelCoordinateMax
+            && rPixelX >= rPixelCoordinateMin
+            && rPixelY <= rPixelCoordinateMax
+            && rPixelY >= rPixelCoordinateMin))
         {
             return WGXERR_BADNUMBER;
         }
@@ -631,25 +650,19 @@ fn TransformRasterizerPointsTo28_4(
         // Assign coordinates
         //
 
-        pPtsDest.x = CFloatFPU::Round(rPixelX);
-        pPtsDest.y = CFloatFPU::Round(rPixelY);
+        pPtsDest[0].x = CFloatFPU::Round(rPixelX);
+        pPtsDest[0].y = CFloatFPU::Round(rPixelY);
 
-        pPtsDest = &pPtsDest[1..];
+        pPtsDest = &mut pPtsDest[1..];
         pPtsSource = &pPtsSource[1..];
         cPoints -= 1;
         cPoints != 0
     } {}
 
-
-    return hr
+    return hr;
 }
 
-pub fn AppendScaleToMatrix(
-    pmat: &mut CMILMatrix,
-    scaleX: REAL,
-    scaleY: REAL
-    )
-{
+pub fn AppendScaleToMatrix(pmat: &mut CMILMatrix, scaleX: REAL, scaleY: REAL) {
     pmat.SetM11(pmat.GetM11() * scaleX);
     pmat.SetM21(pmat.GetM21() * scaleX);
     pmat.SetM12(pmat.GetM12() * scaleY);
@@ -670,23 +683,21 @@ pub fn AppendScaleToMatrix(
 *
 \**************************************************************************/
 
-pub struct CInitializeEdgesContext<'a>
-{
-    pub MaxY: INT,                      // Maximum 'y' found, should be INT_MIN on
-                                   //   first call to 'InitializeEdges'
-    pub ClipRect: Option<&'a RECT>,                // Bounding clip rectangle in 28.4 format
-    pub Store: &'a mut CEdgeStore,             // Where to stick the edges
+pub struct CInitializeEdgesContext<'a> {
+    pub MaxY: INT, // Maximum 'y' found, should be INT_MIN on
+    //   first call to 'InitializeEdges'
+    pub ClipRect: Option<&'a RECT>, // Bounding clip rectangle in 28.4 format
+    pub Store: &'a mut CEdgeStore,  // Where to stick the edges
     pub AntiAliasMode: MilAntiAliasMode,
 }
 
-fn
-InitializeEdges(
+fn InitializeEdges(
     pEdgeContext: &mut CInitializeEdgesContext,
-    /*__inout_ecount(vertexCount)*/ mut pointArray: &mut [POINT],    // Points to a 28.4 array of size 'vertexCount'
-                                                   //   Note that we may modify the contents!
-    /*__in_range(>=, 2)*/  vertexCount: UINT
-    ) -> HRESULT
-{
+    /*__inout_ecount(vertexCount)*/
+    mut pointArray: &mut [POINT], // Points to a 28.4 array of size 'vertexCount'
+    //   Note that we may modify the contents!
+    /*__in_range(>=, 2)*/ vertexCount: UINT,
+) -> HRESULT {
     // Disable instrumentation checks for this function
     //SET_MILINSTRUMENTATION_FLAGS(MILINSTRUMENTATIONFLAGS_DONOTHING);
 
@@ -713,15 +724,14 @@ InitializeEdges(
     let xClipLeft;
     let xClipRight;
 
-    let yMax              = pEdgeContext.MaxY;
-    let store     = pEdgeContext.Store;
-    let clipRect  = pEdgeContext.ClipRect;
+    let yMax = pEdgeContext.MaxY;
+    let store = pEdgeContext.Store;
+    let clipRect = pEdgeContext.ClipRect;
 
     let edgeCount = vertexCount - 1;
     assert!(edgeCount >= 1);
 
-    if (clipRect != NULL())
-    {
+    if let Some(clipRect) = clipRect {
         yClipTopInteger = clipRect.top >> 4;
         yClipTop = clipRect.top;
         yClipBottom = clipRect.bottom;
@@ -738,11 +748,9 @@ InitializeEdges(
         yClipTop = 0;
         xClipLeft = 0;
         xClipRight = 0;
-
     }
 
-    if (pEdgeContext.AntiAliasMode != MilAntiAliasMode::None)
-    {
+    if (pEdgeContext.AntiAliasMode != MilAntiAliasMode::None) {
         // If antialiasing, apply the supersampling scaling here before we
         // calculate the DDAs.  We do this here and not in the Matrix
         // transform we give to FixedPointPathEnumerate mainly so that the
@@ -759,12 +767,12 @@ InitializeEdges(
         let i = vertexCount;
 
         while {
-            point.x = (point.x + 8) << c_nShift;
-            point.y = (point.y + 8) << c_nShift;
-            point += 1;
+            point[0].x = (point[0].x + 8) << c_nShift;
+            point[0].y = (point[0].y + 8) << c_nShift;
+            point = &mut point[1..];
             i -= 1;
             i != 0
-        } {};
+        } {}
 
         yClipTopInteger <<= c_nShift;
         yClipTop <<= c_nShift;
@@ -780,13 +788,12 @@ InitializeEdges(
 
     // Warm up the store where we keep the edge data:
 
-    store.StartAddBuffer(&edgeBuffer, &bufferCount);
+    store.StartAddBuffer(&mut edgeBuffer, &mut bufferCount);
 
     loop {
         // Handle trivial rejection:
 
-        if (yClipBottom >= 0)
-        {
+        if (yClipBottom >= 0) {
             // Throw out any edges that are above or below the clipping.
             // This has to be a precise check, because we assume later
             // on that every edge intersects in the vertical dimension
@@ -803,11 +810,9 @@ InitializeEdges(
             //
             // Note that 'yClipBottom' is inclusive:
 
-            let clipHigh = ((pointArray).y <= yClipTop) &&
-                            ((pointArray + 1).y <= yClipTop);
+            let clipHigh = ((pointArray).y <= yClipTop) && ((pointArray + 1).y <= yClipTop);
 
-            let clipLow = ((pointArray).y > yClipBottom) &&
-                             ((pointArray + 1).y > yClipBottom);
+            let clipLow = ((pointArray).y > yClipBottom) && ((pointArray + 1).y > yClipBottom);
 
             #[cfg(debug)]
             {
@@ -818,12 +823,10 @@ InitializeEdges(
                 // correctly, using a different approach:
 
                 let clipped = false;
-                if (clipRect != NULL)
-                {
+                if (clipRect != NULL) {
                     yRectTop = clipRect.top >> 4;
                     yRectBottom = clipRect.bottom >> 4;
-                    if (pEdgeContext.AntiAliasMode != MilAntiAliasMode::None)
-                    {
+                    if (pEdgeContext.AntiAliasMode != MilAntiAliasMode::None) {
                         yRectTop <<= c_nShift;
                         yRectBottom <<= c_nShift;
                     }
@@ -839,56 +842,51 @@ InitializeEdges(
             }
 
             if (clipHigh || clipLow) {
-                continue;               // ======================>
+                continue; // ======================>
             }
 
-            if (edgeCount > 1)
-            {
+            if (edgeCount > 1) {
                 // Here we'll collapse two edges down to one if both are
                 // to the left or to the right of the clipping rectangle.
 
-                if (((pointArray[0]).x < xClipLeft) &&
-                    ((pointArray[1]).x < xClipLeft) &&
-                    ((pointArray[2]).x < xClipLeft))
+                if (((pointArray[0]).x < xClipLeft)
+                    && ((pointArray[1]).x < xClipLeft)
+                    && ((pointArray[2]).x < xClipLeft))
                 {
                     // Note this is one reason why 'pointArray' can't be 'const':
 
                     *(pointArray[1]) = *(pointArray[0]);
 
-                    continue;           // ======================>
+                    continue; // ======================>
                 }
 
-                if (((pointArray[0]).x > xClipRight) &&
-                    ((pointArray[1]).x > xClipRight) &&
-                    ((pointArray[2]).x > xClipRight))
+                if (((pointArray[0]).x > xClipRight)
+                    && ((pointArray[1]).x > xClipRight)
+                    && ((pointArray[2]).x > xClipRight))
                 {
                     // Note this is one reason why 'pointArray' can't be 'const':
 
                     pointArray[1] = pointArray[0];
 
-                    continue;           // ======================>
+                    continue; // ======================>
                 }
             }
-
         }
 
         dM = (pointArray[1]).x - (pointArray[0]).x;
         dN = (pointArray[1]).y - (pointArray[0]).y;
 
-        if (dN >= 0)
-        {
+        if (dN >= 0) {
             // The vector points downward:
 
             xStart = (pointArray[0]).x;
             yStart = (pointArray[0]).y;
 
             yStartInteger = (yStart + 15) >> 4;
-            yEndInteger   = ((pointArray[1]).y + 15) >> 4;
+            yEndInteger = ((pointArray[1]).y + 15) >> 4;
 
             windingDirection = 1;
-        }
-        else
-        {
+        } else {
             // The vector points upward, so we have to essentially
             // 'swap' the end points:
 
@@ -899,7 +897,7 @@ InitializeEdges(
             yStart = (pointArray[1]).y;
 
             yStartInteger = (yStart + 15) >> 4;
-            yEndInteger   = ((pointArray[0]).y + 15) >> 4;
+            yEndInteger = ((pointArray[0]).y + 15) >> 4;
 
             windingDirection = -1;
         }
@@ -908,55 +906,45 @@ InitializeEdges(
         // added to the edgeBuffer list.  This serves to get rid of
         // horizontal edges, which cause trouble for our divides.
 
-        if (yEndInteger > yStartInteger)
-        {
+        if (yEndInteger > yStartInteger) {
             yMax = yMax.max(yEndInteger);
 
             dMOriginal = dM;
-            if (dM < 0)
-            {
+            if (dM < 0) {
                 dM = -dM;
-                if (dM < dN)            // Can't be '<='
+                if (dM < dN)
+                // Can't be '<='
                 {
-                    dX      = -1;
+                    dX = -1;
                     errorUp = dN - dM;
-                }
-                else
-                {
+                } else {
                     QUOTIENT_REMAINDER!(dM, dN, quotient, remainder);
 
-                    dX      = -quotient;
+                    dX = -quotient;
                     errorUp = remainder;
-                    if (remainder > 0)
-                    {
-                        dX      = -quotient - 1;
+                    if (remainder > 0) {
+                        dX = -quotient - 1;
                         errorUp = dN - remainder;
                     }
                 }
-            }
-            else
-            {
-                if (dM < dN)
-                {
-                    dX      = 0;
+            } else {
+                if (dM < dN) {
+                    dX = 0;
                     errorUp = dM;
-                }
-                else
-                {
+                } else {
                     QUOTIENT_REMAINDER!(dM, dN, quotient, remainder);
 
-                    dX      = quotient;
+                    dX = quotient;
                     errorUp = remainder;
                 }
             }
 
-            error = -1;     // Error is initially zero (add dN - 1 for
-                            //   the ceiling, but subtract off dN so that
-                            //   we can check the sign instead of comparing
-                            //   to dN)
+            error = -1; // Error is initially zero (add dN - 1 for
+                        //   the ceiling, but subtract off dN so that
+                        //   we can check the sign instead of comparing
+                        //   to dN)
 
-            if ((yStart & 15) != 0)
-            {
+            if ((yStart & 15) != 0) {
                 // Advance to the next integer y coordinate
 
                 cfor!(let mut i = 16 - (yStart & 15); i != 0; i -= 1;
@@ -971,28 +959,26 @@ InitializeEdges(
                 })
             }
 
-            if ((xStart & 15) != 0)
-            {
+            if ((xStart & 15) != 0) {
                 error -= dN * (16 - (xStart & 15));
-                xStart += 15;       // We'll want the ceiling in just a bit...
+                xStart += 15; // We'll want the ceiling in just a bit...
             }
 
             xStart >>= 4;
             error >>= 4;
 
-            if (bufferCount == 0)
-            {
+            if (bufferCount == 0) {
                 IFC!(store.NextAddBuffer(&edgeBuffer, &bufferCount));
             }
 
-            edgeBuffer.X                = xStart;
-            edgeBuffer.Dx               = dX;
-            edgeBuffer.Error            = error;
-            edgeBuffer.ErrorUp          = errorUp;
-            edgeBuffer.ErrorDown        = dN;
+            edgeBuffer.X = xStart;
+            edgeBuffer.Dx = dX;
+            edgeBuffer.Error = error;
+            edgeBuffer.ErrorUp = errorUp;
+            edgeBuffer.ErrorDown = dN;
             edgeBuffer.WindingDirection = windingDirection;
-            edgeBuffer.StartY           = yStartInteger;
-            edgeBuffer.EndY             = yEndInteger;       // Exclusive of end
+            edgeBuffer.StartY = yStartInteger;
+            edgeBuffer.EndY = yEndInteger; // Exclusive of end
 
             assert!(error < 0);
 
@@ -1002,8 +988,7 @@ InitializeEdges(
             //
             // Consequently, we advance the DDA here:
 
-            if (yClipTopInteger > yStartInteger)
-            {
+            if (yClipTopInteger > yStartInteger) {
                 assert!(edgeBuffer.EndY > yClipTopInteger);
 
                 ClipEdge(edgeBuffer, yClipTopInteger, dMOriginal);
@@ -1043,105 +1028,95 @@ InitializeEdges(
 *   03/25/2000 andrewgo
 *
 \**************************************************************************/
-fn
-ValidatePathTypes(
-    typesArray: &[BYTE],
-    count: INT
-    ) -> bool
-{
+fn ValidatePathTypes(typesArray: &[BYTE], count: INT) -> bool {
     let mut types = typesArray;
 
     if (count == 0) {
-        return(true);
+        return (true);
     }
 
-    loop
-    {
+    loop {
         // The first point in every subpath has to be an unadorned
         // 'start' point:
 
-        if ((types[0] & PathPointTypePathTypeMask) != PathPointTypeStart)
-        {
+        if ((types[0] & PathPointTypePathTypeMask) != PathPointTypeStart) {
             TraceTag!((tagMILWarning, "Bad subpath start"));
-            return(false);
+            return (false);
         }
 
         // Advance to the first point after the 'start' point:
         count -= 1;
-        if (count == 0)
-        {
+        if (count == 0) {
             TraceTag!((tagMILWarning, "Path ended after start-path"));
-            return(false);
+            return (false);
         }
 
-        if ((types[1] & PathPointTypePathTypeMask) == PathPointTypeStart)
-        {
+        if ((types[1] & PathPointTypePathTypeMask) == PathPointTypeStart) {
             TraceTag!((tagMILWarning, "Can't have a start followed by a start!"));
-            return(false);
+            return (false);
         }
 
         // Process runs of lines and Bezier curves:
 
         loop {
-            match(types[1] & PathPointTypePathTypeMask)
-            {
+            match (types[1] & PathPointTypePathTypeMask) {
                 PathPointTypeLine => {
                     types = &types[1..];
                     count -= 1;
                     if (count == 0) {
-                        return(true);
+                        return (true);
                     }
-
                 }
 
                 PathPointTypeBezier => {
-                    if(count < 3)
-                    {
-                        TraceTag!((tagMILWarning,
-                            "Path ended before multiple of 3 Bezier points"));
-                        return(false);
+                    if (count < 3) {
+                        TraceTag!((
+                            tagMILWarning,
+                            "Path ended before multiple of 3 Bezier points"
+                        ));
+                        return (false);
                     }
 
-                    if((types[1] & PathPointTypePathTypeMask) != PathPointTypeBezier)
-                    {
-                        TraceTag!((tagMILWarning,
-                            "Bad subpath start"));
-                        return(false);
+                    if ((types[1] & PathPointTypePathTypeMask) != PathPointTypeBezier) {
+                        TraceTag!((tagMILWarning, "Bad subpath start"));
+                        return (false);
                     }
 
-                    if((types[2] & PathPointTypePathTypeMask) != PathPointTypeBezier)
-                    {
-                        TraceTag!((tagMILWarning,
-                            "Expected plain Bezier control point for 3rd vertex"));
-                        return(false);
+                    if ((types[2] & PathPointTypePathTypeMask) != PathPointTypeBezier) {
+                        TraceTag!((
+                            tagMILWarning,
+                            "Expected plain Bezier control point for 3rd vertex"
+                        ));
+                        return (false);
                     }
 
-                    if((types[3] & PathPointTypePathTypeMask) != PathPointTypeBezier)
-                    {
-                        TraceTag!((tagMILWarning,
-                            "Expected Bezier control point for 4th vertex"));
-                        return(false);
+                    if ((types[3] & PathPointTypePathTypeMask) != PathPointTypeBezier) {
+                        TraceTag!((
+                            tagMILWarning,
+                            "Expected Bezier control point for 4th vertex"
+                        ));
+                        return (false);
                     }
 
                     types = &types[3..];
                     count -= 3;
                     if (count == 0) {
-                        return(true);
+                        return (true);
                     }
-
                 }
 
                 _ => {
                     TraceTag!((tagMILWarning, "Illegal type"));
-                    return(false);
+                    return (false);
                 }
             }
 
             // A close-subpath marker or a start-subpath marker marks the
             // end of a subpath:
-            !(types[0] & PathPointTypeCloseSubpath) &&
-            ((types[1] & PathPointTypePathTypeMask) != PathPointTypeStart)
-        } {};
+            !(types[0] & PathPointTypeCloseSubpath)
+                && ((types[1] & PathPointTypePathTypeMask) != PathPointTypeStart)
+        }
+        {};
     }
 }
 
@@ -1159,14 +1134,9 @@ ValidatePathTypes(
 macro_rules! ASSERTPATH {
     ($types: expr, $points: expr) => {
         AssertPath($types, $points)
-    }
+    };
 }
-fn
-AssertPath(
-    rgTypes: &[BYTE],
-    cPoints: UINT
-    )
-{
+fn AssertPath(rgTypes: &[BYTE], cPoints: UINT) {
     // Make sure that the 'types' array is well-formed, otherwise we
     // may fall over in the FixedPointPathEnumerate function.
     //
@@ -1205,16 +1175,14 @@ AssertPath(
 //      more general than would otherwise be evident.
 //
 
-pub fn
-FixedPointPathEnumerate(
+pub fn FixedPointPathEnumerate(
     rgpt: &[MilPoint2F],
     rgTypes: &[BYTE],
     cPoints: UINT,
     matrix: &CMILMatrix,
-    clipRect: Option<&RECT>,       // In scaled 28.4 format
-    enumerateContext: &mut CInitializeEdgesContext
-    ) -> HRESULT
-{
+    clipRect: Option<&RECT>, // In scaled 28.4 format
+    enumerateContext: &mut CInitializeEdgesContext,
+) -> HRESULT {
     let hr = S_OK;
     let bufferStart: [POINT; ENUMERATE_BUFFER_NUMBER!()];
     let bezierBuffer: [POINT; 4];
@@ -1237,17 +1205,19 @@ FixedPointPathEnumerate(
     iStart = 0;
 
     assert!(cPoints > 1);
-    while (iStart < cPoints - 1)
-    {
-        assert!((rgTypes[iStart] & PathPointTypePathTypeMask)
-                    == PathPointTypeStart);
-        assert!((rgTypes[iStart + 1] & PathPointTypePathTypeMask)
-                    != PathPointTypeStart);
+    while (iStart < cPoints - 1) {
+        assert!((rgTypes[iStart] & PathPointTypePathTypeMask) == PathPointTypeStart);
+        assert!((rgTypes[iStart + 1] & PathPointTypePathTypeMask) != PathPointTypeStart);
 
         // Add the start point to the beginning of the batch, and
         // remember it for handling the close figure:
 
-        IFC!(TransformRasterizerPointsTo28_4(matrix, &rgpt[iStart..], 1, &startFigure));
+        IFC!(TransformRasterizerPointsTo28_4(
+            matrix,
+            &rgpt[iStart..],
+            1,
+            &startFigure
+        ));
 
         bufferStart[0].x = startFigure.x;
         bufferStart[0].y = startFigure.y;
@@ -1262,14 +1232,11 @@ FixedPointPathEnumerate(
         while {
             // Try finding a run of lines:
 
-            if ((rgTypes[iStart] & PathPointTypePathTypeMask)
-                                == PathPointTypeLine)
-            {
+            if ((rgTypes[iStart] & PathPointTypePathTypeMask) == PathPointTypeLine) {
                 iEnd = iStart + 1;
 
-                while ((iEnd < cPoints) &&
-                       ((rgTypes[iEnd] & PathPointTypePathTypeMask)
-                                == PathPointTypeLine))
+                while ((iEnd < cPoints)
+                    && ((rgTypes[iEnd] & PathPointTypePathTypeMask) == PathPointTypeLine))
                 {
                     iEnd += 1;
                 }
@@ -1281,9 +1248,16 @@ FixedPointPathEnumerate(
                 loop {
                     thisCount = bufferSize.min(runSize);
 
-                    IFC!(TransformRasterizerPointsTo28_4(matrix, &rgpt[iStart], thisCount, buffer));
+                    IFC!(TransformRasterizerPointsTo28_4(
+                        matrix,
+                        &rgpt[iStart],
+                        thisCount,
+                        buffer
+                    ));
 
-                    __analysis_assume!(buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER);
+                    __analysis_assume!(
+                        buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER
+                    );
                     assert!(buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER!());
 
                     iStart += thisCount;
@@ -1301,7 +1275,7 @@ FixedPointPathEnumerate(
                         enumerateContext,
                         &mut bufferStart,
                         ENUMERATE_BUFFER_NUMBER!()
-                        ));
+                    ));
 
                     // Continue the last vertex as the first in the new batch:
 
@@ -1309,20 +1283,22 @@ FixedPointPathEnumerate(
                     bufferStart[0].y = yLast;
                     buffer = bufferStart + 1;
                     bufferSize = ENUMERATE_BUFFER_NUMBER!() - 1;
-                    if !(runSize != 0) { break }
+                    if !(runSize != 0) {
+                        break;
+                    }
                 }
-            }
-            else
-            {
+            } else {
                 assert!(iStart + 3 <= cPoints);
-                assert!((rgTypes[iStart] & PathPointTypePathTypeMask)
-                        == PathPointTypeBezier);
-                assert!((rgTypes[iStart + 1] & PathPointTypePathTypeMask)
-                        == PathPointTypeBezier);
-                assert!((rgTypes[iStart + 2] & PathPointTypePathTypeMask)
-                        == PathPointTypeBezier);
+                assert!((rgTypes[iStart] & PathPointTypePathTypeMask) == PathPointTypeBezier);
+                assert!((rgTypes[iStart + 1] & PathPointTypePathTypeMask) == PathPointTypeBezier);
+                assert!((rgTypes[iStart + 2] & PathPointTypePathTypeMask) == PathPointTypeBezier);
 
-                IFC!(TransformRasterizerPointsTo28_4(matrix, &rgpt[iStart - 1], 4, &bezierBuffer));
+                IFC!(TransformRasterizerPointsTo28_4(
+                    matrix,
+                    &rgpt[iStart - 1],
+                    4,
+                    &bezierBuffer
+                ));
 
                 // Prepare for the next iteration:
 
@@ -1330,11 +1306,13 @@ FixedPointPathEnumerate(
 
                 // Process the Bezier:
 
-                let bezier = CMILBezier::new(bezierBuffer, clipRect);
+                let bezier = CMILBezier::new(&bezierBuffer, clipRect);
                 loop {
                     thisCount = bezier.Flatten(buffer, bufferSize, &isMore);
 
-                    __analysis_assume!(buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER!());
+                    __analysis_assume!(
+                        buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER!()
+                    );
                     assert!(buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER!());
 
                     buffer += thisCount;
@@ -1350,7 +1328,7 @@ FixedPointPathEnumerate(
                         enumerateContext,
                         &mut bufferStart,
                         ENUMERATE_BUFFER_NUMBER!()
-                        ));
+                    ));
 
                     // Continue the last vertex as the first in the new batch:
 
@@ -1358,14 +1336,15 @@ FixedPointPathEnumerate(
                     bufferStart[0].y = yLast;
                     buffer = bufferStart + 1;
                     bufferSize = ENUMERATE_BUFFER_NUMBER!() - 1;
-                    if !isMore { break }
+                    if !isMore {
+                        break;
+                    }
                 }
             }
 
-        ((iStart < cPoints) &&
-                 ((rgTypes[iStart] & PathPointTypePathTypeMask)
-                    != PathPointTypeStart))
-        } {};
+            ((iStart < cPoints)
+                && ((rgTypes[iStart] & PathPointTypePathTypeMask) != PathPointTypeStart))
+        } {}
 
         // Okay, the subpath is done.  But we still have to handle the
         // 'close figure' (which is implicit for a fill):
@@ -1386,13 +1365,12 @@ FixedPointPathEnumerate(
         // extraneous points.
 
         let verticesInBatch = ENUMERATE_BUFFER_NUMBER!() - bufferSize;
-        if (verticesInBatch > 1)
-        {
+        if (verticesInBatch > 1) {
             IFC!(InitializeEdges(
                 enumerateContext,
                 &mut bufferStart,
                 (verticesInBatch) as UINT
-                ));
+            ));
         }
     }
 
@@ -1413,18 +1391,13 @@ FixedPointPathEnumerate(
 *
 \**************************************************************************/
 
-fn YX(
-    x: INT,
-    y: INT,
-    p: &mut LONGLONG
-    )
-{
+fn YX(x: INT, y: INT, p: &mut LONGLONG) {
     // Bias 'x' by INT_MAX so that it's effectively unsigned:
     /*
     reinterpret_cast<LARGE_INTEGER*>(p)->HighPart = y;
     reinterpret_cast<LARGE_INTEGER*>(p)->LowPart = x + INT_MAX;
     */
-    *p = (((y as u64) << 32) | (((x  + i32::MAX) as u64) & 0xffffffff)) as i64;
+    *p = (((y as u64) << 32) | (((x + i32::MAX) as u64) & 0xffffffff)) as i64;
 }
 
 /**************************************************************************\
@@ -1444,12 +1417,10 @@ fn YX(
 
 const QUICKSORT_THRESHOLD: u32 = 8;
 
-fn
-QuickSortEdges(
-    /*__inout_xcount(f - l + 1 elements)*/f: *mut CInactiveEdge,
-    /*__inout_xcount(array starts at f)*/ l: *mut CInactiveEdge
-    )
-{
+fn QuickSortEdges(
+    /*__inout_xcount(f - l + 1 elements)*/ f: *mut CInactiveEdge,
+    /*__inout_xcount(array starts at f)*/ l: *mut CInactiveEdge,
+) {
     let e: *mut CEdge;
     let y: LONGLONG;
     let first: LONGLONG;
@@ -1458,27 +1429,24 @@ QuickSortEdges(
 
     // Find the median of the first, middle, and last elements:
 
-    let m : *mut CInactiveEdge = f + ((l - f) >> 1);
+    let m: *mut CInactiveEdge = f + ((l - f) >> 1);
 
     SWAP!(y, (f + 1).Yx, m.Yx);
     SWAP!(e, (f + 1).Edge, m.Edge);
 
-    if ((second = (f + 1).Yx) > (last = l.Yx))
-    {
+    if ((second = (f + 1).Yx) > (last = l.Yx)) {
         (f + 1).Yx = last;
         l.Yx = second;
 
         SWAP!(e, (f + 1).Edge, l.Edge);
     }
-    if ((first = f.Yx) > (last = l.Yx))
-    {
+    if ((first = f.Yx) > (last = l.Yx)) {
         f.Yx = last;
         l.Yx = first;
 
         SWAP!(e, f.Edge, l.Edge);
     }
-    if ((second = (f + 1).Yx) > (first = f.Yx))
-    {
+    if ((second = (f + 1).Yx) > (first = f.Yx)) {
         (f + 1).Yx = first;
         f.Yx = second;
 
@@ -1501,8 +1469,7 @@ QuickSortEdges(
         j -= 1;
     }
 
-    while (i < j)
-    {
+    while (i < j) {
         SWAP!(y, i.Yx, j.Yx);
         SWAP!(e, i.Edge, j.Edge);
 
@@ -1526,32 +1493,23 @@ QuickSortEdges(
     // Use less stack space by recursing on the shorter subtable.  Also,
     // have the less-overhead insertion-sort handle small subtables.
 
-    if (a <= b)
-    {
-        if (a > QUICKSORT_THRESHOLD)
-        {
+    if (a <= b) {
+        if (a > QUICKSORT_THRESHOLD) {
             // 'a' is the smallest, so do it first:
 
             QuickSortEdges(f, j - 1);
             QuickSortEdges(j + 1, l);
-        }
-        else if (b > QUICKSORT_THRESHOLD)
-        {
+        } else if (b > QUICKSORT_THRESHOLD) {
             QuickSortEdges(j + 1, l);
         }
-    }
-    else
-    {
-        if (b > QUICKSORT_THRESHOLD)
-        {
+    } else {
+        if (b > QUICKSORT_THRESHOLD) {
             // 'b' is the smallest, so do it first:
 
             QuickSortEdges(j + 1, l);
             QuickSortEdges(f, j - 1);
-        }
-        else if (a > QUICKSORT_THRESHOLD)
-        {
-            QuickSortEdges(f, j- 1);
+        } else if (a > QUICKSORT_THRESHOLD) {
+            QuickSortEdges(f, j - 1);
         }
     }
 }
@@ -1569,12 +1527,10 @@ QuickSortEdges(
 *
 \**************************************************************************/
 
-fn
-InsertionSortEdges(
+fn InsertionSortEdges(
     /* __inout_xcount(count forward & -1 back)*/ inactive: *mut CInactiveEdge,
-    count: INT
-    )
-{
+    count: INT,
+) {
     let p: *mut CInactiveEdge;
     let e: *mut CEdge;
     let y: LONGLONG;
@@ -1583,7 +1539,7 @@ InsertionSortEdges(
     assert!((inactive - 1).Yx == i64::MIN);
     assert!(count >= 2);
 
-    inactive += 1;     // Skip first entry (by definition it's already in order!)
+    inactive += 1; // Skip first entry (by definition it's already in order!)
     count -= 1;
 
     while {
@@ -1597,8 +1553,7 @@ InsertionSortEdges(
         // Shift everything one slot to the right (effectively moving
         // the hole one position to the left):
 
-        while (y < (yPrevious = (p - 1).Yx))
-        {
+        while (y < (yPrevious = (p - 1).Yx)) {
             p.Yx = yPrevious;
             p.Edge = (p - 1).Edge;
             p -= 1;
@@ -1620,7 +1575,6 @@ InsertionSortEdges(
     } {}
 }
 
-
 /**************************************************************************\
 *
 * Function Description:
@@ -1635,20 +1589,19 @@ InsertionSortEdges(
 macro_rules! ASSERTINACTIVEARRAY {
     ($inactive: expr, $count: expr) => {
         AssertInactiveArray($inactive, $count);
-    }
+    };
 }
-fn
-AssertInactiveArray(
-    /*__in_ecount(count)*/ inactive: *const CInactiveEdge,   // Annotation should allow the -1 element
-    count: INT
-    )
-{
+fn AssertInactiveArray(
+    /*__in_ecount(count)*/
+    inactive: *const CInactiveEdge, // Annotation should allow the -1 element
+    count: INT,
+) {
     // Verify the head:
 
-/*#if !ANALYSIS*/
+    /*#if !ANALYSIS*/
     // #if needed because prefast don't know that the -1 element is avaliable
     assert!((inactive - 1).Yx == i64::MIN);
-/*#endif*/
+    /*#endif*/
     assert!(inactive.Yx != i64::MIN);
 
     while {
@@ -1656,10 +1609,10 @@ AssertInactiveArray(
         YX(inactive.Edge.X, inactive.Edge.StartY, &yx);
 
         assert!(inactive.Yx == yx);
-    /*#if !ANALYSIS*/
+        /*#if !ANALYSIS*/
         // #if needed because tools don't know that the -1 element is avaliable
         assert!(inactive.Yx >= (inactive - 1).Yx);
-    /*#endif*/
+        /*#endif*/
         inactive += 1;
         count -= 1;
         count != 0
@@ -1669,7 +1622,6 @@ AssertInactiveArray(
 
     assert!(inactive.Edge.StartY == INT::MAX);
 }
-
 
 /**************************************************************************\
 *
@@ -1687,14 +1639,12 @@ AssertInactiveArray(
 *
 \**************************************************************************/
 
-pub fn
-InitializeInactiveArray(
+pub fn InitializeInactiveArray(
     pEdgeStore: &CEdgeStore,
     /*__in_ecount(count+2)*/ rgInactiveArray: &mut [CInactiveEdge],
     count: UINT,
-    tailEdge: *const CEdge                    // Tail sentinel for inactive list
-    ) -> INT
-{
+    tailEdge: *const CEdge, // Tail sentinel for inactive list
+) -> INT {
     let isMore;
     let pActiveEdge: *mut CEdge;
     let pActiveEdgeEnd: *mut CEdge;
@@ -1707,8 +1657,7 @@ InitializeInactiveArray(
     while {
         isMore = pEdgeStore.Enumerate(&mut pActiveEdge, &mut pActiveEdgeEnd);
 
-        while (pActiveEdge != pActiveEdgeEnd)
-        {
+        while (pActiveEdge != pActiveEdgeEnd) {
             pInactiveEdge[0].Edge = pActiveEdge;
             YX(pActiveEdge.X, pActiveEdge.StartY, &pInactiveEdge.Yx);
             pInactiveEdge = &mut pInactiveEdge[1..];
@@ -1717,7 +1666,7 @@ InitializeInactiveArray(
         isMore
     } {}
 
-    assert!((pInactiveEdge - rgInactiveArray) as UINT== count + 1);
+    assert!((pInactiveEdge - rgInactiveArray) as UINT == count + 1);
 
     // Add the tail, which is used when reading back the array.  This
     // is why we had to allocate the array as 'count + 1':
@@ -1731,8 +1680,7 @@ InitializeInactiveArray(
 
     // Only invoke the quicksort routine if it's worth the overhead:
 
-    if (count > QUICKSORT_THRESHOLD)
-    {
+    if (count > QUICKSORT_THRESHOLD) {
         // Quick-sort this, skipping the first and last elements,
         // which are sentinels.
         //
@@ -1750,7 +1698,7 @@ InitializeInactiveArray(
 
     // Return the 'y' value of the topmost edge:
 
-    return(rgInactiveArray[1].Edge.StartY);
+    return (rgInactiveArray[1].Edge.StartY);
 }
 
 /**************************************************************************\
@@ -1765,16 +1713,13 @@ InitializeInactiveArray(
 *
 \**************************************************************************/
 
-pub fn
-InsertNewEdges(
+pub fn InsertNewEdges(
     pActiveList: *const CEdge,
     iCurrentY: INT,
     /*__deref_inout_xcount(array terminated by an edge with StartY != iCurrentY)*/
     ppInactiveEdge: &&[CInactiveEdge],
-    pYNextInactive: &mut INT
-        // will be INT_MAX when no more
-    )
-{
+    pYNextInactive: &mut INT, // will be INT_MAX when no more
+) {
     let inactive: *mut CInactiveEdge = *ppInactiveEdge;
 
     assert!(inactive.Edge.StartY == iCurrentY);
@@ -1790,14 +1735,12 @@ InsertNewEdges(
         }
 
         if SORT_EDGES_INCLUDING_SLOPE {
-        // The activeList edge list sentinel has Dx = INT_MAX, so this always
-        // terminates:
+            // The activeList edge list sentinel has Dx = INT_MAX, so this always
+            // terminates:
 
-        while ((pActiveList.Next.X == newActive.X) &&
-               (pActiveList.Next.Dx < newActive.Dx))
-        {
-            pActiveList = pActiveList.Next;
-        }
+            while ((pActiveList.Next.X == newActive.X) && (pActiveList.Next.Dx < newActive.Dx)) {
+                pActiveList = pActiveList.Next;
+            }
         }
 
         newActive.Next = pActiveList.Next;
@@ -1826,12 +1769,7 @@ InsertNewEdges(
 *
 \**************************************************************************/
 
-fn
-
-SortActiveEdges(
-    list: *const CEdge
-    )
-{
+fn SortActiveEdges(list: *const CEdge) {
     let mut swapOccurred: bool;
     let tmp: *mut CEdge;
 
@@ -1848,8 +1786,7 @@ SortActiveEdges(
         let nextX = next.X;
 
         while {
-            if (nextX < current.X)
-            {
+            if (nextX < current.X) {
                 swapOccurred = true;
 
                 previous.Next = next;
@@ -1867,7 +1804,3 @@ SortActiveEdges(
         swapOccurred
     } {}
 }
-
-
-
-
