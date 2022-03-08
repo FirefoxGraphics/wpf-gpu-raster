@@ -479,7 +479,7 @@ impl<'a> CHwRasterizer<'a> {
         m_prgPoints: None,
         m_prgTypes: None,
         m_fillMode: MilFillMode::Alternate,
-        m_coverageBuffer: None,
+        m_coverageBuffer: Default::default(),
         m_rcClipBounds: Default::default(),
         m_pIGeometrySink: None,
     
@@ -671,10 +671,10 @@ fn RasterizePath(
 //
 //-------------------------------------------------------------------------
 fn Setup(&mut self,
-    pD3DDevice: &mut CD3DDeviceLevel1,
+    pD3DDevice: &'a mut CD3DDeviceLevel1,
     pShape: Rc<dyn IShapeData>,
-    prgPointsScratch: &mut DynArray<MilPoint2F>,
-    prgTypesScratch: &mut DynArray<BYTE>,
+    prgPointsScratch: &'a mut DynArray<MilPoint2F>,
+    prgTypesScratch: &'a mut DynArray<BYTE>,
     pmatWorldToDevice: Option<&CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device>>
     ) -> HRESULT
 {
@@ -766,18 +766,18 @@ fn SendGeometry(&self,
     // is never used outside the scope of this method.
     //
 
-    self.m_pIGeometrySink = pIGeometrySink;
+    self.m_pIGeometrySink = Some(pIGeometrySink);
 
     //
     // Rasterize the path
     //
 
-    let _null_geom = scopeguard::guard((), || self.m_pIGeometrySink = NULL);
+    defer! { self.m_pIGeometrySink = None; }
 
     IFC!(self.RasterizePath(
-        self.m_prgPoints.GetDataBuffer(),
-        self.m_prgTypes.GetDataBuffer(),
-        self.m_prgPoints.GetCount(),
+        self.m_prgPoints.as_ref().unwrap().GetDataBuffer(),
+        self.m_prgTypes.as_ref().unwrap().GetDataBuffer(),
+        self.m_prgPoints.as_ref().unwrap().GetCount() as u32,
         &self.m_matWorldToDevice,
         self.m_fillMode
         ));
@@ -842,11 +842,11 @@ GenerateOutputAndClearCoverage(&mut self,
 
     let pIntervalSpanStart: *const CCoverageInterval = self.m_coverageBuffer.m_pIntervalStart;
 
-    IFC!(self.m_pIGeometrySink.AddComplexScan(nPixelY, pIntervalSpanStart));
+    IFC!(self.m_pIGeometrySink.as_mut().unwrap().AddComplexScan(nPixelY, unsafe { &*pIntervalSpanStart }));
 
     self.m_coverageBuffer.Reset();
 
-    return;
+    return hr;
 }
 
 //-------------------------------------------------------------------------
@@ -919,16 +919,16 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
     if (self.m_fillMode == MilFillMode::Winding)
     {
-        cfor!{let pEdge = pEdgeCurrent; pEdge.EndY != INT::MIN; pEdge = (*pEdge.Next).Next;
+        cfor!{let pEdge = pEdgeCurrent; (*pEdge).EndY != INT::MIN; pEdge = (*(*pEdge).Next).Next;
         {
             // The active edge list always has an even number of edges which we actually
             // assert in ASSERTACTIVELIST.
 
-            assert!((*pEdge.Next).EndY != INT::MIN);
+            assert!((*(*pEdge).Next).EndY != INT::MIN);
 
             // If not alternating winding direction, we can't fill with alternate mode
 
-            if (pEdge.WindingDirection == (*pEdge.Next).WindingDirection)
+            if ((*pEdge).WindingDirection == (*(*pEdge).Next).WindingDirection)
             {
                 // Give up until we handle winding mode
                 nSubpixelYBottomTrapezoids = nSubpixelYCurrent;
@@ -948,7 +948,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
     nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
 
-    cfor!{let pEdge = pEdgeCurrent; (*pEdge).EndY != INT::MIN; pEdge = pEdge.Next; 
+    cfor!{let pEdge = pEdgeCurrent; (*pEdge).EndY != INT::MIN; pEdge = (*pEdge).Next; 
     {
         //
         // Step 1
@@ -1034,9 +1034,9 @@ fn ComputeTrapezoidsEndScan(&mut self,
             // the fact that the edges don't converge, so we can be too conservative here.
             //
 
-            if (pEdgeLeft.Dx > pEdgeRight.Dx
-                || ((pEdgeLeft.Dx == pEdgeRight.Dx)
-                    && IsFractionGreaterThan(pEdgeLeft.ErrorUp, pEdgeLeft.ErrorDown, pEdgeRight.ErrorUp, pEdgeRight.ErrorDown)))
+            if ((*pEdgeLeft).Dx > (*pEdgeRight).Dx
+                || (((*pEdgeLeft).Dx == (*pEdgeRight).Dx)
+                    && IsFractionGreaterThan((*pEdgeLeft).ErrorUp, (*pEdgeLeft).ErrorDown, (*pEdgeRight).ErrorUp, (*pEdgeRight).ErrorDown)))
             {
 
                 let nSubpixelYAdvance: INT =  nSubpixelYBottomTrapezoids - nSubpixelYCurrent;
@@ -1052,8 +1052,8 @@ fn ComputeTrapezoidsEndScan(&mut self,
                 let nSubpixelErrorRightBottom;
 
                 AdvanceDDAMultipleSteps(
-                    pEdgeLeft,
-                    pEdgeRight,
+                    &*pEdgeLeft,
+                    &*pEdgeRight,
                     nSubpixelYAdvance,
                     &mut nSubpixelXLeftAdjustedBottom,
                     &mut nSubpixelErrorLeftBottom,
@@ -1143,7 +1143,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
                         // abort
 
                         nSubpixelYBottomTrapezoids = nSubpixelYCurrent;
-                        return;
+                        return nSubpixelYBottomTrapezoids;
                     }
                 }
             }
@@ -1327,7 +1327,7 @@ OutputTrapezoids(&mut self,
         // Check for termination
         //
 
-        if ((*pEdgeRight).Next.EndY == INT::MIN)
+        if ((*(*pEdgeRight).Next).EndY == INT::MIN)
         {
             break;
         }
@@ -1371,7 +1371,7 @@ RasterizeEdges(&mut self,
     InsertNewEdges(
         pEdgeActiveList,
         nSubpixelYCurrent,
-        &pInactiveEdgeArray,
+        &mut pInactiveEdgeArray,
         &mut nSubpixelYNextInactive
         );
 
@@ -1384,7 +1384,7 @@ RasterizeEdges(&mut self,
         //
 
         pEdgePrevious = pEdgeActiveList;
-        pEdgeCurrent = pEdgeActiveList.Next;
+        pEdgeCurrent = (*pEdgeActiveList).Next;
 
         nSubpixelYNext = nSubpixelYCurrent;
 
@@ -1395,7 +1395,7 @@ RasterizeEdges(&mut self,
             )
         {
             // Edges are paired, so we can assert we have another one
-            assert!((*pEdgeCurrent).Next.EndY != INT::MIN);
+            assert!((*(*pEdgeCurrent).Next).EndY != INT::MIN);
 
             //
             // Given an active edge list, we compute the furthest we can go in the y direction
@@ -1464,7 +1464,7 @@ RasterizeEdges(&mut self,
             //   2) fall back to scan rasterization
             //
 
-            if (pEdgeCurrent.EndY == INT::MIN)
+            if ((*pEdgeCurrent).EndY == INT::MIN)
             {
                 nSubpixelYNext = nSubpixelYNextInactive;
             }
@@ -1503,7 +1503,7 @@ RasterizeEdges(&mut self,
             InsertNewEdges(
                 pEdgeActiveList,
                 nSubpixelYCurrent,
-                &pInactiveEdgeArray,
+                &mut pInactiveEdgeArray,
                 &mut nSubpixelYNextInactive
                 );
         }
