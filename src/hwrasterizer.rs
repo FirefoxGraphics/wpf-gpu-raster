@@ -404,8 +404,8 @@ ComputeDistanceLowerBound(
     return nSubpixelXDistanceLowerBound;
 }
 struct CHwRasterizer<'a> {
-    m_prgPoints: Option<&'a mut Vec<MilPoint2F>>,
-    m_prgTypes: Option<&'a mut Vec<BYTE>>,
+    m_prgPoints: Option<&'a mut DynArray<MilPoint2F>>,
+    m_prgTypes: Option<&'a mut DynArray<BYTE>>,
     m_rcClipBounds: MilPointAndSizeL,
     m_matWorldToDevice: CMILMatrix,
     m_pIGeometrySink: Option<Rc<dyn IGeometrySink>>,
@@ -528,7 +528,7 @@ fn RasterizePath(
     let pInactiveArrayAllocation: Vec<CInactiveEdge>;
     let edgeHead: CEdge;
     let edgeTail: CEdge;
-    let pEdgeActiveList: *const CEdge;
+    let pEdgeActiveList: *mut CEdge;
     let edgeStore: CEdgeStore;
     let edgeContext: CInitializeEdgesContext;
 
@@ -541,9 +541,9 @@ fn RasterizePath(
     edgeHead.X = i32::MIN;       // Beginning of active list
     edgeContext.MaxY = i32::MIN;
 
-    edgeHead.Next = &edgeTail;
-    pEdgeActiveList = &edgeHead;
-    edgeContext.Store = &edgeStore;
+    edgeHead.Next = &mut edgeTail;
+    pEdgeActiveList = &mut edgeHead;
+    edgeContext.Store = &mut edgeStore;
 
     edgeContext.AntiAliasMode = c_antiAliasMode;
     assert!(edgeContext.AntiAliasMode != MilAntiAliasMode::None);
@@ -612,7 +612,7 @@ fn RasterizePath(
     assert!((nTotalCount >= 2) && (nTotalCount <= (UINT::MAX - 2)));
 
     pInactiveArray = &mut inactiveArrayStack[..];
-    if (nTotalCount > (INACTIVE_LIST_NUMBER!() - 2))
+    if (nTotalCount > (INACTIVE_LIST_NUMBER!() as u32 - 2))
     {
         pInactiveArrayAllocation = vec![Default::default(); nTotalCount as usize + 2];
 
@@ -625,7 +625,7 @@ fn RasterizePath(
         &edgeStore,
         pInactiveArray,
         nTotalCount,
-        &edgeTail
+        &mut edgeTail
         );
 
     let nSubpixelYBottom = edgeContext.MaxY;
@@ -634,7 +634,7 @@ fn RasterizePath(
 
     // Skip the head sentinel on the inactive array:
 
-    pInactiveArray += 1;
+    pInactiveArray = &mut pInactiveArray[1..];
 
     //
     // Rasterize the path
@@ -732,9 +732,9 @@ fn Setup(&mut self,
     // Set local state.
     //
 
-    pD3DDevice.GetClipRect(&self.m_rcClipBounds);
+    pD3DDevice.GetClipRect(&mut self.m_rcClipBounds);
 
-    IFC!(pShape.ConvertToGpPath(*self.m_prgPoints, *self.m_prgTypes));
+    IFC!(pShape.ConvertToGpPath(self.m_prgPoints.as_mut().unwrap(), self.m_prgTypes.as_mut().unwrap()));
 
     self.m_matWorldToDevice = matWorldHPCToDeviceIPC;
     self.m_fillMode = pShape.GetFillMode();
@@ -894,11 +894,12 @@ GenerateOutputAndClearCoverage(&mut self,
 //-------------------------------------------------------------------------
 
 fn ComputeTrapezoidsEndScan(&mut self,
-    pEdgeCurrent: &CEdge,
+    pEdgeCurrent: *const CEdge,
     nSubpixelYCurrent: INT,
     nSubpixelYNextInactive: INT
     ) -> INT
 {
+    unsafe {
     let nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
     let pEdgeLeft: *const CEdge;
     let pEdgeRight: *const CEdge;
@@ -918,20 +919,20 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
     if (self.m_fillMode == MilFillMode::Winding)
     {
-        cfor!{let pEdge = pEdgeCurrent; pEdge.EndY != INT::MIN; pEdge = pEdge.Next.Next;
+        cfor!{let pEdge = pEdgeCurrent; pEdge.EndY != INT::MIN; pEdge = (*pEdge.Next).Next;
         {
             // The active edge list always has an even number of edges which we actually
             // assert in ASSERTACTIVELIST.
 
-            assert!(pEdge.Next.EndY != INT::MIN);
+            assert!((*pEdge.Next).EndY != INT::MIN);
 
             // If not alternating winding direction, we can't fill with alternate mode
 
-            if (pEdge.WindingDirection == pEdge.Next.WindingDirection)
+            if (pEdge.WindingDirection == (*pEdge.Next).WindingDirection)
             {
                 // Give up until we handle winding mode
                 nSubpixelYBottomTrapezoids = nSubpixelYCurrent;
-                return;
+                return nSubpixelYBottomTrapezoids;
             }
         }}
     }
@@ -947,7 +948,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
     nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
 
-    cfor!{let pEdge = pEdgeCurrent; pEdge.EndY != INT::MIN; pEdge = pEdge.Next; 
+    cfor!{let pEdge = pEdgeCurrent; (*pEdge).EndY != INT::MIN; pEdge = pEdge.Next; 
     {
         //
         // Step 1
@@ -958,7 +959,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
         // that pEdge->EndY <= nSubpixelYBottom so there is no need to check for that here.
         //
 
-        nSubpixelYBottomTrapezoids = nSubpixelYBottomTrapezoids.min(pEdge.EndY);
+        nSubpixelYBottomTrapezoids = nSubpixelYBottomTrapezoids.min((*pEdge).EndY);
 
         //
         // Step 2
@@ -967,9 +968,9 @@ fn ComputeTrapezoidsEndScan(&mut self,
         //
 
         pEdgeLeft = pEdge;
-        pEdgeRight = pEdge.Next;
+        pEdgeRight = (*pEdge).Next;
 
-        if (pEdgeRight.EndY != INT::MIN)
+        if ((*pEdgeRight).EndY != INT::MIN)
         {
             //
             //        __A__A'___________________B'_B__
@@ -993,8 +994,8 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
             let nSubpixelExpandDistanceUpperBound: INT =
                 c_nShiftSize
-                + ComputeDeltaUpperBound(pEdgeLeft, c_nHalfShiftSize)
-                + ComputeDeltaUpperBound(pEdgeRight, c_nHalfShiftSize);
+                + ComputeDeltaUpperBound(&*pEdgeLeft, c_nHalfShiftSize)
+                + ComputeDeltaUpperBound(&*pEdgeRight, c_nHalfShiftSize);
 
             //
             // Compute a top edge distance that is <= to the distance between A' and B' as follows:
@@ -1002,7 +1003,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
             //
 
             let nSubpixelXTopDistanceLowerBound: INT =
-                ComputeDistanceLowerBound(pEdgeLeft, pEdgeRight) - nSubpixelExpandDistanceUpperBound;
+                ComputeDistanceLowerBound(&*pEdgeLeft, &*pEdgeRight) - nSubpixelExpandDistanceUpperBound;
 
             //
             // Check if the top edges cross
@@ -1014,7 +1015,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
                 // start a trapezoid on this scanline
 
                 nSubpixelYBottomTrapezoids = nSubpixelYCurrent;
-                return;
+                return nSubpixelYBottomTrapezoids;
             }
 
             //
@@ -1167,6 +1168,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
 //Cleanup:
     return nSubpixelYBottomTrapezoids;
+    }
 }
 
 

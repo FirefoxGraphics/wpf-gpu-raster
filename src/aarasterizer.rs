@@ -9,7 +9,7 @@ use crate::bezier::CMILBezier;
 use crate::helpers::Int32x32To64;
 use crate::matrix::CMILMatrix;
 use crate::real::CFloatFPU;
-use crate::types::PathPointType::*;
+//use crate::types::PathPointType::*;
 use crate::{types::*, TraceTag, __analysis_assume, ASSERTACTIVELISTORDER, IFC, IFCOOM};
 use cfor::cfor;
 
@@ -44,7 +44,7 @@ macro_rules! ENUMERATE_BUFFER_NUMBER {
 
 // Must be at least 4
 #[cfg(debug)]
-macro_rules! ENUMERATE_BUFFER_NUMBER {
+macro_rules! NOMINAL_FILL_POINT_NUMBER {
     () => {
         4
     };
@@ -54,30 +54,22 @@ macro_rules! ENUMERATE_BUFFER_NUMBER {
 #[macro_export]
 macro_rules! EDGE_STORE_STACK_NUMBER {
     () => {
-        (1600 / std::mem::size_of::<CEdge>()) as _
+        (1600 / std::mem::size_of::<CEdge>())
     };
 }
 #[cfg(not(debug))]
 macro_rules! EDGE_STORE_ALLOCATION_NUMBER {
     () => {
-        (4032 / std::mem::size_of::<CEdge>()) as _
+        (4032 / std::mem::size_of::<CEdge>()) as u32
     };
 }
 #[cfg(not(debug))]
 #[macro_export]
-macro_rules! INACTIVE_LIST_NUMBER {
-    () => {
-        EDGE_STORE_STACK_NUMBER!()
-    };
-}
+macro_rules! INACTIVE_LIST_NUMBER { () => { EDGE_STORE_STACK_NUMBER!() }; }
 #[cfg(not(debug))]
-macro_rules! ENUMERATE_BUFFER_NUMBER {
-    () => {
-        32
-    };
-}
+macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 32 }; }
 #[cfg(not(debug))]
-macro_rules! ENUMERATE_BUFFER_NUMBER {
+macro_rules! NOMINAL_FILL_POINT_NUMBER {
     () => {
         32
     };
@@ -234,8 +226,8 @@ const SORT_EDGES_INCLUDING_SLOPE: bool = false;
 
 macro_rules! QUOTIENT_REMAINDER {
     ($ulNumerator: ident, $ulDenominator: ident, $ulQuotient: ident, $ulRemainder: ident) => {
-        $ulQuotient = ($ulNumerator as ULONG) / ($ulDenominator as ULONG);
-        $ulRemainder = ($ulNumerator as ULONG) % ($ulDenominator as ULONG);
+        $ulQuotient = (($ulNumerator as ULONG) / ($ulDenominator as ULONG)) as _;
+        $ulRemainder = (($ulNumerator as ULONG) % ($ulDenominator as ULONG)) as _;
     };
 }
 
@@ -279,10 +271,10 @@ impl CEdgeStore {
             CurrentBuffer: NULL(),
             CurrentEdge: NULL(),
             Enumerator: NULL(),
-            CurrentRemaining: EDGE_STORE_STACK_NUMBER!(),
+            CurrentRemaining: EDGE_STORE_STACK_NUMBER!() as u32,
 
             EdgeHead: CEdgeAllocation {
-                Count: EDGE_STORE_STACK_NUMBER!(),
+                Count: EDGE_STORE_STACK_NUMBER!() as u32,
                 EdgeArray: [CEdge::default(); EDGE_STORE_STACK_NUMBER!()],
                 Next: NULL(),
             },
@@ -350,7 +342,7 @@ impl CEdgeStore {
 
     fn StartAddBuffer(
         &self,
-        /*__deref_out_ecount(*puRemaining)*/ ppCurrentEdge: &mut *const CEdge,
+        /*__deref_out_ecount(*puRemaining)*/ ppCurrentEdge: &mut *mut CEdge,
         /* __deref_out_range(==, (this->CurrentRemaining)) */ puRemaining: &mut UINT,
     ) {
         *ppCurrentEdge = self.CurrentEdge;
@@ -386,7 +378,7 @@ impl CEdgeStore {
 impl CEdgeStore {
     fn NextAddBuffer(
         &self,
-        /*__deref_out_ecount(*puRemaining)*/ ppCurrentEdge: &mut *const CEdge,
+        /*__deref_out_ecount(*puRemaining)*/ ppCurrentEdge: &mut *mut CEdge,
         puRemaining: &mut UINT,
     ) -> HRESULT {
         unsafe {
@@ -423,7 +415,7 @@ impl CEdgeStore {
             IFCOOM!(newBuffer);
 
             (*newBuffer).Next = NULL();
-            (*newBuffer).Count = EDGE_STORE_ALLOCATION_NUMBER!();
+            (*newBuffer).Count = EDGE_STORE_ALLOCATION_NUMBER!() as u32;
 
             self.TotalCount = cNewTotalCount;
 
@@ -708,15 +700,15 @@ fn InitializeEdges(
     let yStartInteger;
     let yEndInteger;
     let dMOriginal;
-    let dM;
-    let dN;
-    let dX;
-    let errorUp;
-    let quotient;
-    let remainder;
-    let error;
+    let dM: i32;
+    let dN: i32;
+    let dX: i32;
+    let errorUp: i32;
+    let quotient: i32;
+    let remainder: i32;
+    let error: i32;
     let windingDirection;
-    let edgeBuffer: *const CEdge;
+    let edgeBuffer: *mut CEdge;
     let bufferCount: UINT;
     let yClipTopInteger;
     let yClipTop;
@@ -810,9 +802,9 @@ fn InitializeEdges(
             //
             // Note that 'yClipBottom' is inclusive:
 
-            let clipHigh = ((pointArray).y <= yClipTop) && ((pointArray + 1).y <= yClipTop);
+            let clipHigh = ((pointArray[0]).y <= yClipTop) && ((pointArray[1]).y <= yClipTop);
 
-            let clipLow = ((pointArray).y > yClipBottom) && ((pointArray + 1).y > yClipBottom);
+            let clipLow = ((pointArray[0]).y > yClipBottom) && ((pointArray[1]).y > yClipBottom);
 
             #[cfg(debug)]
             {
@@ -855,7 +847,7 @@ fn InitializeEdges(
                 {
                     // Note this is one reason why 'pointArray' can't be 'const':
 
-                    *(pointArray[1]) = *(pointArray[0]);
+                    pointArray[1] = pointArray[0];
 
                     continue; // ======================>
                 }
@@ -968,18 +960,19 @@ fn InitializeEdges(
             error >>= 4;
 
             if (bufferCount == 0) {
-                IFC!(store.NextAddBuffer(&edgeBuffer, &bufferCount));
+                IFC!(store.NextAddBuffer(&mut edgeBuffer, &mut bufferCount));
             }
 
-            edgeBuffer.X = xStart;
-            edgeBuffer.Dx = dX;
-            edgeBuffer.Error = error;
-            edgeBuffer.ErrorUp = errorUp;
-            edgeBuffer.ErrorDown = dN;
-            edgeBuffer.WindingDirection = windingDirection;
-            edgeBuffer.StartY = yStartInteger;
-            edgeBuffer.EndY = yEndInteger; // Exclusive of end
-
+            unsafe {
+            (*edgeBuffer).X = xStart;
+            (*edgeBuffer).Dx = dX;
+            (*edgeBuffer).Error = error;
+            (*edgeBuffer).ErrorUp = errorUp;
+            (*edgeBuffer).ErrorDown = dN;
+            (*edgeBuffer).WindingDirection = windingDirection;
+            (*edgeBuffer).StartY = yStartInteger;
+            (*edgeBuffer).EndY = yEndInteger; // Exclusive of end
+            }
             assert!(error < 0);
 
             // Here we handle the case where the edge starts above the
@@ -989,17 +982,17 @@ fn InitializeEdges(
             // Consequently, we advance the DDA here:
 
             if (yClipTopInteger > yStartInteger) {
-                assert!(edgeBuffer.EndY > yClipTopInteger);
+                assert!(unsafe { (*edgeBuffer).EndY } > yClipTopInteger);
 
-                ClipEdge(edgeBuffer, yClipTopInteger, dMOriginal);
+                ClipEdge(unsafe { &mut *edgeBuffer}, yClipTopInteger, dMOriginal);
             }
 
             // Advance to handle the next edge:
 
-            edgeBuffer += 1;
+            edgeBuffer = unsafe { edgeBuffer.offset(1) };
             bufferCount -= 1;
         }
-        pointArray = &pointArray[1..];
+        pointArray = &mut pointArray[1..];
         edgeCount -= 1;
         if edgeCount == 0 {
             break;
@@ -1113,10 +1106,11 @@ fn ValidatePathTypes(typesArray: &[BYTE], count: INT) -> bool {
 
             // A close-subpath marker or a start-subpath marker marks the
             // end of a subpath:
-            !(types[0] & PathPointTypeCloseSubpath)
-                && ((types[1] & PathPointTypePathTypeMask) != PathPointTypeStart)
+            if !(!((types[0] & PathPointTypeCloseSubpath) != 0)
+                && ((types[1] & PathPointTypePathTypeMask) != PathPointTypeStart)) {
+                    break;
+                }
         }
-        {};
     }
 }
 
@@ -1149,7 +1143,7 @@ fn AssertPath(rgTypes: &[BYTE], cPoints: UINT) {
     //
     //       No internal code should be producing invalid paths, and all
     //       paths created by the application must be parameter checked!
-    assert!(ValidatePathTypes(rgTypes, cPoints));
+    assert!(ValidatePathTypes(rgTypes, cPoints as INT));
 }
 
 //+----------------------------------------------------------------------------
@@ -1186,13 +1180,13 @@ pub fn FixedPointPathEnumerate(
     let hr = S_OK;
     let bufferStart: [POINT; ENUMERATE_BUFFER_NUMBER!()];
     let bezierBuffer: [POINT; 4];
-    let buffer: &POINT;
-    let bufferSize: UINT;
+    let buffer: &mut [POINT];
+    let bufferSize: usize;
     let startFigure: POINT;
-    let iStart: UINT;
-    let iEnd: UINT;
-    let runSize: UINT;
-    let thisCount: UINT;
+    let iStart: usize;
+    let iEnd: usize;
+    let runSize: usize;
+    let thisCount: usize;
     let isMore: bool;
     let xLast: INT;
     let yLast: INT;
@@ -1205,7 +1199,7 @@ pub fn FixedPointPathEnumerate(
     iStart = 0;
 
     assert!(cPoints > 1);
-    while (iStart < cPoints - 1) {
+    while (iStart < cPoints as usize - 1) {
         assert!((rgTypes[iStart] & PathPointTypePathTypeMask) == PathPointTypeStart);
         assert!((rgTypes[iStart + 1] & PathPointTypePathTypeMask) != PathPointTypeStart);
 
@@ -1216,12 +1210,12 @@ pub fn FixedPointPathEnumerate(
             matrix,
             &rgpt[iStart..],
             1,
-            &startFigure
+            &mut [startFigure]
         ));
 
         bufferStart[0].x = startFigure.x;
         bufferStart[0].y = startFigure.y;
-        buffer = bufferStart + 1;
+        buffer = &mut bufferStart[1..];
         bufferSize = ENUMERATE_BUFFER_NUMBER!() - 1;
 
         // We need to enter our loop with 'iStart' pointing one past
@@ -1235,7 +1229,7 @@ pub fn FixedPointPathEnumerate(
             if ((rgTypes[iStart] & PathPointTypePathTypeMask) == PathPointTypeLine) {
                 iEnd = iStart + 1;
 
-                while ((iEnd < cPoints)
+                while ((iEnd < cPoints as usize)
                     && ((rgTypes[iEnd] & PathPointTypePathTypeMask) == PathPointTypeLine))
                 {
                     iEnd += 1;
@@ -1250,18 +1244,18 @@ pub fn FixedPointPathEnumerate(
 
                     IFC!(TransformRasterizerPointsTo28_4(
                         matrix,
-                        &rgpt[iStart],
-                        thisCount,
+                        &rgpt[iStart..],
+                        thisCount as u32,
                         buffer
                     ));
 
                     __analysis_assume!(
                         buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER
                     );
-                    assert!(buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER!());
+                    assert!(unsafe { buffer.as_ptr().offset(bufferSize as isize) == bufferStart.as_ptr().offset(ENUMERATE_BUFFER_NUMBER!()) });
 
                     iStart += thisCount;
-                    buffer += thisCount;
+                    buffer = &mut buffer[thisCount..];
                     runSize -= thisCount;
                     bufferSize -= thisCount;
 
@@ -1281,23 +1275,23 @@ pub fn FixedPointPathEnumerate(
 
                     bufferStart[0].x = xLast;
                     bufferStart[0].y = yLast;
-                    buffer = bufferStart + 1;
+                    buffer = &mut bufferStart[1..];
                     bufferSize = ENUMERATE_BUFFER_NUMBER!() - 1;
                     if !(runSize != 0) {
                         break;
                     }
                 }
             } else {
-                assert!(iStart + 3 <= cPoints);
+                assert!(iStart + 3 <= cPoints as usize);
                 assert!((rgTypes[iStart] & PathPointTypePathTypeMask) == PathPointTypeBezier);
                 assert!((rgTypes[iStart + 1] & PathPointTypePathTypeMask) == PathPointTypeBezier);
                 assert!((rgTypes[iStart + 2] & PathPointTypePathTypeMask) == PathPointTypeBezier);
 
                 IFC!(TransformRasterizerPointsTo28_4(
                     matrix,
-                    &rgpt[iStart - 1],
+                    &rgpt[(iStart - 1)..],
                     4,
-                    &bezierBuffer
+                    &mut bezierBuffer
                 ));
 
                 // Prepare for the next iteration:
@@ -1308,14 +1302,14 @@ pub fn FixedPointPathEnumerate(
 
                 let bezier = CMILBezier::new(&bezierBuffer, clipRect);
                 loop {
-                    thisCount = bezier.Flatten(buffer, bufferSize, &isMore);
+                    thisCount = bezier.Flatten(buffer, &mut isMore) as usize;
 
                     __analysis_assume!(
                         buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER!()
                     );
-                    assert!(buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER!());
+                    assert!(unsafe { buffer.as_ptr().offset(bufferSize as isize) == bufferStart.as_ptr().offset(ENUMERATE_BUFFER_NUMBER!()) });
 
-                    buffer += thisCount;
+                    buffer = &mut buffer[thisCount..];
                     bufferSize -= thisCount;
 
                     if (bufferSize > 0) {
@@ -1334,7 +1328,7 @@ pub fn FixedPointPathEnumerate(
 
                     bufferStart[0].x = xLast;
                     bufferStart[0].y = yLast;
-                    buffer = bufferStart + 1;
+                    buffer = &mut bufferStart[1..];
                     bufferSize = ENUMERATE_BUFFER_NUMBER!() - 1;
                     if !isMore {
                         break;
@@ -1342,7 +1336,7 @@ pub fn FixedPointPathEnumerate(
                 }
             }
 
-            ((iStart < cPoints)
+            ((iStart < cPoints as usize)
                 && ((rgTypes[iStart] & PathPointTypePathTypeMask) != PathPointTypeStart))
         } {}
 
@@ -1350,8 +1344,8 @@ pub fn FixedPointPathEnumerate(
         // 'close figure' (which is implicit for a fill):
         // Add the close-figure point:
 
-        buffer.x = startFigure.x;
-        buffer.y = startFigure.y;
+        buffer[0].x = startFigure.x;
+        buffer[0].y = startFigure.y;
         bufferSize -= 1;
 
         // We have to flush anything we might have in the batch, unless
@@ -1415,12 +1409,13 @@ fn YX(x: INT, y: INT, p: &mut LONGLONG) {
 *
 \**************************************************************************/
 
-const QUICKSORT_THRESHOLD: u32 = 8;
+const QUICKSORT_THRESHOLD: isize = 8;
 
 fn QuickSortEdges(
     /*__inout_xcount(f - l + 1 elements)*/ f: *mut CInactiveEdge,
     /*__inout_xcount(array starts at f)*/ l: *mut CInactiveEdge,
 ) {
+    unsafe {
     let e: *mut CEdge;
     let y: LONGLONG;
     let first: LONGLONG;
@@ -1429,66 +1424,66 @@ fn QuickSortEdges(
 
     // Find the median of the first, middle, and last elements:
 
-    let m: *mut CInactiveEdge = f + ((l - f) >> 1);
+    let m: *mut CInactiveEdge = f.offset(l.offset_from(f) >> 1);
 
-    SWAP!(y, (f + 1).Yx, m.Yx);
-    SWAP!(e, (f + 1).Edge, m.Edge);
+    SWAP!(y, (*(f.offset(1))).Yx, (*m).Yx);
+    SWAP!(e, (*(f.offset(1))).Edge, (*m).Edge);
 
-    if ((second = (f + 1).Yx) > (last = l.Yx)) {
-        (f + 1).Yx = last;
-        l.Yx = second;
+    if {second = (*f.offset(1)).Yx; second > {last = (*l).Yx; last}} {
+        (*f.offset(1)).Yx = last;
+        (*l).Yx = second;
 
-        SWAP!(e, (f + 1).Edge, l.Edge);
+        SWAP!(e, (*f.offset(1)).Edge, (*l).Edge);
     }
-    if ((first = f.Yx) > (last = l.Yx)) {
-        f.Yx = last;
-        l.Yx = first;
+    if ((first = (*f).Yx) > (last = (*l).Yx)) {
+        (*f).Yx = last;
+        (*l).Yx = first;
 
-        SWAP!(e, f.Edge, l.Edge);
+        SWAP!(e, (*f).Edge, (*l).Edge);
     }
-    if ((second = (f + 1).Yx) > (first = f.Yx)) {
-        (f + 1).Yx = first;
-        f.Yx = second;
+    if {second = (*f.offset(1)).Yx; second} > {first = (*f).Yx; first} {
+        (*f.offset(1)).Yx = first;
+        (*f).Yx = second;
 
-        SWAP!(e, (f + 1).Edge, f.Edge);
+        SWAP!(e, (*f.offset(1)).Edge, (*f).Edge);
     }
 
     // f->Yx is now the desired median, and (f + 1)->Yx <= f->Yx <= l->Yx
 
-    assert!(((f + 1).Yx <= f.Yx) && (f.Yx <= l.Yx));
+    assert!(((*f.offset(1)).Yx <= (*f).Yx) && ((*f).Yx <= (*l).Yx));
 
-    let median = f.Yx;
+    let median = (*f).Yx;
 
-    let i: *mut CInactiveEdge = f + 2;
-    while (i.Yx < median) {
-        i += 1;
+    let i: *mut CInactiveEdge = f.offset(2);
+    while ((*i).Yx < median) {
+        i = i.offset(1);
     }
 
-    let j: *mut CInactiveEdge = l - 1;
-    while (j.Yx > median) {
-        j -= 1;
+    let j: *mut CInactiveEdge = l.offset(-1);
+    while ((*j).Yx > median) {
+        j = j.offset(-1);
     }
 
     while (i < j) {
-        SWAP!(y, i.Yx, j.Yx);
-        SWAP!(e, i.Edge, j.Edge);
+        SWAP!(y, (*i).Yx, (*j).Yx);
+        SWAP!(e, (*i).Edge, (*j).Edge);
 
         while {
-            i += 1;
-            i.Yx < median
+            i = i.offset(1);
+            (*i).Yx < median
         } {}
 
         while {
-            j -= 1;
-            j.Yx > median
+            j = j.offset(-1);
+            (*j).Yx > median
         } {}
     }
 
-    SWAP!(y, f.Yx, j.Yx);
-    SWAP!(e, f.Edge, j.Edge);
+    SWAP!(y, (*f).Yx, (*j).Yx);
+    SWAP!(e, (*f).Edge, (*j).Edge);
 
-    let a = j - f;
-    let b = l - j;
+    let a = j.offset_from(f);
+    let b = l.offset_from(j);
 
     // Use less stack space by recursing on the shorter subtable.  Also,
     // have the less-overhead insertion-sort handle small subtables.
@@ -1497,20 +1492,21 @@ fn QuickSortEdges(
         if (a > QUICKSORT_THRESHOLD) {
             // 'a' is the smallest, so do it first:
 
-            QuickSortEdges(f, j - 1);
-            QuickSortEdges(j + 1, l);
+            QuickSortEdges(f, j.offset(-1));
+            QuickSortEdges(j.offset(1), l);
         } else if (b > QUICKSORT_THRESHOLD) {
-            QuickSortEdges(j + 1, l);
+            QuickSortEdges(j.offset(1), l);
         }
     } else {
         if (b > QUICKSORT_THRESHOLD) {
             // 'b' is the smallest, so do it first:
 
-            QuickSortEdges(j + 1, l);
-            QuickSortEdges(f, j - 1);
+            QuickSortEdges(j.offset(1), l);
+            QuickSortEdges(f, j.offset(1));
         } else if (a > QUICKSORT_THRESHOLD) {
-            QuickSortEdges(f, j - 1);
+            QuickSortEdges(f, j.offset(-1));
         }
+    }
     }
 }
 
@@ -1531,15 +1527,16 @@ fn InsertionSortEdges(
     /* __inout_xcount(count forward & -1 back)*/ inactive: *mut CInactiveEdge,
     count: INT,
 ) {
+    unsafe {
     let p: *mut CInactiveEdge;
     let e: *mut CEdge;
     let y: LONGLONG;
     let yPrevious: LONGLONG;
 
-    assert!((inactive - 1).Yx == i64::MIN);
+    assert!((*(inactive.offset(-1))).Yx == i64::MIN);
     assert!(count >= 2);
 
-    inactive += 1; // Skip first entry (by definition it's already in order!)
+    inactive = inactive.offset(1); // Skip first entry (by definition it's already in order!)
     count -= 1;
 
     while {
@@ -1547,32 +1544,33 @@ fn InsertionSortEdges(
 
         // Copy the current stuff to temporary variables to make a hole:
 
-        e = inactive.Edge;
-        y = inactive.Yx;
+        e = (*inactive).Edge;
+        y = (*inactive).Yx;
 
         // Shift everything one slot to the right (effectively moving
         // the hole one position to the left):
 
-        while (y < (yPrevious = (p - 1).Yx)) {
-            p.Yx = yPrevious;
-            p.Edge = (p - 1).Edge;
-            p -= 1;
+        while (y < {yPrevious = (*p.offset( -1)).Yx; yPrevious}) {
+            (*p).Yx = yPrevious;
+            (*p).Edge = (*p.offset(-1)).Edge;
+            p = p.offset(-1);
         }
 
         // Drop the temporary stuff into the final hole:
 
-        p.Yx = y;
-        p.Edge = e;
+        (*p).Yx = y;
+        (*p).Edge = e;
 
         // The quicksort should have ensured that we don't have to move
         // any entry terribly far:
 
-        assert!(inactive - p <= QUICKSORT_THRESHOLD);
+        assert!(inactive.offset_from(p) <= QUICKSORT_THRESHOLD);
 
-        inactive += 1;
+        inactive = inactive.offset(1);
         count -= 1;
         count != 0
     } {}
+    }
 }
 
 /**************************************************************************\
@@ -1596,31 +1594,33 @@ fn AssertInactiveArray(
     inactive: *const CInactiveEdge, // Annotation should allow the -1 element
     count: INT,
 ) {
+    unsafe {
     // Verify the head:
 
     /*#if !ANALYSIS*/
     // #if needed because prefast don't know that the -1 element is avaliable
-    assert!((inactive - 1).Yx == i64::MIN);
+    assert!((*inactive.offset(-1)).Yx == i64::MIN);
     /*#endif*/
-    assert!(inactive.Yx != i64::MIN);
+    assert!((*inactive).Yx != i64::MIN);
 
     while {
-        let yx: LONGLONG;
-        YX(inactive.Edge.X, inactive.Edge.StartY, &yx);
+        let yx: LONGLONG = 0;
+        YX((*(*inactive).Edge).X, (*(*inactive).Edge).StartY, &mut yx);
 
-        assert!(inactive.Yx == yx);
+        assert!((*inactive).Yx == yx);
         /*#if !ANALYSIS*/
         // #if needed because tools don't know that the -1 element is avaliable
-        assert!(inactive.Yx >= (inactive - 1).Yx);
+        assert!((*inactive).Yx >= (*inactive.offset(- 1)).Yx);
         /*#endif*/
-        inactive += 1;
+        inactive = inactive.offset(1);
         count -= 1;
         count != 0
     } {}
 
     // Verify that the tail is setup appropriately:
 
-    assert!(inactive.Edge.StartY == INT::MAX);
+    assert!((*(*inactive).Edge).StartY == INT::MAX);
+    }
 }
 
 /**************************************************************************\
@@ -1643,8 +1643,9 @@ pub fn InitializeInactiveArray(
     pEdgeStore: &CEdgeStore,
     /*__in_ecount(count+2)*/ rgInactiveArray: &mut [CInactiveEdge],
     count: UINT,
-    tailEdge: *const CEdge, // Tail sentinel for inactive list
+    tailEdge: *mut CEdge, // Tail sentinel for inactive list
 ) -> INT {
+    unsafe {
     let isMore;
     let pActiveEdge: *mut CEdge;
     let pActiveEdgeEnd: *mut CEdge;
@@ -1659,46 +1660,47 @@ pub fn InitializeInactiveArray(
 
         while (pActiveEdge != pActiveEdgeEnd) {
             pInactiveEdge[0].Edge = pActiveEdge;
-            YX(pActiveEdge.X, pActiveEdge.StartY, &pInactiveEdge.Yx);
+            YX((*pActiveEdge).X, (*pActiveEdge).StartY, &mut pInactiveEdge[0].Yx);
             pInactiveEdge = &mut pInactiveEdge[1..];
-            pActiveEdge += 1;
+            pActiveEdge = pActiveEdge.offset(1);
         }
         isMore
     } {}
 
-    assert!((pInactiveEdge - rgInactiveArray) as UINT == count + 1);
+    assert!(pInactiveEdge.as_ptr().offset_from(rgInactiveArray.as_ptr()) as UINT == count + 1);
 
     // Add the tail, which is used when reading back the array.  This
     // is why we had to allocate the array as 'count + 1':
 
-    pInactiveEdge.Edge = tailEdge;
+    pInactiveEdge[0].Edge = tailEdge;
 
     // Add the head, which is used for the insertion sort.  This is why
     // we had to allocate the array as 'count + 2':
 
-    rgInactiveArray.Yx = i64::MIN;
+    rgInactiveArray[0].Yx = i64::MIN;
 
     // Only invoke the quicksort routine if it's worth the overhead:
 
-    if (count > QUICKSORT_THRESHOLD) {
+    if (count as isize > QUICKSORT_THRESHOLD) {
         // Quick-sort this, skipping the first and last elements,
         // which are sentinels.
         //
         // We do 'inactiveArray + count' to be inclusive of the last
         // element:
 
-        QuickSortEdges(rgInactiveArray + 1, rgInactiveArray + count);
+        QuickSortEdges(rgInactiveArray.as_mut_ptr().offset(1), rgInactiveArray.as_mut_ptr().offset(count as isize));
     }
 
     // Do a quick sort to handle the mostly sorted result:
 
-    InsertionSortEdges(rgInactiveArray + 1, count);
+    InsertionSortEdges(rgInactiveArray[1..].as_mut_ptr(), count as i32);
 
-    ASSERTINACTIVEARRAY!(rgInactiveArray + 1, count);
+    ASSERTINACTIVEARRAY!(rgInactiveArray.as_mut_ptr().offset(1), count as i32);
 
     // Return the 'y' value of the topmost edge:
 
-    return (rgInactiveArray[1].Edge.StartY);
+    return (*rgInactiveArray[1].Edge).StartY;
+    }
 }
 
 /**************************************************************************\
@@ -1717,41 +1719,43 @@ pub fn InsertNewEdges(
     pActiveList: *const CEdge,
     iCurrentY: INT,
     /*__deref_inout_xcount(array terminated by an edge with StartY != iCurrentY)*/
-    ppInactiveEdge: &&[CInactiveEdge],
+    ppInactiveEdge: &mut &[CInactiveEdge],
     pYNextInactive: &mut INT, // will be INT_MAX when no more
 ) {
-    let inactive: *mut CInactiveEdge = *ppInactiveEdge;
+    unsafe {
+    let inactive: &[CInactiveEdge] = ppInactiveEdge;
 
-    assert!(inactive.Edge.StartY == iCurrentY);
+    assert!((*inactive[0].Edge).StartY == iCurrentY);
 
     while {
-        let newActive: *mut CEdge = inactive.Edge;
+        let newActive: *mut CEdge = inactive[0].Edge;
 
         // The activeList edge list sentinel has X = INT_MAX, so this always
         // terminates:
 
-        while (pActiveList.Next.X < newActive.X) {
-            pActiveList = pActiveList.Next;
+        while ((*(*pActiveList).Next).X < (*newActive).X) {
+            pActiveList = (*pActiveList).Next;
         }
 
         if SORT_EDGES_INCLUDING_SLOPE {
             // The activeList edge list sentinel has Dx = INT_MAX, so this always
             // terminates:
 
-            while ((pActiveList.Next.X == newActive.X) && (pActiveList.Next.Dx < newActive.Dx)) {
-                pActiveList = pActiveList.Next;
+            while (((*(*pActiveList).Next).X == (*newActive).X) && ((*(*pActiveList).Next).Dx < (*newActive).Dx)) {
+                pActiveList = (*pActiveList).Next;
             }
         }
 
-        newActive.Next = pActiveList.Next;
-        pActiveList.Next = newActive;
+        (*newActive).Next = (*pActiveList).Next;
+        (*pActiveList).Next = newActive;
 
-        inactive += 1;
-        inactive.Edge.StartY == iCurrentY
+        inactive = &inactive[1..];
+        (*(inactive[0]).Edge).StartY == iCurrentY
     } {}
 
-    *pYNextInactive = inactive.Edge.StartY;
+    *pYNextInactive = (*(inactive[0]).Edge).StartY;
     *ppInactiveEdge = inactive;
+    }
 }
 
 /**************************************************************************\
@@ -1770,37 +1774,40 @@ pub fn InsertNewEdges(
 \**************************************************************************/
 
 fn SortActiveEdges(list: *const CEdge) {
+    unsafe {
     let mut swapOccurred: bool;
     let tmp: *mut CEdge;
 
     // We should never be called with an empty active edge list:
 
-    assert!(list.Next.X != INT::MAX);
+    assert!((*(*list).Next).X != INT::MAX);
 
     while {
         swapOccurred = false;
 
         let previous = list;
-        let current = list.Next;
-        let next = current.Next;
-        let nextX = next.X;
+        let current = (*list).Next;
+        let next = (*current).Next;
+        let nextX = (*next).X;
 
         while {
-            if (nextX < current.X) {
+            if (nextX < (*current).X) {
                 swapOccurred = true;
 
-                previous.Next = next;
-                current.Next = next.Next;
-                next.Next = current;
+                (*previous).Next = next;
+                (*current).Next = (*next).Next;
+                (*next).Next = current;
 
                 SWAP!(tmp, next, current);
             }
 
             previous = current;
             current = next;
-            next = next.Next;
-            ((nextX = next.X) != INT::MAX)
+            next = (*next).Next;
+            nextX = (*next).X;
+            nextX != INT::MAX
         } {}
         swapOccurred
     } {}
+    }
 }
