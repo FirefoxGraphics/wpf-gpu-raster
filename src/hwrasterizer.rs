@@ -404,7 +404,7 @@ ComputeDistanceLowerBound(
 
     return nSubpixelXDistanceLowerBound;
 }
-struct CHwRasterizer {
+pub struct CHwRasterizer {
     m_prgPoints: Option<Rc<RefCell<DynArray<MilPoint2F>>>>,
     m_prgTypes: Option<Rc<RefCell<DynArray<BYTE>>>>,
     m_rcClipBounds: MilPointAndSizeL,
@@ -473,7 +473,7 @@ impl CHwRasterizer {
     //  Synopsis:   ctor
     //
     //-------------------------------------------------------------------------
-    fn new() -> Self
+    pub fn new() -> Self
     {
         Self {
         m_pDeviceNoRef:  None,
@@ -514,7 +514,7 @@ impl CHwRasterizer {
 //          3. Delegating to RasterizePath to execute the main loop.
 //
 //-------------------------------------------------------------------------
-fn RasterizePath(
+pub fn RasterizePath(
     &mut self,
     rgpt: &[MilPoint2F],
     rgTypes: &[BYTE],
@@ -672,7 +672,7 @@ fn RasterizePath(
 //      2. Convert path to internal format
 //
 //-------------------------------------------------------------------------
-fn Setup(&mut self,
+pub fn Setup(&mut self,
     pD3DDevice: Rc<CD3DDeviceLevel1>,
     pShape: Rc<dyn IShapeData>,
     prgPointsScratch: Rc<RefCell<DynArray<MilPoint2F>>>,

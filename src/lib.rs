@@ -1,5 +1,7 @@
 #![allow(unused_parens)]
 #![allow(overflowing_literals)]
+#![allow(non_snake_case)]
+#![allow(non_camel_case_types)]
 
 mod bezier;
 mod hwrasterizer;
@@ -13,7 +15,11 @@ mod matrix;
 mod real;
 mod fix;
 
-use std::ffi::c_void;
+use std::{ffi::c_void, rc::Rc, cell::RefCell};
+
+use hwrasterizer::CHwRasterizer;
+use matrix::CMatrix;
+use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT};
 #[repr(C)]
 #[derive(Debug)]
 pub struct OutputVertex {
@@ -73,6 +79,46 @@ impl Drop for PathBuilder {
     }
 }
 
+struct RectShape;
+
+impl IShapeData for RectShape {
+    fn GetFillMode(&self) -> MilFillMode {
+        MilFillMode::Alternate
+    }
+
+    fn ConvertToGpPath(&self, points: &mut types::DynArray<types::MilPoint2F>, types: &mut types::DynArray<types::BYTE>) -> HRESULT {
+        types.push(PathPointTypeStart);
+        points.push(MilPoint2F{X: 10., Y: 10.});
+
+        types.push(PathPointTypeLine);
+        points.push(MilPoint2F{X: 40., Y: 10.});
+
+        types.push(PathPointTypeLine);
+        points.push(MilPoint2F{X: 40., Y: 40.});
+
+        return types::S_OK;
+    }
+}
+
+
+pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) {
+    let mut rasterizer = CHwRasterizer::new();
+    let mut device = CD3DDeviceLevel1::new();
+    
+    device.clipRect.X = clip_x;
+    device.clipRect.Y = clip_y;
+    device.clipRect.Width = clip_width;
+    device.clipRect.Height = clip_height;
+    /* 
+    device.m_rcViewport = device.clipRect;
+*/
+    let shape = RectShape{};
+    let pointsScratch = Rc::new(RefCell::new(Vec::new()));
+    let typesScratch = Rc::new(RefCell::new(Vec::new()));
+    let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
+
+    rasterizer.Setup(Rc::new(device), Rc::new(shape), pointsScratch, typesScratch, Some(&worldToDevice));
+}
 
 #[cfg(test)]
 mod tests {
@@ -93,5 +139,10 @@ mod tests {
         p.close();
         let result = p.rasterize_to_tri_strip(100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x91582a1f5e431eb6);
+    }
+
+    #[test]
+    fn rust() {
+        rasterize(0, 0, 100, 100);
     }
 }
