@@ -1,4 +1,5 @@
 #![allow(unused_parens)]
+#![allow(overflowing_literals)]
 
 mod bezier;
 mod hwrasterizer;

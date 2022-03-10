@@ -140,9 +140,9 @@ impl Default for CInactiveEdge {
 \**************************************************************************/
 pub fn AdvanceDDAAndUpdateActiveEdgeList(nSubpixelYCurrent: INT, pEdgeActiveList: *mut CEdge) {
     unsafe {
-        let nOutOfOrderCount: INT = 0;
-        let pEdgePrevious: *mut CEdge = pEdgeActiveList;
-        let pEdgeCurrent: *mut CEdge = (*pEdgeActiveList).Next;
+        let mut nOutOfOrderCount: INT = 0;
+        let mut pEdgePrevious: *mut CEdge = pEdgeActiveList;
+        let mut pEdgeCurrent: *mut CEdge = (*pEdgeActiveList).Next;
 
         // Advance DDA and update edge list
 
@@ -254,6 +254,12 @@ struct CEdgeAllocation {
     EdgeArray: [CEdge; EDGE_STORE_STACK_NUMBER!()],
 }
 
+impl Default for CEdgeAllocation {
+    fn default() -> Self {
+        Self { Next: NULL(), Count: Default::default(), EdgeArray: [(); EDGE_STORE_STACK_NUMBER!()].map(|_| Default::default()) }
+    }
+}
+
 pub struct CEdgeStore {
     /* __field_range(<=, UINT_MAX - 2) */ TotalCount: UINT, // Total edge count in store
     /* __field_range(<=, CurrentBuffer->Count) */
@@ -264,9 +270,15 @@ pub struct CEdgeStore {
     EdgeHead: CEdgeAllocation, // Our built-in allocation
 }
 
+impl Default for CEdgeStore {
+    fn default() -> Self {
+        Self { TotalCount: Default::default(), CurrentRemaining: Default::default(), CurrentBuffer: NULL(), CurrentEdge: NULL(), Enumerator: NULL(), EdgeHead: Default::default() }
+    }
+}
+
 impl CEdgeStore {
     pub fn new() -> CEdgeStore {
-        let result = Self {
+        let mut result = Self {
             TotalCount: 0,
             CurrentBuffer: NULL(),
             CurrentEdge: NULL(),
@@ -275,7 +287,8 @@ impl CEdgeStore {
 
             EdgeHead: CEdgeAllocation {
                 Count: EDGE_STORE_STACK_NUMBER!() as u32,
-                EdgeArray: [CEdge::default(); EDGE_STORE_STACK_NUMBER!()],
+                // hack to work around limited Default implementation for arrays
+                EdgeArray: [(); EDGE_STORE_STACK_NUMBER!()].map(|_| Default::default()),
                 Next: NULL(),
             },
         };
@@ -323,7 +336,7 @@ impl CEdgeStore {
     }
 
     fn Enumerate(
-        &self,
+        &mut self,
         /*__deref_out_ecount(*ppEndEdge - *ppStartEdge)*/ ppStartEdge: &mut *mut CEdge,
         /* __deref_out_ecount(0) */ ppEndEdge: &mut *mut CEdge,
     ) -> bool {
@@ -384,7 +397,7 @@ impl CEdgeStore {
         unsafe {
             let hr = S_OK;
 
-            let cNewTotalCount: u32 = 0;
+            let mut cNewTotalCount: u32 = 0;
 
             // The caller has completely filled up this chunk:
 
@@ -446,8 +459,8 @@ impl CEdgeStore {
 
 pub fn AssertActiveList(mut list: *const CEdge, yCurrent: INT) -> bool {
     unsafe {
-    let b = true;
-    let activeCount = 0;
+    let mut b = true;
+    let mut activeCount = 0;
 
     assert!((*list).X == INT::MIN);
     b &= ((*list).X == INT::MIN);
@@ -506,9 +519,9 @@ macro_rules! ASSERTACTIVELISTORDER {
         AssertActiveListOrder($list)
     };
 }
-fn AssertActiveListOrder(list: *const CEdge) {
+fn AssertActiveListOrder(mut list: *const CEdge) {
 unsafe {
-    let activeCount = 0;
+    let mut activeCount = 0;
 
     assert!((*list).X == INT::MIN);
 
@@ -547,15 +560,15 @@ unsafe {
 *
 \**************************************************************************/
 fn ClipEdge(edgeBuffer: &mut CEdge, yClipTopInteger: INT, dMOriginal: INT) {
-    let xDelta: INT;
-    let error: INT;
+    let mut xDelta: INT;
+    let mut error: INT;
 
     // Cases where bigNumerator will exceed 32-bits in precision
     // will be rare, but could happen, and we can't fall over
     // in those cases.
 
     let dN: INT = edgeBuffer.ErrorDown;
-    let bigNumerator: LONGLONG = Int32x32To64(dMOriginal, yClipTopInteger - edgeBuffer.StartY)
+    let mut bigNumerator: LONGLONG = Int32x32To64(dMOriginal, yClipTopInteger - edgeBuffer.StartY)
         + (edgeBuffer.Error + dN) as LONGLONG;
     if (bigNumerator >= 0) {
         QUOTIENT_REMAINDER_64_32!(bigNumerator, dN, xDelta, error);
@@ -590,7 +603,7 @@ fn TransformRasterizerPointsTo28_4(
     // Transform to take us to 28.4
     mut pPtsSource: &[MilPoint2F],
     // Source points
-    cPoints: UINT,
+    mut cPoints: UINT,
     // Count of points
     mut pPtsDest: &mut [POINT], // Destination points
 ) -> HRESULT {
@@ -683,6 +696,12 @@ pub struct CInitializeEdgesContext<'a> {
     pub AntiAliasMode: MilAntiAliasMode,
 }
 
+impl<'a> CInitializeEdgesContext<'a> {
+    pub fn new(store: &'a mut CEdgeStore) -> Self {
+        CInitializeEdgesContext { MaxY: Default::default(), ClipRect: Default::default(), Store: store, AntiAliasMode: MilAntiAliasMode::None }
+    }
+}
+
 fn InitializeEdges(
     pEdgeContext: &mut CInitializeEdgesContext,
     /*__inout_ecount(vertexCount)*/
@@ -695,32 +714,32 @@ fn InitializeEdges(
 
     let hr = S_OK;
 
-    let xStart;
-    let yStart;
-    let yStartInteger;
-    let yEndInteger;
-    let dMOriginal;
-    let dM: i32;
-    let dN: i32;
-    let dX: i32;
-    let errorUp: i32;
-    let quotient: i32;
-    let remainder: i32;
-    let error: i32;
-    let windingDirection;
-    let edgeBuffer: *mut CEdge;
-    let bufferCount: UINT;
-    let yClipTopInteger;
-    let yClipTop;
-    let yClipBottom;
-    let xClipLeft;
-    let xClipRight;
+    let mut xStart;
+    let mut yStart;
+    let mut yStartInteger;
+    let mut yEndInteger;
+    let mut dMOriginal;
+    let mut dM: i32;
+    let mut dN: i32;
+    let mut dX: i32;
+    let mut errorUp: i32;
+    let mut quotient: i32;
+    let mut remainder: i32;
+    let mut error: i32;
+    let mut windingDirection;
+    let mut edgeBuffer: *mut CEdge = NULL();
+    let mut bufferCount: UINT = 0;
+    let mut yClipTopInteger;
+    let mut yClipTop;
+    let mut yClipBottom;
+    let mut xClipLeft;
+    let mut xClipRight;
 
-    let yMax = pEdgeContext.MaxY;
-    let store = pEdgeContext.Store;
+    let mut yMax = pEdgeContext.MaxY;
+    let store = &mut pEdgeContext.Store;
     let clipRect = pEdgeContext.ClipRect;
 
-    let edgeCount = vertexCount - 1;
+    let mut edgeCount = vertexCount - 1;
     assert!(edgeCount >= 1);
 
     if let Some(clipRect) = clipRect {
@@ -755,8 +774,8 @@ fn InitializeEdges(
         // code can assume that the pixel centers are at half-pixel
         // coordinates, not on the integer coordinates.
 
-        let point = pointArray;
-        let i = vertexCount;
+        let mut point = &mut *pointArray;
+        let mut i = vertexCount;
 
         while {
             point[0].x = (point[0].x + 8) << c_nShift;
@@ -1021,7 +1040,7 @@ fn InitializeEdges(
 *   03/25/2000 andrewgo
 *
 \**************************************************************************/
-fn ValidatePathTypes(typesArray: &[BYTE], count: INT) -> bool {
+fn ValidatePathTypes(typesArray: &[BYTE], mut count: INT) -> bool {
     let mut types = typesArray;
 
     if (count == 0) {
@@ -1178,18 +1197,18 @@ pub fn FixedPointPathEnumerate(
     enumerateContext: &mut CInitializeEdgesContext,
 ) -> HRESULT {
     let hr = S_OK;
-    let bufferStart: [POINT; ENUMERATE_BUFFER_NUMBER!()];
-    let bezierBuffer: [POINT; 4];
-    let buffer: &mut [POINT];
-    let bufferSize: usize;
-    let startFigure: POINT;
-    let iStart: usize;
-    let iEnd: usize;
-    let runSize: usize;
-    let thisCount: usize;
-    let isMore: bool;
-    let xLast: INT;
-    let yLast: INT;
+    let mut bufferStart: [POINT; ENUMERATE_BUFFER_NUMBER!()] = [(); ENUMERATE_BUFFER_NUMBER!()].map(|_| Default::default());
+    let mut bezierBuffer: [POINT; 4] = Default::default();
+    let mut buffer: &mut [POINT];
+    let mut bufferSize: usize;
+    let startFigure: POINT = Default::default();
+    let mut iStart: usize;
+    let mut iEnd: usize;
+    let mut runSize: usize;
+    let mut thisCount: usize;
+    let mut isMore: bool = false;
+    let mut xLast: INT;
+    let mut yLast: INT;
 
     ASSERTPATH!(rgTypes, cPoints);
 
@@ -1215,6 +1234,7 @@ pub fn FixedPointPathEnumerate(
 
         bufferStart[0].x = startFigure.x;
         bufferStart[0].y = startFigure.y;
+        let bufferStartPtr = bufferStart.as_ptr();
         buffer = &mut bufferStart[1..];
         bufferSize = ENUMERATE_BUFFER_NUMBER!() - 1;
 
@@ -1252,7 +1272,7 @@ pub fn FixedPointPathEnumerate(
                     __analysis_assume!(
                         buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER
                     );
-                    assert!(unsafe { buffer.as_ptr().offset(bufferSize as isize) == bufferStart.as_ptr().offset(ENUMERATE_BUFFER_NUMBER!()) });
+                    assert!(unsafe { buffer.as_ptr().offset(bufferSize as isize) == bufferStartPtr.offset(ENUMERATE_BUFFER_NUMBER!()) });
 
                     iStart += thisCount;
                     buffer = &mut buffer[thisCount..];
@@ -1300,14 +1320,14 @@ pub fn FixedPointPathEnumerate(
 
                 // Process the Bezier:
 
-                let bezier = CMILBezier::new(&bezierBuffer, clipRect);
+                let mut bezier = CMILBezier::new(&bezierBuffer, clipRect);
                 loop {
                     thisCount = bezier.Flatten(buffer, &mut isMore) as usize;
 
                     __analysis_assume!(
                         buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER!()
                     );
-                    assert!(unsafe { buffer.as_ptr().offset(bufferSize as isize) == bufferStart.as_ptr().offset(ENUMERATE_BUFFER_NUMBER!()) });
+                    assert!(unsafe { buffer.as_ptr().offset(bufferSize as isize) == bufferStartPtr.offset(ENUMERATE_BUFFER_NUMBER!()) });
 
                     buffer = &mut buffer[thisCount..];
                     bufferSize -= thisCount;
@@ -1416,11 +1436,11 @@ fn QuickSortEdges(
     /*__inout_xcount(array starts at f)*/ l: *mut CInactiveEdge,
 ) {
     unsafe {
-    let e: *mut CEdge;
-    let y: LONGLONG;
-    let first: LONGLONG;
-    let second: LONGLONG;
-    let last: LONGLONG;
+    let mut e: *mut CEdge;
+    let mut y: LONGLONG;
+    let mut first: LONGLONG;
+    let mut second: LONGLONG;
+    let mut last: LONGLONG;
 
     // Find the median of the first, middle, and last elements:
 
@@ -1454,12 +1474,12 @@ fn QuickSortEdges(
 
     let median = (*f).Yx;
 
-    let i: *mut CInactiveEdge = f.offset(2);
+    let mut i: *mut CInactiveEdge = f.offset(2);
     while ((*i).Yx < median) {
         i = i.offset(1);
     }
 
-    let j: *mut CInactiveEdge = l.offset(-1);
+    let mut j: *mut CInactiveEdge = l.offset(-1);
     while ((*j).Yx > median) {
         j = j.offset(-1);
     }
@@ -1524,14 +1544,14 @@ fn QuickSortEdges(
 \**************************************************************************/
 
 fn InsertionSortEdges(
-    /* __inout_xcount(count forward & -1 back)*/ inactive: *mut CInactiveEdge,
-    count: INT,
+    /* __inout_xcount(count forward & -1 back)*/ mut inactive: *mut CInactiveEdge,
+    mut count: INT,
 ) {
     unsafe {
-    let p: *mut CInactiveEdge;
-    let e: *mut CEdge;
-    let y: LONGLONG;
-    let yPrevious: LONGLONG;
+    let mut p: *mut CInactiveEdge;
+    let mut e: *mut CEdge;
+    let mut y: LONGLONG;
+    let mut yPrevious: LONGLONG;
 
     assert!((*(inactive.offset(-1))).Yx == i64::MIN);
     assert!(count >= 2);
@@ -1591,8 +1611,8 @@ macro_rules! ASSERTINACTIVEARRAY {
 }
 fn AssertInactiveArray(
     /*__in_ecount(count)*/
-    inactive: *const CInactiveEdge, // Annotation should allow the -1 element
-    count: INT,
+    mut inactive: *const CInactiveEdge, // Annotation should allow the -1 element
+    mut count: INT,
 ) {
     unsafe {
     // Verify the head:
@@ -1604,7 +1624,7 @@ fn AssertInactiveArray(
     assert!((*inactive).Yx != i64::MIN);
 
     while {
-        let yx: LONGLONG = 0;
+        let mut yx: LONGLONG = 0;
         YX((*(*inactive).Edge).X, (*(*inactive).Edge).StartY, &mut yx);
 
         assert!((*inactive).Yx == yx);
@@ -1640,15 +1660,16 @@ fn AssertInactiveArray(
 \**************************************************************************/
 
 pub fn InitializeInactiveArray(
-    pEdgeStore: &CEdgeStore,
+    pEdgeStore: &mut CEdgeStore,
     /*__in_ecount(count+2)*/ rgInactiveArray: &mut [CInactiveEdge],
     count: UINT,
     tailEdge: *mut CEdge, // Tail sentinel for inactive list
 ) -> INT {
     unsafe {
-    let isMore;
-    let pActiveEdge: *mut CEdge;
-    let pActiveEdgeEnd: *mut CEdge;
+    let mut isMore;
+    let mut pActiveEdge: *mut CEdge = NULL();
+    let mut pActiveEdgeEnd: *mut CEdge = NULL();
+    let rgInactiveArrayPtr = rgInactiveArray.as_mut_ptr();
 
     // First initialize the inactive array.  Skip the first entry,
     // which we reserve as a head sentinel for the insertion sort:
@@ -1667,7 +1688,7 @@ pub fn InitializeInactiveArray(
         isMore
     } {}
 
-    assert!(pInactiveEdge.as_ptr().offset_from(rgInactiveArray.as_ptr()) as UINT == count + 1);
+    assert!(pInactiveEdge.as_mut_ptr().offset_from(rgInactiveArrayPtr) as UINT == count + 1);
 
     // Add the tail, which is used when reading back the array.  This
     // is why we had to allocate the array as 'count + 1':
@@ -1715,15 +1736,15 @@ pub fn InitializeInactiveArray(
 *
 \**************************************************************************/
 
-pub fn InsertNewEdges<'a: 'b, 'b>(
-    pActiveList: *const CEdge,
+pub fn InsertNewEdges<'a, 'b: 'a>(
+    mut pActiveList: *mut CEdge,
     iCurrentY: INT,
     /*__deref_inout_xcount(array terminated by an edge with StartY != iCurrentY)*/
-    ppInactiveEdge: &'a mut &'b mut [CInactiveEdge],
+    ppInactiveEdge: &'a mut &'a [CInactiveEdge],
     pYNextInactive: &mut INT, // will be INT_MAX when no more
 ) {
     unsafe {
-    let inactive: &mut [CInactiveEdge] = ppInactiveEdge;
+    let mut inactive: &[CInactiveEdge] = *ppInactiveEdge;
 
     assert!((*inactive[0].Edge).StartY == iCurrentY);
 
@@ -1749,7 +1770,7 @@ pub fn InsertNewEdges<'a: 'b, 'b>(
         (*newActive).Next = (*pActiveList).Next;
         (*pActiveList).Next = newActive;
 
-        inactive = &mut inactive[1..];
+        inactive = &inactive[1..];
         (*(inactive[0]).Edge).StartY == iCurrentY
     } {}
 
@@ -1773,10 +1794,10 @@ pub fn InsertNewEdges<'a: 'b, 'b>(
 *
 \**************************************************************************/
 
-fn SortActiveEdges(list: *const CEdge) {
+fn SortActiveEdges(list: *mut CEdge) {
     unsafe {
     let mut swapOccurred: bool;
-    let tmp: *mut CEdge;
+    let mut tmp: *mut CEdge;
 
     // We should never be called with an empty active edge list:
 
@@ -1785,10 +1806,10 @@ fn SortActiveEdges(list: *const CEdge) {
     while {
         swapOccurred = false;
 
-        let previous = list;
-        let current = (*list).Next;
-        let next = (*current).Next;
-        let nextX = (*next).X;
+        let mut previous = list;
+        let mut current = (*list).Next;
+        let mut next = (*current).Next;
+        let mut nextX = (*next).X;
 
         while {
             if (nextX < (*current).X) {

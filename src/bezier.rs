@@ -294,7 +294,7 @@ fn bIntersect(
 }
 
 #[derive(Default)]
-struct Bezier32
+pub struct Bezier32
 {
     cSteps: LONG,
     x: HfdBasis32,
@@ -641,7 +641,7 @@ const geqErrorLow: LONGLONG = (3) << 31;
 
 //#endif
 #[derive(Default)]
-struct Bezier64
+pub struct Bezier64
 {
     xLow: HfdBasis64,
     yLow: HfdBasis64,
