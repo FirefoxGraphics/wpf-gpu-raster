@@ -757,7 +757,7 @@ pub fn Setup(&mut self,
 //     Tessellate and send geometry to the pipeline
 //
 //-------------------------------------------------------------------------
-fn SendGeometry(&mut self,
+pub fn SendGeometry(&mut self,
     pIGeometrySink: Rc<dyn IGeometrySink>
     ) -> HRESULT
 {
@@ -1532,6 +1532,30 @@ RasterizeEdges(&mut self,
     RRETURN!(hr);
     }
 }
+
+    //+------------------------------------------------------------------------
+    //
+    //  Member:    GetPerVertexDataType
+    //
+    //  Synopsis:  Return vertex fields that are generated when this generator
+    //             is used
+    //
+    //-------------------------------------------------------------------------
+
+    pub fn GetPerVertexDataType(&self,
+        mvfFullyGenerated: &mut MilVertexFormat
+        )
+    {
+        //
+        // (X,Y) destination coordinate and alpha falloff (in diffuse) are
+        // generated for each vertex.  The diffuse value is a 32 bit float and
+        // not a fully generated vertex data member.  It must be multiplied by
+        // a color to be ready for HW consumption.  Therefore it is not fully
+        // generated.
+        //
+
+        *mvfFullyGenerated = MilVertexFormat::MILVFAttrXY;
+    }
 
 
 }

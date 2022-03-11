@@ -18,8 +18,9 @@ mod fix;
 use std::{ffi::c_void, rc::Rc, cell::RefCell};
 
 use hwrasterizer::CHwRasterizer;
+use hwvertexbuffer::CHwVertexBufferBuilder;
 use matrix::CMatrix;
-use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT};
+use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT, MilVertexFormat};
 #[repr(C)]
 #[derive(Debug)]
 pub struct OutputVertex {
@@ -118,6 +119,32 @@ pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) {
     let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
 
     rasterizer.Setup(Rc::new(device), Rc::new(shape), pointsScratch, typesScratch, Some(&worldToDevice));
+
+    let m_mvfIn: MilVertexFormat;
+    let m_mvfGenerated: MilVertexFormat  = MilVertexFormat::MILVFAttrNone;
+    /*MilVertexFormatAttribute mvfaAALocation = MILVFAttrNone;
+#define HWPIPELINE_ANTIALIAS_LOCATION MILVFAttrDiffuse
+    mvfaAALocation = HWPIPELINE_ANTIALIAS_LOCATION;
+    */
+    rasterizer.GetPerVertexDataType(&mut m_mvfIn);
+    let vertexBuilder: CHwVertexBufferBuilder;
+    /* 
+    CHwPipeline pipeline;
+    pipeline.m_pDevice  = &device;
+    CHwPipeline * const m_pHP = &pipeline;
+    CHwVertexBuffer::Builder::Create(
+                                     m_mvfIn,
+                                     m_mvfIn | m_mvfGenerated,
+                                     mvfaAALocation,
+                                     m_pHP,
+                                     m_pHP->m_pDevice,
+                                     &m_pHP->m_dbScratch,
+                                     &vertexBuilder
+                                    );*/
+    vertexBuilder.BeginBuilding();
+    rasterizer.SendGeometry(vertexBuilder);
+    let m_pVB: Rc<CHwVertexBuffer>;
+    vertexBuilder.FlushTryGetVertexBuffer(&m_pVB);
 }
 
 #[cfg(test)]
