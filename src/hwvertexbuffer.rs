@@ -108,7 +108,7 @@ const FLOAT_ONE: DWORD = 0x3f800000;
 
 use std::rc::Rc;
 
-use crate::types::*;
+use crate::{types::*, RRETURN, geometry_sink::IGeometrySink};
 
 
 //+----------------------------------------------------------------------------
@@ -133,7 +133,7 @@ use crate::types::*;
 //    - Vertex buffer to send output to
 //
 
-pub struct CHwVertexBufferBuilder /* : public IGeometrySink */
+/*pub struct CHwVertexBufferBuilder /* : public IGeometrySink */
 {
     /* 
 public:
@@ -260,6 +260,11 @@ public:
     {
         return FlushInternal(NULL);
     }
+*/
+
+*/
+impl CHwVertexBufferBuilder {
+
 
     //+------------------------------------------------------------------------
     //
@@ -271,13 +276,15 @@ public:
     //
     //-------------------------------------------------------------------------
 
-    MIL_FORCEINLINE HRESULT FlushTryGetVertexBuffer(
-        __out_ecount(1) CHwVertexBuffer **ppVertexBuffer
-        )
+    pub fn FlushTryGetVertexBuffer(&self,
+        ppVertexBuffer: &mut Rc<CHwVertexBuffer>
+        ) -> HRESULT
     {
-        return FlushInternal(ppVertexBuffer);
+        return self.FlushInternal(ppVertexBuffer);
     }
-    
+}
+/* 
+/* 
     //+------------------------------------------------------------------------
     //
     //  Member:    GetViewportTop
@@ -362,11 +369,23 @@ private:
 
 #endif DBG
 */
+}*/
+pub struct CD3DVertexXYZDUV2 {
+    X: f32,
+    Y: f32,
+    Z: f32,
+    Diffuse: DWORD,
+    U0: f32, V0: f32,
+    U1: f32, V1: f32,
 }
-
-
-struct CHwTVertexBuffer<TVertex>
+pub type CHwVertexBuffer = CHwTVertexBuffer<CD3DVertexXYZDUV2>;
+pub struct CHwTVertexBuffer<TVertex>
 {
+    m_rgIndices: DynArray<WORD>,     // Dynamic array of indices
+
+
+    //m_pBuilder: Rc<CHwTVertexBufferBuilder<TVertex>>,
+
     /* 
 #if DBG
 public:
@@ -741,6 +760,27 @@ public:
     m_vStatic: TVertex,
 }
 
+impl<TVertex> CHwTVertexBuffer<TVertex> {
+    pub fn Reset(&mut self,
+        /*pVBB: &mut CHwTVertexBufferBuilder<TVertex>*/
+        )
+    {
+        #[cfg(debug)]
+        {
+            self.m_fDbgNonLineSegmentTriangleStrip = false;
+        }
+
+        self.m_rgIndices.SetCount(0);
+        self.m_rgVerticesTriList.SetCount(0);
+        self.m_rgVerticesTriStrip.SetCount(0);
+        self.m_rgVerticesLineList.SetCount(0);
+        self.m_rgVerticesNonIndexedTriList.SetCount(0);
+
+        //self.m_pBuilder = pVBB;
+    }
+
+}
+
 //+----------------------------------------------------------------------------
 //
 //  Class:     CHwTVertexBuffer<class TVertex>::Builder
@@ -750,8 +790,12 @@ public:
 //
 //-----------------------------------------------------------------------------
 
-struct CHwTVertexBufferBuilder<TVertex>
+pub struct CHwTVertexBufferBuilder<TVertex>
 {
+    m_pDeviceNoRef: Rc<CD3DDeviceLevel1>,
+    m_iViewportTop: INT,
+
+
     /*
 public:
 
@@ -1105,7 +1149,7 @@ private:
         return BuildWafflePipeline(wafflers, fNotUsed);
     }*/
 
-    m_pVB: Rc<CHwTVertexBuffer<TVertex>>,
+    m_pVB: Box<CHwTVertexBuffer<TVertex>>,
 
     //m_pfnExpandVertices: PFN_ExpandVertices,  // Method for expanding vertices
 
@@ -1488,7 +1532,7 @@ CHwTVertexBuffer<CD3DVertexXYZNDSUV4>::Builder::GetOutVertexFormat()
 //             matching vertex builder
 //
 */
-
+pub type CHwVertexBufferBuilder = CHwTVertexBufferBuilder<CD3DVertexXYZDUV2>;
 impl CHwVertexBufferBuilder {
 fn Create(
      vfIn: MilVertexFormat,
@@ -1972,35 +2016,71 @@ CHwTVertexBuffer<TVertex>::Builder::SetOutsideBounds(
         m_fNeedInsideGeometry = true;
     }
 }
-
+*/
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::Builder::BeginBuilding
 //
 //  Synopsis:  Prepare for a new primitive by resetting the vertex buffer
 //
-
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::BeginBuilding(
-    )
+impl<TVertex> CHwTVertexBufferBuilder<TVertex> {
+pub fn BeginBuilding(&mut self,
+    ) -> HRESULT
 {
-    HRESULT hr = S_OK;
+    
+    let hr: HRESULT = S_OK;
 
-    m_fHasFlushed = false;
-    m_pVB->Reset(this);
+    self.m_fHasFlushed = false;
+    self.m_pVB.Reset(/*self*/);
 
     // We need to know the viewport that this vertex buffer will be applied
     // to because a horizontal line through the first row of the viewport
     // can be incorrectly clipped.
     // This assumes that we've already set the viewport & we won't use
     // the vertex buffer with any other viewport.
-    MilPointAndSizeL rcViewport = m_pDeviceNoRef->GetViewport();
-    m_iViewportTop = rcViewport.Y;
+    let rcViewport: MilPointAndSizeL = self.m_pDeviceNoRef.GetViewport();
+    self.m_iViewportTop = rcViewport.Y;
 
-    RRETURN(hr);
+    RRETURN!(hr);
 }
+}
+impl IGeometrySink for CHwVertexBufferBuilder {
+    fn AddComplexScan(&mut self,
+        nPixelY: INT,
+            // In: y coordinate in pixel space
+            pIntervalSpanStart: &crate::aacoverage::CCoverageInterval
+            // In: coverage segments
+        ) -> HRESULT {
+        todo!()
+    }
 
+    fn AddTrapezoid(
+        &mut self,
+        rYMin: f32,
+            // In: y coordinate of top of trapezoid
+        rXLeftYMin: f32,
+            // In: x coordinate for top left
+        rXRightYMin: f32,
+            // In: x coordinate for top right
+        rYMax: f32,
+            // In: y coordinate of bottom of trapezoid
+        rXLeftYMax: f32,
+            // In: x coordinate for bottom left
+        rXRightYMax: f32,
+            // In: x coordinate for bottom right
+        rXDeltaLeft: f32,
+            // In: trapezoid expand radius
+        rXDeltaRight: f32
+            // In: trapezoid expand radius
+        ) -> HRESULT {
+        todo!()
+    }
+
+    fn IsEmpty(&self) -> bool {
+        todo!()
+    }
+}
+/* 
 
 //+----------------------------------------------------------------------------
 //
@@ -3098,7 +3178,8 @@ CHwTVertexBuffer<TVertex>::Builder::EndBuilding(
 Cleanup:
     RRETURN(hr);
 }
-
+*/
+impl<TVertex> CHwTVertexBufferBuilder<TVertex> {
 
 //+----------------------------------------------------------------------------
 //
@@ -3116,12 +3197,12 @@ Cleanup:
 //             Otherwise multipass has to use a slower algorithm.
 //
 //-----------------------------------------------------------------------------
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::FlushInternal(
-    __deref_opt_out_ecount_opt(1) CHwVertexBuffer **ppVertexBuffer
-    )
+fn FlushInternal(&self,
+    ppVertexBuffer: &mut Rc<CHwVertexBuffer>
+    ) -> HRESULT
 {
+    todo!()
+    /* 
     HRESULT hr = S_OK;
 
     if (m_pPipelineNoRef)
@@ -3164,10 +3245,10 @@ CHwTVertexBuffer<TVertex>::Builder::FlushInternal(
         m_cPrecomputedTriListIndices = 0;
     }
     
-    RRETURN(hr);
+    RRETURN(hr);*/
 }
-
-
+}
+/* 
 // 4505: unreferenced local function has been removed
 //   These will show up as errors in very bizarre way including references to
 //   shared\dynarray.h and the particular methods in

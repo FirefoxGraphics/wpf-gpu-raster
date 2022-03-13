@@ -18,7 +18,7 @@ mod fix;
 use std::{ffi::c_void, rc::Rc, cell::RefCell};
 
 use hwrasterizer::CHwRasterizer;
-use hwvertexbuffer::CHwVertexBufferBuilder;
+use hwvertexbuffer::{CHwVertexBufferBuilder, CHwVertexBuffer};
 use matrix::CMatrix;
 use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT, MilVertexFormat};
 #[repr(C)]
@@ -120,14 +120,14 @@ pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) {
 
     rasterizer.Setup(Rc::new(device), Rc::new(shape), pointsScratch, typesScratch, Some(&worldToDevice));
 
-    let m_mvfIn: MilVertexFormat;
+    let m_mvfIn: MilVertexFormat = todo!();
     let m_mvfGenerated: MilVertexFormat  = MilVertexFormat::MILVFAttrNone;
     /*MilVertexFormatAttribute mvfaAALocation = MILVFAttrNone;
 #define HWPIPELINE_ANTIALIAS_LOCATION MILVFAttrDiffuse
     mvfaAALocation = HWPIPELINE_ANTIALIAS_LOCATION;
     */
     rasterizer.GetPerVertexDataType(&mut m_mvfIn);
-    let vertexBuilder: CHwVertexBufferBuilder;
+    let vertexBuilder: Rc<CHwVertexBufferBuilder> = todo!();
     /* 
     CHwPipeline pipeline;
     pipeline.m_pDevice  = &device;
@@ -144,7 +144,7 @@ pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) {
     vertexBuilder.BeginBuilding();
     rasterizer.SendGeometry(vertexBuilder);
     let m_pVB: Rc<CHwVertexBuffer>;
-    vertexBuilder.FlushTryGetVertexBuffer(&m_pVB);
+    vertexBuilder.FlushTryGetVertexBuffer(&mut m_pVB);
 }
 
 #[cfg(test)]

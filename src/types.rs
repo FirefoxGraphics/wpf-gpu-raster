@@ -113,6 +113,7 @@ pub type DynArray<T> = Vec<T>;
 pub trait DynArrayExts<T> {
     fn Reset(&mut self, shrink: bool);
     fn GetCount(&self) -> usize;
+    fn SetCount(&mut self, count: usize);
     fn GetDataBuffer(&self) -> &[T];
 }
 
@@ -125,6 +126,10 @@ impl<T> DynArrayExts<T> for DynArray<T> {
     }
     fn GetCount(&self) -> usize {
         self.len()
+    }
+    fn SetCount(&mut self, count: usize) {
+        assert!(count <= self.len());
+        self.truncate(count);
     }
 
     fn GetDataBuffer(&self) -> &[T] {
@@ -141,6 +146,7 @@ impl CD3DDeviceLevel1 {
     pub fn GetClipRect(&self, rect: &mut MilPointAndSizeL) {
         todo!();
     }
+    pub fn GetViewport(&self) -> MilPointAndSizeL { todo!() }
 }
 pub struct CHwPipelineBuilder;
 
