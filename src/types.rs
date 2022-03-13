@@ -79,7 +79,7 @@ pub struct MilPoint2F
     pub Y: FLOAT,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MilPointAndSizeL
 {
     pub X: INT,
@@ -137,16 +137,17 @@ impl<T> DynArrayExts<T> for DynArray<T> {
     }
 }
 
-
+#[derive(Default)]
 pub struct CD3DDeviceLevel1 {
     pub clipRect: MilPointAndSizeL
 }
 impl CD3DDeviceLevel1 {
-    pub fn new() -> Self { todo!() }
+    pub fn new() -> Self { Default::default() }
     pub fn GetClipRect(&self, rect: &mut MilPointAndSizeL) {
-        todo!();
+        *rect = self.clipRect.clone();
     }
     pub fn GetViewport(&self) -> MilPointAndSizeL { todo!() }
+    
 }
 pub struct CHwPipelineBuilder;
 
