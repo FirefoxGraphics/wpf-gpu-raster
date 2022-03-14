@@ -151,7 +151,7 @@ impl CD3DDeviceLevel1 {
     }
     pub fn GetViewport(&self) -> MilPointAndSizeL { todo!() }
     pub fn GetVB_XYZDUV2(&self) -> Box<CHwVertexBuffer> {
-        todo!()
+        Box::new(Default::default())
     }
     
 }

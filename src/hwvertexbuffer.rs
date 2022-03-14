@@ -380,6 +380,7 @@ pub struct CD3DVertexXYZDUV2 {
     U1: f32, V1: f32,
 }
 pub type CHwVertexBuffer = CHwTVertexBuffer<CD3DVertexXYZDUV2>;
+#[derive(Default)]
 pub struct CHwTVertexBuffer<TVertex>
 {
     m_rgIndices: DynArray<WORD>,     // Dynamic array of indices
@@ -1867,7 +1868,7 @@ fn SetupConverter(&mut self,
     self.m_mvfGenerated = mvfOut & !self.m_mvfIn;
     self.m_mvfaAntiAliasScaleLocation = mvfaAntiAliasScaleLocation;
 
-    assert!((self.m_mvfGenerated & MilVertexFormatAttribute::MILVFAttrXY as MilVertexFormat) != 0);
+    assert!((self.m_mvfGenerated & MilVertexFormatAttribute::MILVFAttrXY as MilVertexFormat) == 0);
 
     RRETURN!(hr);
 }
