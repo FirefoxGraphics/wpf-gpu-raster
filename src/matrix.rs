@@ -21,17 +21,17 @@ impl<InCoordSpace: Default, OutCoordSpace: Default> CMatrix<InCoordSpace, OutCoo
         ret._44 = 1.;
         ret
     }
-    pub fn GetM11(&self) -> f32 { todo!()}
-    pub fn GetM12(&self) -> f32 { todo!()}
-    pub fn GetM21(&self) -> f32 { todo!()}
-    pub fn GetM22(&self) -> f32 { todo!()}
+    pub fn GetM11(&self) -> f32 { self._11 }
+    pub fn GetM12(&self) -> f32 { self._12 }
+    pub fn GetM21(&self) -> f32 { self._21 }
+    pub fn GetM22(&self) -> f32 { self._22 }
     pub fn GetDx(&self) -> f32 { self._41 }
     pub fn GetDy(&self) -> f32 { self._42 }
 
-    pub fn SetM11(&mut self, r: f32) { todo!()}
-    pub fn SetM12(&mut self, r: f32) { todo!()}
-    pub fn SetM21(&mut self, r: f32) { todo!()}
-    pub fn SetM22(&mut self, r: f32) { todo!()}
+    pub fn SetM11(&mut self, r: f32) { self._11 = r}
+    pub fn SetM12(&mut self, r: f32) { self._12 = r}
+    pub fn SetM21(&mut self, r: f32) { self._21 = r}
+    pub fn SetM22(&mut self, r: f32) { self._22 = r}
     pub fn SetDx(&mut self, dx: f32) { self._41 = dx }
     pub fn SetDy(&mut self, dy: f32) { self._42 = dy }
 

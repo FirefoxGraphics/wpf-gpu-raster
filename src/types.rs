@@ -149,7 +149,7 @@ impl CD3DDeviceLevel1 {
     pub fn GetClipRect(&self, rect: &mut MilPointAndSizeL) {
         *rect = self.clipRect.clone();
     }
-    pub fn GetViewport(&self) -> MilPointAndSizeL { todo!() }
+    pub fn GetViewport(&self) -> MilPointAndSizeL { self.clipRect.clone() }
     pub fn GetVB_XYZDUV2(&self) -> Box<CHwVertexBuffer> {
         Box::new(Default::default())
     }
