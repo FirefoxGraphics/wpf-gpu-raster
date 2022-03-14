@@ -88,6 +88,7 @@ pub struct MilPointAndSizeL
     pub Height: INT,
 }
 
+#[derive(Default)]
 pub struct CMILSurfaceRect;
 
 #[derive(PartialEq)]
@@ -106,6 +107,8 @@ pub const    PathPointTypeLine: u8            = 1;    // line
 pub const    PathPointTypeBezier: u8          = 3;    // default Bezier (= cubic Bezier)
 pub const    PathPointTypePathTypeMask: u8    = 0x07; // type mask (lowest 3 bits).
 pub const    PathPointTypeCloseSubpath: u8    = 0x80; // closed flag
+
+use crate::hwvertexbuffer::CHwVertexBuffer;
 
 
 pub type DynArray<T> = Vec<T>;
@@ -147,6 +150,9 @@ impl CD3DDeviceLevel1 {
         *rect = self.clipRect.clone();
     }
     pub fn GetViewport(&self) -> MilPointAndSizeL { todo!() }
+    pub fn GetVB_XYZDUV2(&self) -> Box<CHwVertexBuffer> {
+        todo!()
+    }
     
 }
 pub struct CHwPipelineBuilder;
@@ -163,12 +169,26 @@ pub trait IShapeData {
     fn ConvertToGpPath(&self, points: &mut DynArray<MilPoint2F>, types: &mut DynArray<BYTE>) -> HRESULT;
 }
 
-pub enum MilVertexFormat {
-    MILVFAttrNone,
-    MILVFAttrXY
-}
+pub type MilVertexFormat = DWORD;
 
-pub enum MilVertexFormatAttribute {}
+pub enum MilVertexFormatAttribute {
+    MILVFAttrNone = 0x0,
+    MILVFAttrXY = 0x1,
+    MILVFAttrZ = 0x2,
+    MILVFAttrXYZ = 0x3,
+    MILVFAttrNormal = 0x4,
+    MILVFAttrDiffuse = 0x8,
+    MILVFAttrSpecular = 0x10,
+    MILVFAttrUV1 = 0x100,
+    MILVFAttrUV2 = 0x300,
+    MILVFAttrUV3 = 0x700,
+    MILVFAttrUV4 = 0xf00,
+    MILVFAttrUV5 = 0x1f00,
+    MILVFAttrUV6 = 0x3f00,
+    MILVFAttrUV7 = 0x7f00,
+    MILVFAttrUV8 = 0xff00,      // Vertex fields that are pre-generated
+
+}
 
 pub struct CHwPipeline;
 

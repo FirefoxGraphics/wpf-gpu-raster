@@ -108,7 +108,7 @@ const FLOAT_ONE: DWORD = 0x3f800000;
 
 use std::rc::Rc;
 
-use crate::{types::*, RRETURN, geometry_sink::IGeometrySink};
+use crate::{types::*, RRETURN, geometry_sink::IGeometrySink, IFC};
 
 
 //+----------------------------------------------------------------------------
@@ -277,7 +277,7 @@ impl CHwVertexBufferBuilder {
     //-------------------------------------------------------------------------
 
     pub fn FlushTryGetVertexBuffer(&self,
-        ppVertexBuffer: &mut Rc<CHwVertexBuffer>
+        ppVertexBuffer: &mut CHwVertexBuffer
         ) -> HRESULT
     {
         return self.FlushInternal(ppVertexBuffer);
@@ -370,6 +370,7 @@ private:
 #endif DBG
 */
 }*/
+#[derive(Default)]
 pub struct CD3DVertexXYZDUV2 {
     X: f32,
     Y: f32,
@@ -708,7 +709,7 @@ protected:
 //             incoming basic per vertex data, like just X and Y
 //
 //-----------------------------------------------------------------------------
-
+#[derive(Default)]
 struct CHwTVertexMappings<TVertex>
 {/* 
 public:
@@ -794,7 +795,16 @@ pub struct CHwTVertexBufferBuilder<TVertex>
 {
     m_pDeviceNoRef: Rc<CD3DDeviceLevel1>,
     m_iViewportTop: INT,
+     m_mvfIn: MilVertexFormat,         // Vertex fields that are pre-generated
 
+    #[cfg(debug)]
+    m_mvfDbgOut: MilVertexFormat,     // Output format of the vertex
+    
+    m_mvfGenerated: MilVertexFormat,  // Vertex fields that are dyn
+
+    m_mvfaAntiAliasScaleLocation: MilVertexFormatAttribute,  // Vertex field that
+                                                             // contains PPAA
+                                                             // falloff factor
 
     /*
 public:
@@ -1534,21 +1544,20 @@ CHwTVertexBuffer<CD3DVertexXYZNDSUV4>::Builder::GetOutVertexFormat()
 */
 pub type CHwVertexBufferBuilder = CHwTVertexBufferBuilder<CD3DVertexXYZDUV2>;
 impl CHwVertexBufferBuilder {
-fn Create(
+pub fn Create(
      vfIn: MilVertexFormat,
      vfOut: MilVertexFormat,
      mvfaAntiAliasScaleLocation: MilVertexFormatAttribute,
-    pPipeline: Rc<CHwPipeline>,
     pDevice: Rc<CD3DDeviceLevel1>,
-    pBufferDispenser: &CBufferDispenser,
-    ppVertexBufferBuilder: &mut Option<&mut CHwVertexBufferBuilder>
-    ) -> HRESULT
+    /*pBufferDispenser: &CBufferDispenser*/
+    ) -> CHwVertexBufferBuilder
 {
-    let hr: HRESULT = S_OK;
+    CHwVertexBufferBuilder::CreateTemplate(pDevice.GetVB_XYZDUV2(), vfIn, vfOut, mvfaAntiAliasScaleLocation, pDevice)
+    //let hr: HRESULT = S_OK;
 
     //assert!(ppVertexBufferBuilder);
 
-    *ppVertexBufferBuilder = None;
+    //*ppVertexBufferBuilder = None;
 /* 
     if (!(vfOut & ~CHwTVertexBuffer<CD3DVertexXYZDUV2>::Builder::GetOutVertexFormat()))
     {
@@ -1600,7 +1609,7 @@ fn Create(
 
 Cleanup:
     RRETURN(hr);*/
-    hr
+    //hr
 }
 }
 
@@ -1761,7 +1770,9 @@ CHwTVertexMappings<TVertex>::PointToUV(
 //-----------------------------------------------------------------------------
 
 
+*/
 
+impl<TVertex: Default> CHwTVertexBufferBuilder<TVertex> {
 
 //+----------------------------------------------------------------------------
 //
@@ -1770,44 +1781,27 @@ CHwTVertexMappings<TVertex>::PointToUV(
 //  Synopsis:  Instantiate a specific type of vertex builder
 //
 
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::Create(
-    __in_ecount(1) CHwTVertexBuffer<TVertex> *pVertexBuffer,
-    MilVertexFormat mvfIn,
-    MilVertexFormat mvfOut,
-    MilVertexFormatAttribute mvfaAntiAliasScaleLocation,
-    __inout_ecount(1) CBufferDispenser *pBufferDispenser,
-    __deref_out_ecount(1) typename CHwTVertexBuffer<TVertex>::Builder **ppVertexBufferBuilder
-    )
+fn CreateTemplate(
+      pVertexBuffer: Box<CHwTVertexBuffer<TVertex>>,
+     mvfIn: MilVertexFormat,
+     mvfOut: MilVertexFormat,
+     mvfaAntiAliasScaleLocation: MilVertexFormatAttribute,
+     /*pBufferDispenser: __inout_ecount(1) CBufferDispenser *,*/
+     pDevice: Rc<CD3DDeviceLevel1>,
+    ) -> Self
 {
-    HRESULT hr = S_OK;
 
-    Assert(ppVertexBufferBuilder);
 
-    *ppVertexBufferBuilder = NULL;
 
-    CHwTVertexBuffer<TVertex>::Builder *pVertexBufferBuilder;
+    let mut pVertexBufferBuilder = CHwTVertexBufferBuilder::<TVertex>::new(pVertexBuffer, pDevice);
 
-    pVertexBufferBuilder =
-        new(pBufferDispenser) CHwTVertexBuffer<TVertex>::Builder(pVertexBuffer);
-    IFCOOM(pVertexBufferBuilder);
-
-    IFC(pVertexBufferBuilder->SetupConverter(
+    IFC!(pVertexBufferBuilder.SetupConverter(
         mvfIn,
         mvfOut,
         mvfaAntiAliasScaleLocation
         ));
 
-    *ppVertexBufferBuilder = pVertexBufferBuilder;
-    pVertexBufferBuilder = NULL;
-
-Cleanup:
-    if (pVertexBufferBuilder)
-    {
-        delete pVertexBufferBuilder;
-    }
-    RRETURN(hr);
+    return pVertexBufferBuilder;
 }
 
 //+----------------------------------------------------------------------------
@@ -1818,29 +1812,34 @@ Cleanup:
 //
 //-----------------------------------------------------------------------------
 
-template <class TVertex>
-CHwTVertexBuffer<TVertex>::Builder::Builder(
-    __in_ecount(1) CHwTVertexBuffer<TVertex> *pVertexBuffer
-    )
+fn new(pVertexBuffer: Box<CHwTVertexBuffer<TVertex>>, device: Rc<CD3DDeviceLevel1>) -> Self
 {
-    Assert(pVertexBuffer);
+    Self {
+    m_pVB: pVertexBuffer,
 
-    m_pVB = pVertexBuffer;
 
+    m_rgoPrecomputedTriListVertices: NULL(),
+    m_cPrecomputedTriListVertices: 0,
 
-    m_rgoPrecomputedTriListVertices = NULL;
-    m_cPrecomputedTriListVertices = 0;
-
-    m_rguPrecomputedTriListIndices = NULL;
-    m_cPrecomputedTriListIndices = 0;
+    m_rguPrecomputedTriListIndices: NULL(),
+    m_cPrecomputedTriListIndices: 0,
 
     // These two track the Y extent of the shape this builder is producing.
-    m_rCurStratumTop = +FLT_MAX;
-    m_rCurStratumBottom = -FLT_MAX;
-    m_fNeedOutsideGeometry = false;
-    m_fNeedInsideGeometry = true;
+    m_rCurStratumTop: f32::MAX,
+    m_rCurStratumBottom:  -f32::MAX,
+    m_fNeedOutsideGeometry: false,
+    m_fNeedInsideGeometry: true,
 
-    m_rLastTrapezoidRight = -FLT_MAX;
+    m_rLastTrapezoidRight: -f32::MAX,
+    m_fHasFlushed: false,
+    m_iViewportTop: 0,
+    m_map: Default::default(),
+    m_rcOutsideBounds: Default::default(),
+    m_pDeviceNoRef: device,
+        m_mvfIn: MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat,
+        m_mvfGenerated: MilVertexFormatAttribute::MILVFAttrNone  as MilVertexFormat,
+        m_mvfaAntiAliasScaleLocation: MilVertexFormatAttribute::MILVFAttrNone,
+    }
 }
 
 //+----------------------------------------------------------------------------
@@ -1850,31 +1849,30 @@ CHwTVertexBuffer<TVertex>::Builder::Builder(
 //  Synopsis:  Choose the appropriate conversion method
 //
 
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::SetupConverter(
-    MilVertexFormat mvfIn,
-    MilVertexFormat mvfOut,
-    MilVertexFormatAttribute mvfaAntiAliasScaleLocation
-    )
+fn SetupConverter(&mut self,
+     mvfIn: MilVertexFormat,
+     mvfOut: MilVertexFormat,
+     mvfaAntiAliasScaleLocation: MilVertexFormatAttribute,
+     ) -> HRESULT
 {
-    HRESULT hr = S_OK;
+    let hr = S_OK;
 
-    m_mvfIn = mvfIn;
+    self.m_mvfIn = mvfIn;
 
-#if DBG
-    m_mvfDbgOut = mvfOut;
-#endif
+    #[cfg(Debug)]
+    {
+    self.m_mvfDbgOut = mvfOut;
+    }
 
-    m_mvfGenerated = mvfOut & ~m_mvfIn;
-    m_mvfaAntiAliasScaleLocation = mvfaAntiAliasScaleLocation;
+    self.m_mvfGenerated = mvfOut & !self.m_mvfIn;
+    self.m_mvfaAntiAliasScaleLocation = mvfaAntiAliasScaleLocation;
 
-    Assert(!(m_mvfGenerated & MILVFAttrXY));
+    assert!((self.m_mvfGenerated & MilVertexFormatAttribute::MILVFAttrXY as MilVertexFormat) != 0);
 
-Cleanup:
-    RRETURN(hr);
+    RRETURN!(hr);
 }
-
+}
+/* 
 
 //+----------------------------------------------------------------------------
 //
@@ -3198,8 +3196,7 @@ impl<TVertex> CHwTVertexBufferBuilder<TVertex> {
 //
 //-----------------------------------------------------------------------------
 fn FlushInternal(&self,
-    ppVertexBuffer: &mut Rc<CHwVertexBuffer>
-    ) -> HRESULT
+    ppVertexBuffer: &mut CHwVertexBuffer    ) -> HRESULT
 {
     todo!()
     /* 

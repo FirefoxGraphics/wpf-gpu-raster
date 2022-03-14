@@ -555,7 +555,7 @@ class CHwPipeline {
             return S_OK;
         //    printf("RealizeColorSourcesAndSendState\n");
         }
-        enum {
+    enum {
         kGeneralScratchSpace =
             sizeof(CHwConstantAlphaScalableColorSource) +
             sizeof(CHwTexturedColorSource),

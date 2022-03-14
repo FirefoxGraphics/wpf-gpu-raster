@@ -1554,7 +1554,7 @@ RasterizeEdges(&mut self,
         // generated.
         //
 
-        *mvfFullyGenerated = MilVertexFormat::MILVFAttrXY;
+        *mvfFullyGenerated = MilVertexFormatAttribute::MILVFAttrXY as MilVertexFormat;
     }
 
 
