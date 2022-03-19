@@ -1411,7 +1411,7 @@ fn YX(x: INT, y: INT, p: &mut LONGLONG) {
     reinterpret_cast<LARGE_INTEGER*>(p)->HighPart = y;
     reinterpret_cast<LARGE_INTEGER*>(p)->LowPart = x + INT_MAX;
     */
-    *p = (((y as u64) << 32) | (((x + i32::MAX) as u64) & 0xffffffff)) as i64;
+    *p = (((y as u64) << 32) | (((x as i64 + i32::MAX as i64) as u64) & 0xffffffff)) as i64;
 }
 
 /**************************************************************************\

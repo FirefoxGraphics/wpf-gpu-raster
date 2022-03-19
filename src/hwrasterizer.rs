@@ -11,6 +11,7 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use crate::aacoverage::{CCoverageBuffer, c_rInvShiftSize, c_antiAliasMode, c_nShift, CCoverageInterval, c_nShiftMask, c_nShiftSize, c_nHalfShiftSize};
+use crate::hwvertexbuffer::CHwVertexBufferBuilder;
 use crate::matrix::{CMILMatrix, CMatrix};
 use crate::{aarasterizer::*, ASSERTACTIVELIST, IsTagEnabled, RRETURN1, RRETURN, INACTIVE_LIST_NUMBER, FIX4_ONE, FIX4_PRECISION, TOREAL, EDGE_STORE_STACK_NUMBER};
 use crate::geometry_sink::IGeometrySink;
@@ -409,7 +410,7 @@ pub struct CHwRasterizer {
     m_prgTypes: Option<Rc<RefCell<DynArray<BYTE>>>>,
     m_rcClipBounds: MilPointAndSizeL,
     m_matWorldToDevice: CMILMatrix,
-    m_pIGeometrySink: Option<Rc<dyn IGeometrySink>>,
+    m_pIGeometrySink: Option<Rc<RefCell<CHwVertexBufferBuilder>>>,
     m_fillMode: MilFillMode,
     /* 
 DynArray<MilPoint2F> *m_prgPoints;
@@ -758,7 +759,7 @@ pub fn Setup(&mut self,
 //
 //-------------------------------------------------------------------------
 pub fn SendGeometry(&mut self,
-    pIGeometrySink: Rc<dyn IGeometrySink>
+    pIGeometrySink: Rc<RefCell<CHwVertexBufferBuilder>>
     ) -> HRESULT
 {
     let mut hr = S_OK;
@@ -798,7 +799,7 @@ pub fn SendGeometry(&mut self,
     // up front, we simply rasterize and see if we generated anything.
     //
 
-    if (pIGeometrySink.IsEmpty())
+    if (pIGeometrySink.borrow().IsEmpty())
     {
         hr = WGXHR_EMPTYFILL;
     }
@@ -853,7 +854,7 @@ GenerateOutputAndClearCoverage(&mut self,
 
     let pIntervalSpanStart: *const CCoverageInterval = self.m_coverageBuffer.m_pIntervalStart;
 
-    IFC!(Rc::get_mut(self.m_pIGeometrySink.as_mut().unwrap()).unwrap().AddComplexScan(nPixelY, unsafe { &*pIntervalSpanStart }));
+    IFC!(self.m_pIGeometrySink.as_ref().unwrap().borrow_mut().AddComplexScan(nPixelY, unsafe { &*pIntervalSpanStart }));
 
     self.m_coverageBuffer.Reset();
 
@@ -1312,7 +1313,7 @@ OutputTrapezoids(&mut self,
         // Output the trapezoid
         //
 
-        IFC!(Rc::get_mut(self.m_pIGeometrySink.as_mut().unwrap()).unwrap().AddTrapezoid(
+        IFC!(self.m_pIGeometrySink.as_mut().unwrap().borrow_mut().AddTrapezoid(
             rPixelYTop,              // In: y coordinate of top of trapezoid
             rPixelXLeft,             // In: x coordinate for top left
             rPixelXRight,            // In: x coordinate for top right

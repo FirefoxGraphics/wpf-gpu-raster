@@ -21,6 +21,8 @@ use hwrasterizer::CHwRasterizer;
 use hwvertexbuffer::{CHwVertexBufferBuilder, CHwVertexBuffer};
 use matrix::CMatrix;
 use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT, MilVertexFormat, MilVertexFormatAttribute};
+
+use crate::geometry_sink::IGeometrySink;
 #[repr(C)]
 #[derive(Debug)]
 pub struct OutputVertex {
@@ -133,14 +135,15 @@ pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) {
     let m_pHP = &pipeline;
 
     rasterizer.GetPerVertexDataType(&mut m_mvfIn);
-    let mut vertexBuilder= Rc::new(CHwVertexBufferBuilder::Create(m_mvfIn,                                          m_mvfIn | m_mvfGenerated,
+    let mut vertexBuilder= Rc::new(RefCell::new(CHwVertexBufferBuilder::Create(m_mvfIn,                                          m_mvfIn | m_mvfGenerated,
         mvfaAALocation,
-        m_pHP.m_pDevice.clone()));
+        m_pHP.m_pDevice.clone())));
 
-    Rc::get_mut(&mut vertexBuilder).unwrap().BeginBuilding();
+    vertexBuilder.borrow_mut().BeginBuilding();
+
     rasterizer.SendGeometry(vertexBuilder.clone());
     let mut m_pVB: Rc<CHwVertexBuffer> = todo!();
-    Rc::get_mut(&mut vertexBuilder).unwrap().FlushTryGetVertexBuffer(&mut m_pVB);
+    vertexBuilder.borrow().FlushTryGetVertexBuffer(&mut m_pVB);
 }
 
 #[cfg(test)]
