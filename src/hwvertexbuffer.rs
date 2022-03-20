@@ -1258,21 +1258,21 @@ fn AddLine(&mut self,
     type TVertex = CD3DVertexXYZDUV2;
     let hr = S_OK;
 
-    let pVertices: &[TVertex];
-    let rgScratchVertices: &[TVertex; 2];
+    let pVertices: &mut [TVertex];
+    let mut rgScratchVertices: [TVertex; 2] = Default::default();
 
     assert!(!(v0.y != v1.y));
     
     let fUseTriangles = /*(v0.y < m_pBuilder->GetViewportTop() + 1) ||*/ FORCE_TRIANGLES;
 
-    if (fUseTriangles)
-    {
-        pVertices = rgScratchVertices;
-    }
-    else
-    {
+    //if (fUseTriangles)
+    //{
+        pVertices = &mut rgScratchVertices;
+    //}
+    //else
+    //{
         //IFC!(AddLineListVertices(2, &pVertices));
-    }
+    //}
     
     pVertices[0].X = v0.x;
     pVertices[0].Y = v0.y;
@@ -2184,7 +2184,7 @@ Cleanup:
     fn AddComplexScan(&mut self,
         nPixelY: INT,
             // In: y coordinate in pixel space
-            pIntervalSpanStart: *mut crate::aacoverage::CCoverageInterval
+            mut pIntervalSpanStart: *mut crate::aacoverage::CCoverageInterval
             // In: coverage segments
         ) -> HRESULT {
     unsafe {
@@ -2205,7 +2205,7 @@ Cleanup:
 
     // Use sink for waffling & the first line fix up (aka the complicated cases.)
     //ILineSink<PointXYA> *pLineSink = NULL;
-    let pLineSink = None;
+    let mut pLineSink = None;
 
     /*if (self.AreWaffling())
     {
@@ -2222,7 +2222,7 @@ Cleanup:
     // includes half of the top pixel row.  Waffling will take care of this separately.
     if (/*pLineSink.is_none() && rPixelY < self.GetViewportTop() + 1 ||*/ FORCE_TRIANGLES)
     {
-        pLineSink = Some(&self.m_pVB);
+        pLineSink = Some(&mut self.m_pVB);
     }
 
     //
@@ -2281,8 +2281,8 @@ Cleanup:
         {
             let rCoverage: f32 = ((*pIntervalSpanStart).m_nCoverage as f32)/(c_nShiftSizeSquared as f32);
             
-            let iBegin: LONG = (*pIntervalSpanStart).m_nPixelX;
-            let iEnd: LONG = (*(*pIntervalSpanStart).m_pNext).m_nPixelX;
+            let mut iBegin: LONG = (*pIntervalSpanStart).m_nPixelX;
+            let mut iEnd: LONG = (*(*pIntervalSpanStart).m_pNext).m_nPixelX;
             if (self.NeedOutsideGeometry())
             {
                 // Intersect the interval with the outside bounds to create
@@ -2306,9 +2306,9 @@ Cleanup:
             // Output line (linelist or tristrip) for a pixel
             //
 
-            if let Some(pLineSink) = pLineSink 
+            //if let Some(pLineSink) = pLineSink 
             {
-                let v0: PointXYA; let v1: PointXYA;
+                let mut v0: PointXYA = Default::default(); let mut v1: PointXYA = Default::default();
                 v0.x = rPixelXBegin;
                 v0.y = rPixelY;
                 v0.a = rCoverage;
@@ -2317,9 +2317,9 @@ Cleanup:
                 v1.y = rPixelY;
                 v1.a = rCoverage;
 
-                IFC!(pLineSink.AddLine(&v0,&v1));
+                IFC!(self.m_pVB.AddLine(&v0,&v1));
             }
-            else
+            //else
             {
                 /* 
                 let dwDiffuse = ReinterpretFloatAsDWORD(rCoverage);
@@ -3024,14 +3024,14 @@ fn PrepareStratumSlow(&mut self,
         
         if (self.m_rCurStratumTop != f32::MAX)
         {
-            // End current trapezoid stratum.
-
-            let pVertex: &[CD3DVertexXYZDUV2] = self.m_pVB.AddTriStripVertices(3);
-
             // we do not clip trapezoids so RIGHT boundary
             // of the stratus can be outside of m_rcOutsideBounds.
             
             let rOutsideRight: f32 = self.OutsideRight().max(self.m_rLastTrapezoidRight);
+
+            // End current trapezoid stratum.
+
+            let pVertex: &mut [CD3DVertexXYZDUV2] = self.m_pVB.AddTriStripVertices(3);
 
             pVertex[0].X = rOutsideRight;
             pVertex[0].Y = self.m_rCurStratumTop;
@@ -3064,44 +3064,47 @@ fn PrepareStratumSlow(&mut self,
             // outside bounds that have no generated geometry.
             assert!(self.m_rCurStratumBottom != -f32::MAX || self.m_rCurStratumTop == f32::MAX);
 
+            let outside_left = self.OutsideLeft();
+            let outside_right = self.OutsideRight();
             let pVertex = self.m_pVB.AddTriStripVertices(6);
             
             // Duplicate first vertex.
-            pVertex[0].X = self.OutsideLeft();
+            pVertex[0].X = outside_left;
             pVertex[0].Y = flRectTop;
             pVertex[0].Diffuse = FLOAT_ZERO;
 
-            pVertex[1].X = self.OutsideLeft();
+            pVertex[1].X = outside_left;
             pVertex[1].Y = flRectTop;
             pVertex[1].Diffuse = FLOAT_ZERO;
 
-            pVertex[2].X = self.OutsideLeft();
+            pVertex[2].X = outside_left;
             pVertex[2].Y = flRectBot;
             pVertex[2].Diffuse = FLOAT_ZERO;
 
-            pVertex[3].X = self.OutsideRight();
+            pVertex[3].X = outside_right;
             pVertex[3].Y = flRectTop;
             pVertex[3].Diffuse = FLOAT_ZERO;
 
-            pVertex[4].X = self.OutsideRight();
+            pVertex[4].X = outside_right;
             pVertex[4].Y = flRectBot;
             pVertex[4].Diffuse = FLOAT_ZERO;
         
-            pVertex[5].X = self.OutsideRight();
+            pVertex[5].X = outside_right;
             pVertex[5].Y = flRectBot;
             pVertex[5].Diffuse = FLOAT_ZERO;
         }
 
         if (fTrapezoid)
         {
-            // Begin new trapezoid stratum.
-            
-            let mut pVertex: &[TVertex] = self.m_pVB.AddTriStripVertices(3);
 
             // we do not clip trapezoids so left boundary
             // of the stratus can be outside of m_rcOutsideBounds.
             
             let rOutsideLeft: f32 = self.OutsideLeft().min(rTrapezoidLeft);
+
+            // Begin new trapezoid stratum.
+
+            let mut pVertex: &mut [TVertex] = self.m_pVB.AddTriStripVertices(3);
 
             // Duplicate first vertex.
             pVertex[0].X = rOutsideLeft;

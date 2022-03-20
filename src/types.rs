@@ -192,8 +192,7 @@ pub enum MilVertexFormatAttribute {
 pub struct CHwPipeline;
 
 pub struct CBufferDispenser;
-
-
+#[derive(Default)]
 pub struct PointXYA
 {
     pub x: f32,pub y: f32, pub a: f32,
