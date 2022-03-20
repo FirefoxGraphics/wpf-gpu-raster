@@ -390,7 +390,7 @@ impl CEdgeStore {
 
 impl CEdgeStore {
     fn NextAddBuffer(
-        &self,
+        &mut self,
         /*__deref_out_ecount(*puRemaining)*/ ppCurrentEdge: &mut *mut CEdge,
         puRemaining: &mut UINT,
     ) -> HRESULT {
@@ -420,7 +420,7 @@ impl CEdgeStore {
             // We have to grow our data structure by adding a new buffer
             // and adding it to the list:
 
-            let newBuffer: *mut CEdgeAllocation = panic!(); /*static_cast<CEdgeAllocation*>
+            let newBuffer: *mut CEdgeAllocation = Box::into_raw(Box::<CEdgeAllocation>::new(Default::default()));/*static_cast<CEdgeAllocation*>
                                                             (GpMalloc(Mt(MAARasterizerEdge),
                                                                       sizeof(CEdgeAllocation) +
                                                                       sizeof(CEdge) * (EDGE_STORE_ALLOCATION_NUMBER
@@ -428,7 +428,7 @@ impl CEdgeStore {
             IFCOOM!(newBuffer);
 
             (*newBuffer).Next = NULL();
-            (*newBuffer).Count = EDGE_STORE_ALLOCATION_NUMBER!() as u32;
+            (*newBuffer).Count = EDGE_STORE_STACK_NUMBER!() as u32;//EDGE_STORE_ALLOCATION_NUMBER!() as u32;
 
             self.TotalCount = cNewTotalCount;
 
@@ -437,8 +437,8 @@ impl CEdgeStore {
 
             self.CurrentEdge = &mut (*newBuffer).EdgeArray[0];
             *ppCurrentEdge = self.CurrentEdge;
-            self.CurrentRemaining = EDGE_STORE_ALLOCATION_NUMBER!();
-            *puRemaining = EDGE_STORE_ALLOCATION_NUMBER!();
+            self.CurrentRemaining = EDGE_STORE_STACK_NUMBER!() as u32;//EDGE_STORE_ALLOCATION_NUMBER!();
+            *puRemaining = EDGE_STORE_STACK_NUMBER!() as u32; //EDGE_STORE_ALLOCATION_NUMBER!();
 
             return hr;
         }
@@ -1455,7 +1455,7 @@ fn QuickSortEdges(
 
         SWAP!(e, (*f.offset(1)).Edge, (*l).Edge);
     }
-    if ((first = (*f).Yx) > (last = (*l).Yx)) {
+    if {first = (*f).Yx; first} > {last = (*l).Yx; last} {
         (*f).Yx = last;
         (*l).Yx = first;
 
