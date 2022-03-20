@@ -678,14 +678,7 @@ protected:
     //
     //-------------------------------------------------------------------------
 
-    virtual BOOL IsEmpty() const
-    {
-        return 
-               (m_rgIndices.GetCount() == 0)
-            && (m_rgVerticesLineList.GetCount() == 0)
-            && (m_rgVerticesTriStrip.GetCount() == 0)
-            && (m_rgVerticesNonIndexedTriList.GetCount() == 0);
-    }
+
 
 */
 
@@ -779,6 +772,15 @@ impl<TVertex> CHwTVertexBuffer<TVertex> {
         self.m_rgVerticesNonIndexedTriList.SetCount(0);
 
         //self.m_pBuilder = pVBB;
+    }
+
+    fn IsEmpty(&self) -> bool
+    {
+        return 
+               (self.m_rgIndices.GetCount() == 0)
+            && (self.m_rgVerticesLineList.GetCount() == 0)
+            && (self.m_rgVerticesTriStrip.GetCount() == 0)
+            && (self.m_rgVerticesNonIndexedTriList.GetCount() == 0);
     }
 
 }
@@ -2054,7 +2056,7 @@ impl IGeometrySink for CHwVertexBufferBuilder {
     
 
     fn IsEmpty(&self) -> bool {
-        todo!()
+        self.m_pVB.IsEmpty()
     }
 
 /* 
