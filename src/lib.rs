@@ -24,7 +24,7 @@ use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPoin
 
 use crate::geometry_sink::IGeometrySink;
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct OutputVertex {
     pub x: f32,
     pub y: f32,

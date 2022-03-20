@@ -108,7 +108,7 @@ const FLOAT_ONE: DWORD = 0x3f800000;
 
 use std::rc::Rc;
 
-use crate::{types::*, RRETURN, geometry_sink::IGeometrySink, IFC, aacoverage::c_nShiftSizeSquared};
+use crate::{types::*, RRETURN, geometry_sink::IGeometrySink, IFC, aacoverage::c_nShiftSizeSquared, OutputVertex};
 
 
 //+----------------------------------------------------------------------------
@@ -2462,7 +2462,13 @@ impl CHwVertexBuffer {
     fn DrawPrimitive(&self,
         pDevice: &CD3DDeviceLevel1
         ) -> HRESULT {
-            todo!()
+            let mut output = Vec::with_capacity(self.m_rgVerticesTriStrip.GetCount());
+            let data = self.m_rgVerticesTriStrip.GetDataBuffer();
+            for vert in  data {
+                output.push(OutputVertex {x: vert.X + 0.5, y: vert.Y + 0.5, coverage: f32::from_bits(vert.Diffuse)})
+            }
+            pDevice.output.replace(output);
+            return S_OK;
         }
 
 }
