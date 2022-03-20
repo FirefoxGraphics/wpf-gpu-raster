@@ -488,7 +488,7 @@ struct HfdBasis64
 impl HfdBasis64 {
 fn vParentError(&self) -> LONGLONG
 {
-    (self.e3 << 2).abs().max((self.e2 << 3).abs() - (self.e3 << 2))
+    (self.e3 << 2).abs().max(((self.e2 << 3) - (self.e3 << 2)).abs())
 }
 
 fn vError(&self) -> LONGLONG
@@ -853,4 +853,19 @@ impl CMILBezier {
                 CMILBezier::Bezier64(bez) => bez.cFlatten(pptfx, pbMore)
             }
         }
+}
+
+#[test]
+fn flatten() {
+    let curve: [POINT; 4] = [
+    POINT{x: 1715, y: 6506},
+    POINT{x: 1692, y: 6506},
+    POINT{x: 1227, y: 5148},
+    POINT{x: 647, y: 5211}];
+    let mut bez = CMILBezier::new(&curve, None);
+    let mut result: [POINT; 32] = Default::default();
+    let mut more: bool = false;
+    let count = bez.Flatten(&mut result, &mut more);
+    assert_eq!(count, 21);
+    assert_eq!(more, false);
 }
