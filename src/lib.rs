@@ -142,8 +142,7 @@ pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) {
     vertexBuilder.borrow_mut().BeginBuilding();
 
     rasterizer.SendGeometry(vertexBuilder.clone());
-    let mut m_pVB: Rc<CHwVertexBuffer> = todo!();
-    vertexBuilder.borrow().FlushTryGetVertexBuffer(&mut m_pVB);
+    vertexBuilder.borrow_mut().FlushTryGetVertexBuffer(None);
 }
 
 #[cfg(test)]

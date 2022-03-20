@@ -276,8 +276,8 @@ impl CHwVertexBufferBuilder {
     //
     //-------------------------------------------------------------------------
 
-    pub fn FlushTryGetVertexBuffer(&self,
-        ppVertexBuffer: &mut CHwVertexBuffer
+    pub fn FlushTryGetVertexBuffer(&mut self,
+        ppVertexBuffer: Option<&mut CHwVertexBuffer>
         ) -> HRESULT
     {
         return self.FlushInternal(ppVertexBuffer);
@@ -2449,6 +2449,22 @@ impl CHwVertexBuffer {
   //Cleanup:
     RRETURN!(hr);
 }
+
+
+    //+------------------------------------------------------------------------
+    //
+    //  Member:    DrawPrimitive
+    //
+    //  Synopsis:  Send the geometry data to the device and execute rendering
+    //
+    //-------------------------------------------------------------------------
+
+    fn DrawPrimitive(&self,
+        pDevice: &CD3DDeviceLevel1
+        ) -> HRESULT {
+            todo!()
+        }
+
 }
 /* 
 //+----------------------------------------------------------------------------
@@ -3111,7 +3127,7 @@ fn PrepareStratumSlow(&mut self,
 
     RRETURN!(hr);
 }
-/* 
+ 
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::Builder::EndBuildingOutside
@@ -3123,14 +3139,13 @@ fn PrepareStratumSlow(&mut self,
 //                 B. Produce stop stratum
 // 
 //-----------------------------------------------------------------------------
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::EndBuildingOutside()
+fn EndBuildingOutside(&mut self) -> HRESULT
 {
-    return PrepareStratum(
-        OutsideBottom(),
-        OutsideBottom(),
-        false /* Not a trapezoid. */
+    return self.PrepareStratum(
+        self.OutsideBottom(),
+        self.OutsideBottom(),
+        false, /* Not a trapezoid. */
+        0., 0.
         );
 }
 
@@ -3142,25 +3157,24 @@ CHwTVertexBuffer<TVertex>::Builder::EndBuildingOutside()
 //             vertex buffer.
 //
 //-----------------------------------------------------------------------------
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::EndBuilding(
-    __deref_opt_out_ecount(1) CHwVertexBuffer **ppVertexBuffer
-    )
+fn EndBuilding(&mut self,
+    ppVertexBuffer:  *const *const CHwVertexBuffer
+    ) -> HRESULT
 {
-    HRESULT hr = S_OK;
+    let hr = S_OK;
 
-    IFC(EndBuildingOutside());
+    IFC!(self.EndBuildingOutside());
     
-    if (ppVertexBuffer)
+    if (ppVertexBuffer != NULL())
     {
-        *ppVertexBuffer = m_pVB;
+        todo!();
+        //*ppVertexBuffer = m_pVB;
     }
 
-Cleanup:
-    RRETURN(hr);
+//Cleanup:
+    RRETURN!(hr);
 }
-*/
+
 
 //+----------------------------------------------------------------------------
 //
@@ -3178,55 +3192,57 @@ Cleanup:
 //             Otherwise multipass has to use a slower algorithm.
 //
 //-----------------------------------------------------------------------------
-fn FlushInternal(&self,
-    ppVertexBuffer: &mut CHwVertexBuffer    ) -> HRESULT
+fn FlushInternal(&mut self,
+    ppVertexBuffer: Option<&mut CHwVertexBuffer>    ) -> HRESULT
 {
-    todo!()
-    /* 
-    HRESULT hr = S_OK;
 
-    if (m_pPipelineNoRef)
+    let hr: HRESULT = S_OK;
+/* 
+    if (self.m_pPipelineNoRef)
     {
         // We use the pointer to the pipeline to ask it to send
         // the state if it hasn't been sent already.  Therefore after sending
         // we null it.
-        IFC(m_pPipelineNoRef->RealizeColorSourcesAndSendState(m_pVB));
-        m_pPipelineNoRef = NULL;
+        IFC(self.m_pPipelineNoRef->RealizeColorSourcesAndSendState(m_pVB));
+        self.m_pPipelineNoRef = NULL();
     }
+*/
+    IFC!(self.EndBuilding(NULL()));
 
-    IFC(EndBuilding(NULL));
-
-    if (m_rgoPrecomputedTriListVertices)
+    if (self.m_rgoPrecomputedTriListVertices != NULL())
     {
-        abort();
+        panic!();
     }
     else
     {
-        IFC(m_pVB->DrawPrimitive(m_pDeviceNoRef));
+        IFC!(self.m_pVB.DrawPrimitive(&self.m_pDeviceNoRef));
     }
 
-  Cleanup:
-    if (ppVertexBuffer)
+  //Cleanup:
+    if let Some(ppVertexBuffer) = (ppVertexBuffer)
     {
-        if (!m_fHasFlushed)
+        if (!self.m_fHasFlushed)
         {
-            *ppVertexBuffer = m_pVB;
+            todo!();
+            //*ppVertexBuffer = self.m_pVB;
         }
     }
     else
     {
-        m_fHasFlushed = true;
-        m_pVB->Reset(this);
+        self.m_fHasFlushed = true;
+        self.m_pVB.Reset();
 
-        m_rgoPrecomputedTriListVertices = NULL;
-        m_cPrecomputedTriListVertices = 0;
+        self.m_rgoPrecomputedTriListVertices = NULL();
+        self.m_cPrecomputedTriListVertices = 0;
 
-        m_rguPrecomputedTriListIndices = NULL;
-        m_cPrecomputedTriListIndices = 0;
+        self.m_rguPrecomputedTriListIndices = NULL();
+        self.m_cPrecomputedTriListIndices = 0;
     }
     
-    RRETURN(hr);*/
+    RRETURN!(hr);
 }
+
+
 
 /* 
 // 4505: unreferenced local function has been removed
