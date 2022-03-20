@@ -39,9 +39,9 @@ pub const c_antiAliasMode: MilAntiAliasMode = MilAntiAliasMode::EightByEight;
 
 pub struct CCoverageInterval
 {
-    m_pNext: *mut CCoverageInterval, // m_pNext interval (look for sentinel, not NULL)
-    m_nPixelX: INT,              // Interval's left edge (m_pNext->X is the right edge)
-    m_nCoverage: INT,            // Pixel coverage for interval
+    pub m_pNext: *mut CCoverageInterval, // m_pNext interval (look for sentinel, not NULL)
+    pub m_nPixelX: INT,              // Interval's left edge (m_pNext->X is the right edge)
+    pub m_nCoverage: INT,            // Pixel coverage for interval
 }
 
 impl Default for CCoverageInterval {

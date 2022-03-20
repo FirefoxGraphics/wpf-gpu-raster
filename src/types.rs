@@ -88,8 +88,7 @@ pub struct MilPointAndSizeL
     pub Height: INT,
 }
 
-#[derive(Default)]
-pub struct CMILSurfaceRect;
+pub type CMILSurfaceRect = RECT;
 
 #[derive(PartialEq)]
 pub enum MilAntiAliasMode {
@@ -193,3 +192,10 @@ pub enum MilVertexFormatAttribute {
 pub struct CHwPipeline;
 
 pub struct CBufferDispenser;
+
+
+pub struct PointXYA
+{
+    pub x: f32,pub y: f32, pub a: f32,
+}
+ 

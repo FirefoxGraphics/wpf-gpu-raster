@@ -49,7 +49,7 @@ pub trait IGeometrySink
     fn AddComplexScan(&mut self,
         nPixelY: INT,
             // In: y coordinate in pixel space
-            pIntervalSpanStart: &CCoverageInterval
+            pIntervalSpanStart: *mut CCoverageInterval
             // In: coverage segments
         ) -> HRESULT;
     

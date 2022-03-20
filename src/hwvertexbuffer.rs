@@ -91,7 +91,7 @@
 //    - clipping primitives to approximately the screen size
 //
 //-----------------------------------------------------------------------------
-
+const FORCE_TRIANGLES: bool = true;
 const c_rMinWaffleWidthPixels: f32 = 0.25;
 
 
@@ -108,7 +108,7 @@ const FLOAT_ONE: DWORD = 0x3f800000;
 
 use std::rc::Rc;
 
-use crate::{types::*, RRETURN, geometry_sink::IGeometrySink, IFC};
+use crate::{types::*, RRETURN, geometry_sink::IGeometrySink, IFC, aacoverage::c_nShiftSizeSquared};
 
 
 //+----------------------------------------------------------------------------
@@ -912,25 +912,7 @@ private:
     HRESULT AddTrapezoidStandard( float, float, float, float, float, float, float, float );
     HRESULT AddTrapezoidWaffle( float, float, float, float, float, float, float, float );
 
-    // Helpers that handle extra shapes in trapezoid mode.
-    MIL_FORCEINLINE HRESULT PrepareStratum(
-        float rStratumTop,
-        float rStratumBottom,
-        bool fTrapezoid,
-        float rTrapezoidLeft = 0,
-        float rTrapezoidRight = 0
-        )
-    {
-        return NeedOutsideGeometry()
-            ? PrepareStratumSlow(
-                rStratumTop,
-                rStratumBottom,
-                fTrapezoid,
-                rTrapezoidLeft,
-                rTrapezoidRight
-                )
-            : S_OK;
-    }
+
     
     HRESULT PrepareStratumSlow(
         float rStratumTop,
@@ -1082,34 +1064,9 @@ private:
     //-------------------------------------------------------------------------
     bool NeedCoverageGeometry(INT nCoverage) const;
 
-    //+------------------------------------------------------------------------
-    //
-    //  Member:    NeedOutsideGeometry
-    //
-    //  Synopsis:  True if we should create geometry with zero alpha for
-    //             areas outside the input geometry but within a given
-    //             bounding box.
-    //
-    //-------------------------------------------------------------------------
-    MIL_FORCEINLINE bool NeedOutsideGeometry() const
-    {
-        return m_fNeedOutsideGeometry;
-    }
 
-    //+------------------------------------------------------------------------
-    //
-    //  Member:    NeedInsideGeometry
-    //
-    //  Synopsis:  True if we should create geometry for areas completely
-    //             withing the input geometry (i.e. alpha 1.)  Should only
-    //             be false if NeedOutsideGeometry is true.
-    //
-    //-------------------------------------------------------------------------
-    MIL_FORCEINLINE bool NeedInsideGeometry() const
-    {
-        Assert(m_fNeedOutsideGeometry || m_fNeedInsideGeometry);
-        return m_fNeedInsideGeometry;
-    }
+
+
 
     //+------------------------------------------------------------------------
     //
@@ -1283,7 +1240,9 @@ CHwTVertexBuffer<TVertex>::AddTriangle(
 Cleanup:
     RRETURN(hr);
 }
+*/
 
+impl CHwVertexBuffer {
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::AddLine
@@ -1291,21 +1250,20 @@ Cleanup:
 //  Synopsis:  Add a nominal width line using given two points to the list
 //
 //-----------------------------------------------------------------------------
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::AddLine(
-    __in_ecount(1) const PointXYA &v0,
-    __in_ecount(1) const PointXYA &v1
-    )
+fn AddLine(&mut self,
+    v0: &PointXYA,
+    v1: &PointXYA
+    ) -> HRESULT
 {
-    HRESULT hr = S_OK;
+    type TVertex = CD3DVertexXYZDUV2;
+    let hr = S_OK;
 
-    TVertex *pVertices;
-    TVertex rgScratchVertices[2];
+    let pVertices: &[TVertex];
+    let rgScratchVertices: &[TVertex; 2];
 
-    Assert(!(v0.y != v1.y));
+    assert!(!(v0.y != v1.y));
     
-    bool fUseTriangles = (v0.y < m_pBuilder->GetViewportTop() + 1) || FORCE_TRIANGLES;
+    let fUseTriangles = /*(v0.y < m_pBuilder->GetViewportTop() + 1) ||*/ FORCE_TRIANGLES;
 
     if (fUseTriangles)
     {
@@ -1313,25 +1271,25 @@ CHwTVertexBuffer<TVertex>::AddLine(
     }
     else
     {
-        IFC(AddLineListVertices(2, &pVertices));
+        //IFC!(AddLineListVertices(2, &pVertices));
     }
     
-    pVertices[0].ptPt.X = v0.x;
-    pVertices[0].ptPt.Y = v0.y;
-    pVertices[0].Diffuse = reinterpret_cast<const DWORD &>(v0.a);
-    pVertices[1].ptPt.X = v1.x;
-    pVertices[1].ptPt.Y = v1.y;
-    pVertices[1].Diffuse = reinterpret_cast<const DWORD &>(v1.a);
+    pVertices[0].X = v0.x;
+    pVertices[0].Y = v0.y;
+    pVertices[0].Diffuse = v0.a.to_bits();
+    pVertices[1].X = v1.x;
+    pVertices[1].Y = v1.y;
+    pVertices[1].Diffuse = v1.a.to_bits();
 
     if (fUseTriangles)
     {
-        IFC(AddLineAsTriangleStrip(pVertices,pVertices+1));
+        IFC!(self.AddLineAsTriangleStrip(&pVertices[0],&pVertices[1]));
     }
     
-  Cleanup:
-    RRETURN(hr);
+    RRETURN!(hr);
 }
-
+}
+/* 
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::AddTriListVertices
@@ -1379,49 +1337,47 @@ CHwTVertexBuffer<TVertex>::AddTriListVertices(
   Cleanup:
     RRETURN(hr);
 }
-
+*/
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::AddTriStripVertices
 //
 //  Synopsis:  Reserve space for consecutive vertices
 //
-
-template <class TVertex>
-MIL_FORCEINLINE
-HRESULT
-CHwTVertexBuffer<TVertex>::AddTriStripVertices(
-    UINT uCount,
-    __deref_ecount(uCount) TVertex **ppVertices
-    )
+impl<TVertex: Default> CHwTVertexBuffer<TVertex> {
+fn AddTriStripVertices(
+    &mut self,
+    uCount: UINT,
+    ) -> &mut [TVertex]
 {
-    HRESULT hr = S_OK;
+    let hr: HRESULT = S_OK;
 
-    Assert(ppVertices);
-#if DBG
+    #[cfg(debug)]
     if (uCount != 6)
     {
         // Make a note that we added a tristrip using other than
         // 6 elements.
         m_fDbgNonLineSegmentTriangleStrip = true;
     }
-#endif
 
-    UINT Count = static_cast<UINT>(m_rgVerticesTriStrip.GetCount());
-    UINT newCount = Count + uCount;
+    let Count = (self.m_rgVerticesTriStrip.GetCount() as UINT);
+    let newCount = Count + uCount;
 
-    if (newCount > m_rgVerticesTriStrip.GetCapacity())
+    self.m_rgVerticesTriStrip.resize_with(newCount as usize, Default::default);
+/* 
+    if (newCount > self.m_rgVerticesTriStrip.GetCapacity())
     {
-        IFC(m_rgVerticesTriStrip.ReserveSpace(uCount));
+        IFC(self.m_rgVerticesTriStrip.ReserveSpace(uCount));
     }
 
-    m_rgVerticesTriStrip.SetCount(newCount);
-    *ppVertices = &m_rgVerticesTriStrip[Count];
+    self.m_rgVerticesTriStrip.SetCount(newCount);*/
+    return &mut self.m_rgVerticesTriStrip[Count as usize..];
 
-Cleanup:
-    RRETURN(hr);
+//Cleanup:
+    //RRETURN!(hr);
 }
-
+}
+/* 
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::AddNonIndexedTriListVertices
@@ -1612,6 +1568,15 @@ Cleanup:
     RRETURN(hr);*/
     //hr
 }
+    fn AreWafffling(&self) -> bool {
+        false
+    }
+
+        // Helpful m_rcOutsideBounds casts.
+        fn OutsideLeft(&self) -> f32  { return self.m_rcOutsideBounds.left as f32; }
+        fn OutsideRight(&self) -> f32 { return self.m_rcOutsideBounds.right as f32; }
+        fn OutsideTop(&self) -> f32 { return self.m_rcOutsideBounds.top as f32; }
+        fn OutsideBottom(&self) -> f32 { return self.m_rcOutsideBounds.bottom as f32; }
 }
 
 //+----------------------------------------------------------------------------
@@ -2044,14 +2009,7 @@ pub fn BeginBuilding(&mut self,
 }
 }
 impl IGeometrySink for CHwVertexBufferBuilder {
-    fn AddComplexScan(&mut self,
-        nPixelY: INT,
-            // In: y coordinate in pixel space
-            pIntervalSpanStart: &crate::aacoverage::CCoverageInterval
-            // In: coverage segments
-        ) -> HRESULT {
-        todo!()
-    }
+
 
     fn AddTrapezoid(
         &mut self,
@@ -2078,7 +2036,7 @@ impl IGeometrySink for CHwVertexBufferBuilder {
     fn IsEmpty(&self) -> bool {
         todo!()
     }
-}
+
 /* 
 
 //+----------------------------------------------------------------------------
@@ -2213,28 +2171,7 @@ CHwTVertexBuffer<TVertex>::Builder::AddTriangle(
 Cleanup:
     RRETURN(hr);
 }
-
-//+----------------------------------------------------------------------------
-//
-//  Member:    CHwTVertexBuffer<TVertex>::Builder::NeedCoverageGeometry
-//
-//  Synopsis:  Returns true if the coverage value needs to be rendered
-//             based on NeedInsideGeometry() and NeedOutsideGeometry()
-//
-//             Two cases where we don't need to generate geometry:
-//              1. NeedInsideGeometry is false, and coverage is c_nShiftSizeSquared.
-//              2. NeedOutsideGeometry is false and coverage is 0
-//
-//-----------------------------------------------------------------------------
-template <class TVertex>
-MIL_FORCEINLINE bool
-CHwTVertexBuffer<TVertex>::Builder::NeedCoverageGeometry(
-    INT nCoverage
-    ) const
-{
-    return    (NeedInsideGeometry()  || nCoverage != c_nShiftSizeSquared)
-           && (NeedOutsideGeometry() || nCoverage != 0);
-}
+*/
 
 
 //+----------------------------------------------------------------------------
@@ -2244,32 +2181,33 @@ CHwTVertexBuffer<TVertex>::Builder::NeedCoverageGeometry(
 //  Synopsis:  Add a coverage span to the vertex buffer
 //
 //-----------------------------------------------------------------------------
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
-    INT nPixelY,
-        // In: y coordinate in pixel space
-    __in_ecount(1) const CCoverageInterval *pIntervalSpanStart
-        // In: coverage segments
-    )
+    fn AddComplexScan(&mut self,
+        nPixelY: INT,
+            // In: y coordinate in pixel space
+            pIntervalSpanStart: *mut crate::aacoverage::CCoverageInterval
+            // In: coverage segments
+        ) -> HRESULT {
+    unsafe {
+
+    let hr: HRESULT = S_OK;
+    let pVertex: *mut CD3DVertexXYZDUV2 = NULL();
+
+    IFC!(self.PrepareStratum((nPixelY) as f32,
+                  (nPixelY+1) as f32, 
+                  false, /* Not a trapezoid. */ 
+                0., 0.));
+
+    let rPixelY: f32;
+    rPixelY = (nPixelY) as f32 + 0.5;
+
 {
-    HRESULT hr = S_OK;
-    TVertex *pVertex = NULL;
-
-    IFC(PrepareStratum(static_cast<float>(nPixelY),
-                  static_cast<float>(nPixelY+1),
-                  false /* Not a trapezoid. */ ));
-
-    float rPixelY;
-    rPixelY = float(nPixelY) + 0.5f;
-
-{
-    LineWaffler<PointXYA> wafflers[NUM_OF_VERTEX_TEXTURE_COORDS(TVertex) * 2];
+    //LineWaffler<PointXYA> wafflers[NUM_OF_VERTEX_TEXTURE_COORDS(TVertex) * 2];
 
     // Use sink for waffling & the first line fix up (aka the complicated cases.)
-    ILineSink<PointXYA> *pLineSink = NULL;
+    //ILineSink<PointXYA> *pLineSink = NULL;
+    let pLineSink = None;
 
-    if (AreWaffling())
+    /*if (self.AreWaffling())
     {
         bool fWafflersUsed;
         pLineSink = BuildWafflePipeline(wafflers, OUT fWafflersUsed);
@@ -2277,14 +2215,14 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
         {
             pLineSink = NULL;
         }
-    }
+    }*/
     
     // Use triangles instead of lines, for lines too close to the top of the viewport
     // because lines are clipped (before rasterization) against a viewport that only
     // includes half of the top pixel row.  Waffling will take care of this separately.
-    if (!pLineSink && rPixelY < GetViewportTop() + 1 || FORCE_TRIANGLES)
+    if (/*pLineSink.is_none() && rPixelY < self.GetViewportTop() + 1 ||*/ FORCE_TRIANGLES)
     {
-        pLineSink = m_pVB;
+        pLineSink = Some(&self.m_pVB);
     }
 
     //
@@ -2292,8 +2230,9 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
     // with non-zero coverage.
     //
 
-    if (!pLineSink)
+    if (pLineSink.is_none())
     {
+        /* 
         UINT nSegmentCount = 0;
 
         for (const CCoverageInterval *pIntervalSpanTemp = pIntervalSpanStart;
@@ -2313,16 +2252,16 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
         if (nSegmentCount)
         {
             IFC(m_pVB->AddLineListVertices(nSegmentCount*2, &pVertex));
-        }
+        }*/
     }
 
     //
     // Having allocated space (if not using sink), now let's actually output the vertices.
     //
 
-    while (pIntervalSpanStart->m_nPixelX != INT_MAX)
+    while ((*pIntervalSpanStart).m_nPixelX != INT::MAX)
     {
-        Assert(pIntervalSpanStart->m_pNext != NULL);
+        assert!((*pIntervalSpanStart).m_pNext != NULL());
 
         //
         // Output line list segments
@@ -2338,13 +2277,13 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
         // Since our top left corner is integer, we add 0.5 to get to the
         // pixel center.
         //
-        if (NeedCoverageGeometry(pIntervalSpanStart->m_nCoverage))
+        if (self.NeedCoverageGeometry((*pIntervalSpanStart).m_nCoverage))
         {
-            float rCoverage = static_cast<float>(pIntervalSpanStart->m_nCoverage)/static_cast<float>(c_nShiftSizeSquared);
+            let rCoverage: f32 = ((*pIntervalSpanStart).m_nCoverage as f32)/(c_nShiftSizeSquared as f32);
             
-            LONG iBegin = pIntervalSpanStart->m_nPixelX;
-            LONG iEnd = pIntervalSpanStart->m_pNext->m_nPixelX;
-            if (NeedOutsideGeometry())
+            let iBegin: LONG = (*pIntervalSpanStart).m_nPixelX;
+            let iEnd: LONG = (*(*pIntervalSpanStart).m_pNext).m_nPixelX;
+            if (self.NeedOutsideGeometry())
             {
                 // Intersect the interval with the outside bounds to create
                 // start and stop lines.  The scan begins (ends) with an
@@ -2357,19 +2296,19 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
                 // We could cull here but that should really be done by the geometry
                 // generator.
 
-                iBegin = max(iBegin, min(iEnd, m_rcOutsideBounds.left));
-                iEnd = min(iEnd, max(iBegin, m_rcOutsideBounds.right));
+                iBegin = iBegin.max(iEnd.min(self.m_rcOutsideBounds.left));
+                iEnd = iEnd.min(iBegin.max(self.m_rcOutsideBounds.right));
             }
-            float rPixelXBegin = float(iBegin) + 0.5f;
-            float rPixelXEnd = float(iEnd) + 0.5f;
+            let rPixelXBegin: f32= (iBegin as f32) + 0.5;
+            let rPixelXEnd: f32 = (iEnd as f32) + 0.5;
 
             //
             // Output line (linelist or tristrip) for a pixel
             //
 
-            if (pLineSink)
+            if let Some(pLineSink) = pLineSink 
             {
-                PointXYA v0,v1;
+                let v0: PointXYA; let v1: PointXYA;
                 v0.x = rPixelXBegin;
                 v0.y = rPixelY;
                 v0.a = rCoverage;
@@ -2378,11 +2317,12 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
                 v1.y = rPixelY;
                 v1.a = rCoverage;
 
-                IFC(pLineSink->AddLine(v0,v1));
+                IFC!(pLineSink.AddLine(&v0,&v1));
             }
             else
             {
-                DWORD dwDiffuse = ReinterpretFloatAsDWORD(rCoverage);
+                /* 
+                let dwDiffuse = ReinterpretFloatAsDWORD(rCoverage);
 
                 pVertex[0].ptPt.X = rPixelXBegin;
                 pVertex[0].ptPt.Y = rPixelY;
@@ -2393,7 +2333,7 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
                 pVertex[1].Diffuse = dwDiffuse;
 
                 // Advance output vertex pointer
-                pVertex += 2;
+                pVertex += 2;*/
             }
         }
 
@@ -2401,13 +2341,16 @@ CHwTVertexBuffer<TVertex>::Builder::AddComplexScan(
         // Advance coverage buffer
         //
 
-        pIntervalSpanStart = pIntervalSpanStart->m_pNext;
+        pIntervalSpanStart = (*pIntervalSpanStart).m_pNext;
     }
 }
 
-Cleanup:
-    RRETURN(hr);
+//Cleanup:
+    RRETURN!(hr);
 }
+}
+        }
+
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::Builder::AddLineAsTriangleStrip
@@ -2420,32 +2363,30 @@ Cleanup:
 //             longer be needed.  (Pixel center conventions will also change.)
 //              
 //-----------------------------------------------------------------------------
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::AddLineAsTriangleStrip(
-    __in_ecount(1) const TVertex *pBegin, // Begin
-    __in_ecount(1) const TVertex *pEnd    // End
-    )
+impl CHwVertexBuffer {
+    fn AddLineAsTriangleStrip(&mut self,
+    pBegin: &CD3DVertexXYZDUV2, // Begin
+    pEnd: &CD3DVertexXYZDUV2    // End
+    ) -> HRESULT
 {
-    HRESULT hr = S_OK;
-    TVertex *pVertex;
+    let hr = S_OK;
 
     // Collect pertinent data from vertices.
-    Assert(pBegin->ptPt.Y == pEnd->ptPt.Y);
-    Assert(pBegin->Diffuse == pEnd->Diffuse);
+    debug_assert!(pBegin.Y == pEnd.Y);
+    debug_assert!(pBegin.Diffuse == pEnd.Diffuse);
 
     // Offset begin and end X left by 0.5 because the line starts on the first
     // pixel center and ends on the center of the pixel after the line segment.
-    const float x0 = pBegin->ptPt.X - 0.5f;
-    const float x1 = pEnd->ptPt.X - 0.5f;
-    const float y = pBegin->ptPt.Y;
-    const DWORD dwDiffuse = pBegin->Diffuse;
+    let x0 = pBegin.X - 0.5;
+    let x1 = pEnd.X - 0.5;
+    let y = pBegin.Y;
+    let dwDiffuse = pBegin.Diffuse;
 
     //
     // Add the vertices
     //
 
-    IFC(AddTriStripVertices(6, &pVertex));
+    let pVertex = self.AddTriStripVertices(6);
 
     //
     // Duplicate the first vertex.  Assuming that the previous two
@@ -2455,23 +2396,23 @@ CHwTVertexBuffer<TVertex>::AddLineAsTriangleStrip(
     // the third creates a degenerate vertex.  In either case the
     // fourth creates the first triangle in our quad.
     // 
-    pVertex[0].ptPt.X = x0;
-    pVertex[0].ptPt.Y = y  - 0.5f;
+    pVertex[0].X = x0;
+    pVertex[0].Y = y  - 0.5;
     pVertex[0].Diffuse = dwDiffuse;
     
     // Offset two vertices up and two down to form a 1-pixel-high quad.
     // Order is TL-BL-TR-BR.
-    pVertex[1].ptPt.X = x0;
-    pVertex[1].ptPt.Y = y  - 0.5f;
+    pVertex[1].X = x0;
+    pVertex[1].Y = y  - 0.5;
     pVertex[1].Diffuse = dwDiffuse;
-    pVertex[2].ptPt.X = x0;
-    pVertex[2].ptPt.Y = y  + 0.5f;
+    pVertex[2].X = x0;
+    pVertex[2].Y = y  + 0.5;
     pVertex[2].Diffuse = dwDiffuse;
-    pVertex[3].ptPt.X = x1;
-    pVertex[3].ptPt.Y = y  - 0.5f;
+    pVertex[3].X = x1;
+    pVertex[3].Y = y  - 0.5;
     pVertex[3].Diffuse = dwDiffuse;
-    pVertex[4].ptPt.X = x1;
-    pVertex[4].ptPt.Y = y  + 0.5f;
+    pVertex[4].X = x1;
+    pVertex[4].Y = y  + 0.5;
     pVertex[4].Diffuse = dwDiffuse;
     
     //
@@ -2479,14 +2420,15 @@ CHwTVertexBuffer<TVertex>::AddLineAsTriangleStrip(
     // and sets up the next tristrip to create three more degenerate
     // triangles.
     // 
-    pVertex[5].ptPt.X = x1;
-    pVertex[5].ptPt.Y = y  + 0.5f;
+    pVertex[5].X = x1;
+    pVertex[5].Y = y  + 0.5;
     pVertex[5].Diffuse = dwDiffuse;
 
-  Cleanup:
-    RRETURN(hr);
+  //Cleanup:
+    RRETURN!(hr);
 }
-
+}
+/* 
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::Builder::AddParallelogram
@@ -2947,7 +2889,80 @@ CHwTVertexBuffer<TVertex>::Builder::AddTrapezoidWaffle(
 Cleanup:
     RRETURN(hr);
 }
-    
+*/
+impl CHwVertexBufferBuilder {
+
+    //+----------------------------------------------------------------------------
+//
+//  Member:    CHwTVertexBuffer<TVertex>::Builder::NeedCoverageGeometry
+//
+//  Synopsis:  Returns true if the coverage value needs to be rendered
+//             based on NeedInsideGeometry() and NeedOutsideGeometry()
+//
+//             Two cases where we don't need to generate geometry:
+//              1. NeedInsideGeometry is false, and coverage is c_nShiftSizeSquared.
+//              2. NeedOutsideGeometry is false and coverage is 0
+//
+//-----------------------------------------------------------------------------
+fn NeedCoverageGeometry(&self,
+    nCoverage: INT
+    ) -> bool
+{
+    return    (self.NeedInsideGeometry()  || nCoverage != c_nShiftSizeSquared)
+           && (self.NeedOutsideGeometry() || nCoverage != 0);
+}
+
+    //+------------------------------------------------------------------------
+    //
+    //  Member:    NeedOutsideGeometry
+    //
+    //  Synopsis:  True if we should create geometry with zero alpha for
+    //             areas outside the input geometry but within a given
+    //             bounding box.
+    //
+    //-------------------------------------------------------------------------
+    fn NeedOutsideGeometry(&self) -> bool
+    {
+        return self.m_fNeedOutsideGeometry;
+    }
+
+        //+------------------------------------------------------------------------
+    //
+    //  Member:    NeedInsideGeometry
+    //
+    //  Synopsis:  True if we should create geometry for areas completely
+    //             withing the input geometry (i.e. alpha 1.)  Should only
+    //             be false if NeedOutsideGeometry is true.
+    //
+    //-------------------------------------------------------------------------
+    fn NeedInsideGeometry(&self) -> bool
+    {
+        assert!(self.m_fNeedOutsideGeometry || self.m_fNeedInsideGeometry);
+        return self.m_fNeedInsideGeometry;
+    }
+
+
+
+    // Helpers that handle extra shapes in trapezoid mode.
+    fn PrepareStratum(&mut self,
+        rStratumTop: f32,
+        rStratumBottom: f32,
+        fTrapezoid: bool,
+        rTrapezoidLeft: f32, // = 0
+        rTrapezoidRight: f32, // = 0
+        ) -> HRESULT
+    {
+        return if self.NeedOutsideGeometry() {
+            self.PrepareStratumSlow(
+                rStratumTop,
+                rStratumBottom,
+                fTrapezoid,
+                rTrapezoidLeft,
+                rTrapezoidRight
+                )
+     } else { S_OK };
+    }
+
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::Builder::PrepareStratumSlow
@@ -2969,166 +2984,151 @@ Cleanup:
 //             This (slow) version asserts NeedOutsideGeometry()
 //
 //-----------------------------------------------------------------------------
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::PrepareStratumSlow(
-    float rStratumTop,
-    float rStratumBottom,
-    bool fTrapezoid,
-    float rTrapezoidLeft,
-    float rTrapezoidRight
-    )
+fn PrepareStratumSlow(&mut self,
+    rStratumTop: f32,
+    rStratumBottom: f32,
+    fTrapezoid: bool,
+    rTrapezoidLeft: f32,
+    rTrapezoidRight: f32
+    ) -> HRESULT
 {
-    HRESULT hr = S_OK;
+    type TVertex = CD3DVertexXYZDUV2;
+    let hr: HRESULT = S_OK;
     
-    Assert(!(rStratumTop > rStratumBottom));
-    Assert(NeedOutsideGeometry());
+    assert!(!(rStratumTop > rStratumBottom));
+    assert!(self.NeedOutsideGeometry());
 
     // There's only once case where a stratum can go "backwards"
     // and that's when we're done building & calling from
     // EndBuildingOutside
         
-    float fEndBuildingOutside = rStratumBottom == OutsideBottom() &&
-                                rStratumTop == OutsideBottom();
+    let fEndBuildingOutside: f32 = (rStratumBottom == self.OutsideBottom() &&
+                                rStratumTop == self.OutsideBottom()) as i32 as f32;
 
-    if (fEndBuildingOutside)
+    if (fEndBuildingOutside == 1.)
     {
-        Assert(!fTrapezoid);
+        assert!(!fTrapezoid);
     }
     else
     {
-        Assert(!(rStratumBottom < m_rCurStratumBottom));
+        assert!(!(rStratumBottom < self.m_rCurStratumBottom));
     }
     
-    if (   fEndBuildingOutside
-        || rStratumBottom != m_rCurStratumBottom)
+    if (   fEndBuildingOutside == 1.
+        || rStratumBottom != self.m_rCurStratumBottom)
     {
         
         // New stratum starting now.  Two things to do
         //  1. Close out current trapezoid stratum if necessary.
         //  2. Begin new trapezoid stratum if necessary.
         
-        if (m_rCurStratumTop != FLT_MAX)
+        if (self.m_rCurStratumTop != f32::MAX)
         {
             // End current trapezoid stratum.
 
-            TVertex *pVertex;
-            IFC(m_pVB->AddTriStripVertices(3, &pVertex));
+            let pVertex: &[CD3DVertexXYZDUV2] = self.m_pVB.AddTriStripVertices(3);
 
             // we do not clip trapezoids so RIGHT boundary
             // of the stratus can be outside of m_rcOutsideBounds.
             
-            float rOutsideRight = max(OutsideRight(), m_rLastTrapezoidRight);
+            let rOutsideRight: f32 = self.OutsideRight().max(self.m_rLastTrapezoidRight);
 
-            pVertex->ptPt.X = rOutsideRight;
-            pVertex->ptPt.Y = m_rCurStratumTop;
-            pVertex->Diffuse = FLOAT_ZERO;
-            ++pVertex;
+            pVertex[0].X = rOutsideRight;
+            pVertex[0].Y = self.m_rCurStratumTop;
+            pVertex[0].Diffuse = FLOAT_ZERO;
 
-            pVertex->ptPt.X = rOutsideRight;
-            pVertex->ptPt.Y = m_rCurStratumBottom;
-            pVertex->Diffuse = FLOAT_ZERO;
-            ++pVertex;
+            pVertex[1].X = rOutsideRight;
+            pVertex[1].Y = self.m_rCurStratumBottom;
+            pVertex[1].Diffuse = FLOAT_ZERO;
 
             // Duplicate last vertex in row
-            pVertex->ptPt.X = rOutsideRight;
-            pVertex->ptPt.Y = m_rCurStratumBottom;
-            pVertex->Diffuse = FLOAT_ZERO;
+            pVertex[2].X = rOutsideRight;
+            pVertex[2].Y = self.m_rCurStratumBottom;
+            pVertex[2].Diffuse = FLOAT_ZERO;
         }
         // Compute the gap between where the last stratum ended and where
         // this one begins.
-        float flGap = rStratumTop - m_rCurStratumBottom;
+        let flGap: f32 = rStratumTop - self.m_rCurStratumBottom;
 
-        if (flGap > 0)
+        if (flGap > 0.)
         {
             // The "special" case of a gap at the beginning is caught here
             // using the sentinel initial value of m_rCurStratumBottom.
 
-            float flRectTop = m_rCurStratumBottom == -FLT_MAX
-                              ? OutsideTop()
-                              : m_rCurStratumBottom;
-            float flRectBot = static_cast<float>(rStratumTop);
+            let flRectTop: f32 = if self.m_rCurStratumBottom == -f32::MAX {
+                              self.OutsideTop() } else {
+                              self.m_rCurStratumBottom };
+            let flRectBot: f32  = (rStratumTop as f32);
 
             // Produce rectangular for any horizontal intervals in the
             // outside bounds that have no generated geometry.
-            Assert(m_rCurStratumBottom != -FLT_MAX || m_rCurStratumTop == FLT_MAX);
+            assert!(self.m_rCurStratumBottom != -f32::MAX || self.m_rCurStratumTop == f32::MAX);
 
-            TVertex *pVertex;
-            IFC(m_pVB->AddTriStripVertices(6, &pVertex));
+            let pVertex = self.m_pVB.AddTriStripVertices(6);
             
             // Duplicate first vertex.
-            pVertex->ptPt.X = OutsideLeft();
-            pVertex->ptPt.Y = flRectTop;
-            pVertex->Diffuse = FLOAT_ZERO;
-            ++pVertex;
+            pVertex[0].X = self.OutsideLeft();
+            pVertex[0].Y = flRectTop;
+            pVertex[0].Diffuse = FLOAT_ZERO;
 
-            pVertex->ptPt.X = OutsideLeft();
-            pVertex->ptPt.Y = flRectTop;
-            pVertex->Diffuse = FLOAT_ZERO;
-            ++pVertex;
+            pVertex[1].X = self.OutsideLeft();
+            pVertex[1].Y = flRectTop;
+            pVertex[1].Diffuse = FLOAT_ZERO;
 
-            pVertex->ptPt.X = OutsideLeft();
-            pVertex->ptPt.Y = flRectBot;
-            pVertex->Diffuse = FLOAT_ZERO;
-            ++pVertex;
+            pVertex[2].X = self.OutsideLeft();
+            pVertex[2].Y = flRectBot;
+            pVertex[2].Diffuse = FLOAT_ZERO;
 
-            pVertex->ptPt.X = OutsideRight();
-            pVertex->ptPt.Y = flRectTop;
-            pVertex->Diffuse = FLOAT_ZERO;
-            ++pVertex;
+            pVertex[3].X = self.OutsideRight();
+            pVertex[3].Y = flRectTop;
+            pVertex[3].Diffuse = FLOAT_ZERO;
 
-            pVertex->ptPt.X = OutsideRight();
-            pVertex->ptPt.Y = flRectBot;
-            pVertex->Diffuse = FLOAT_ZERO;
-            ++pVertex;
+            pVertex[4].X = self.OutsideRight();
+            pVertex[4].Y = flRectBot;
+            pVertex[4].Diffuse = FLOAT_ZERO;
         
-            pVertex->ptPt.X = OutsideRight();
-            pVertex->ptPt.Y = flRectBot;
-            pVertex->Diffuse = FLOAT_ZERO;
-            ++pVertex;
+            pVertex[5].X = self.OutsideRight();
+            pVertex[5].Y = flRectBot;
+            pVertex[5].Diffuse = FLOAT_ZERO;
         }
 
         if (fTrapezoid)
         {
             // Begin new trapezoid stratum.
             
-            TVertex *pVertex;
-            IFC(m_pVB->AddTriStripVertices(3, &pVertex));
+            let mut pVertex: &[TVertex] = self.m_pVB.AddTriStripVertices(3);
 
             // we do not clip trapezoids so left boundary
             // of the stratus can be outside of m_rcOutsideBounds.
             
-            float rOutsideLeft = min(OutsideLeft(), rTrapezoidLeft);
+            let rOutsideLeft: f32 = self.OutsideLeft().min(rTrapezoidLeft);
 
             // Duplicate first vertex.
-            pVertex->ptPt.X = rOutsideLeft;
-            pVertex->ptPt.Y = rStratumTop;
-            pVertex->Diffuse = FLOAT_ZERO;
-            ++pVertex;
+            pVertex[0].X = rOutsideLeft;
+            pVertex[0].Y = rStratumTop;
+            pVertex[0].Diffuse = FLOAT_ZERO;
             
-            pVertex->ptPt.X = rOutsideLeft;
-            pVertex->ptPt.Y = rStratumTop;
-            pVertex->Diffuse = FLOAT_ZERO;
-            ++pVertex;
+            pVertex[1].X = rOutsideLeft;
+            pVertex[1].Y = rStratumTop;
+            pVertex[1].Diffuse = FLOAT_ZERO;
 
-            pVertex->ptPt.X = rOutsideLeft;
-            pVertex->ptPt.Y = rStratumBottom;
-            pVertex->Diffuse = FLOAT_ZERO;
+            pVertex[2].X = rOutsideLeft;
+            pVertex[2].Y = rStratumBottom;
+            pVertex[2].Diffuse = FLOAT_ZERO;
         }
     }
     
     if (fTrapezoid)
     {
-        m_rLastTrapezoidRight = rTrapezoidRight;
+        self.m_rLastTrapezoidRight = rTrapezoidRight;
     }
 
-    m_rCurStratumTop = fTrapezoid ? rStratumTop : FLT_MAX;
-    m_rCurStratumBottom = rStratumBottom;
+    self.m_rCurStratumTop = if fTrapezoid { rStratumTop } else { f32::MAX };
+    self.m_rCurStratumBottom = rStratumBottom;
 
-Cleanup:
-    RRETURN(hr);
+    RRETURN!(hr);
 }
-
+/* 
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::Builder::EndBuildingOutside
@@ -3178,7 +3178,6 @@ Cleanup:
     RRETURN(hr);
 }
 */
-impl<TVertex> CHwTVertexBufferBuilder<TVertex> {
 
 //+----------------------------------------------------------------------------
 //
@@ -3245,7 +3244,7 @@ fn FlushInternal(&self,
     
     RRETURN(hr);*/
 }
-}
+
 /* 
 // 4505: unreferenced local function has been removed
 //   These will show up as errors in very bizarre way including references to
@@ -3264,3 +3263,4 @@ template class CHwTVertexBuffer<CD3DVertexXYZDUV8>;
 
 
 */
+}
