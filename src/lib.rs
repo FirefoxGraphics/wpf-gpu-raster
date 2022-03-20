@@ -104,7 +104,7 @@ impl IShapeData for RectShape {
 }
 
 
-pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) {
+pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Vec<OutputVertex> {
     let mut rasterizer = CHwRasterizer::new();
     let mut device = CD3DDeviceLevel1::new();
     
@@ -131,7 +131,7 @@ pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) {
     struct CHwPipeline {
         m_pDevice: Rc<CD3DDeviceLevel1>
     }
-    let pipeline =  CHwPipeline { m_pDevice: device };
+    let pipeline =  CHwPipeline { m_pDevice: device.clone() };
     let m_pHP = &pipeline;
 
     rasterizer.GetPerVertexDataType(&mut m_mvfIn);
@@ -143,6 +143,7 @@ pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) {
 
     rasterizer.SendGeometry(vertexBuilder.clone());
     vertexBuilder.borrow_mut().FlushTryGetVertexBuffer(None);
+    device.output.replace(Vec::new())
 }
 
 #[cfg(test)]
@@ -174,11 +175,13 @@ mod tests {
         p.line_to(40., 10.);
         p.line_to(40., 40.);
         let result = p.rasterize_to_tri_strip(100, 100);
-        //assert_eq!(dbg!(calculate_hash(&result)), 0x91582a1f5e431eb6);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xa33cb40dd676741e);
     }
 
     #[test]
     fn rust() {
-        rasterize(0, 0, 100, 100);
+        let result = rasterize(0, 0, 100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xa33cb40dd676741e);
+
     }
 }
