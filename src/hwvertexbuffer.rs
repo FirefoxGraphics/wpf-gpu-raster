@@ -2010,28 +2010,48 @@ pub fn BeginBuilding(&mut self,
 }
 impl IGeometrySink for CHwVertexBufferBuilder {
 
-
-    fn AddTrapezoid(
-        &mut self,
-        rYMin: f32,
-            // In: y coordinate of top of trapezoid
-        rXLeftYMin: f32,
-            // In: x coordinate for top left
-        rXRightYMin: f32,
-            // In: x coordinate for top right
-        rYMax: f32,
-            // In: y coordinate of bottom of trapezoid
-        rXLeftYMax: f32,
-            // In: x coordinate for bottom left
-        rXRightYMax: f32,
-            // In: x coordinate for bottom right
-        rXDeltaLeft: f32,
-            // In: trapezoid expand radius
-        rXDeltaRight: f32
-            // In: trapezoid expand radius
-        ) -> HRESULT {
-        todo!()
+    fn AddTrapezoid(&mut self,
+        rPixelYTop: f32,              // In: y coordinate of top of trapezoid
+        rPixelXTopLeft: f32,          // In: x coordinate for top left
+        rPixelXTopRight: f32,         // In: x coordinate for top right
+        rPixelYBottom: f32,           // In: y coordinate of bottom of trapezoid
+        rPixelXBottomLeft: f32,       // In: x coordinate for bottom left
+        rPixelXBottomRight: f32,      // In: x coordinate for bottom right
+        rPixelXLeftDelta: f32,        // In: trapezoid expand radius for left edge
+        rPixelXRightDelta: f32        // In: trapezoid expand radius for right edge
+        ) -> HRESULT
+    {
+        let hr = S_OK;
+    
+        if (/*self.AreWaffling()*/ false)
+        {
+            /*IFC(AddTrapezoidWaffle(
+                    rPixelYTop,
+                    rPixelXTopLeft,
+                    rPixelXTopRight,
+                    rPixelYBottom,
+                    rPixelXBottomLeft,
+                    rPixelXBottomRight,
+                    rPixelXLeftDelta,
+                    rPixelXRightDelta));*/
+        }
+        else
+        {
+            IFC!(self.AddTrapezoidStandard(
+                    rPixelYTop,
+                    rPixelXTopLeft,
+                    rPixelXTopRight,
+                    rPixelYBottom,
+                    rPixelXBottomLeft,
+                    rPixelXBottomRight,
+                    rPixelXLeftDelta,
+                    rPixelXRightDelta));
+        }
+    
+    //Cleanup:
+        RRETURN!(hr);
     }
+    
 
     fn IsEmpty(&self) -> bool {
         todo!()
@@ -2604,7 +2624,7 @@ CHwTVertexBuffer<TVertex>::Builder::IsEmpty()
 {
     return m_pVB->IsEmpty();
 }
-
+*/
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::Builder::AddTrapezoid
@@ -2621,50 +2641,7 @@ CHwTVertexBuffer<TVertex>::Builder::IsEmpty()
 //    + ^^                        +
 //      delta
 //
-
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::AddTrapezoid(
-    float rPixelYTop,              // In: y coordinate of top of trapezoid
-    float rPixelXTopLeft,          // In: x coordinate for top left
-    float rPixelXTopRight,         // In: x coordinate for top right
-    float rPixelYBottom,           // In: y coordinate of bottom of trapezoid
-    float rPixelXBottomLeft,       // In: x coordinate for bottom left
-    float rPixelXBottomRight,      // In: x coordinate for bottom right
-    float rPixelXLeftDelta,        // In: trapezoid expand radius for left edge
-    float rPixelXRightDelta        // In: trapezoid expand radius for right edge
-    )
-{
-    HRESULT hr = S_OK;
-
-    if (AreWaffling())
-    {
-        IFC(AddTrapezoidWaffle(
-                rPixelYTop,
-                rPixelXTopLeft,
-                rPixelXTopRight,
-                rPixelYBottom,
-                rPixelXBottomLeft,
-                rPixelXBottomRight,
-                rPixelXLeftDelta,
-                rPixelXRightDelta));
-    }
-    else
-    {
-        IFC(AddTrapezoidStandard(
-                rPixelYTop,
-                rPixelXTopLeft,
-                rPixelXTopRight,
-                rPixelYBottom,
-                rPixelXBottomLeft,
-                rPixelXBottomRight,
-                rPixelXLeftDelta,
-                rPixelXRightDelta));
-    }
-
-Cleanup:
-    RRETURN(hr);
-}
+impl CHwVertexBufferBuilder {
 
 //+----------------------------------------------------------------------------
 //
@@ -2673,39 +2650,38 @@ Cleanup:
 //  Synopsis:  See AddTrapezoid.  This doesn't do waffling & uses tri strips.
 //
 
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::AddTrapezoidStandard(
-    float rPixelYTop,              // In: y coordinate of top of trapezoid
-    float rPixelXTopLeft,          // In: x coordinate for top left
-    float rPixelXTopRight,         // In: x coordinate for top right
-    float rPixelYBottom,           // In: y coordinate of bottom of trapezoid
-    float rPixelXBottomLeft,       // In: x coordinate for bottom left
-    float rPixelXBottomRight,      // In: x coordinate for bottom right
-    float rPixelXLeftDelta,        // In: trapezoid expand radius for left edge
-    float rPixelXRightDelta        // In: trapezoid expand radius for right edge
-    )
+fn AddTrapezoidStandard(&mut self,
+    rPixelYTop: f32,              // In: y coordinate of top of trapezoid
+    rPixelXTopLeft: f32,          // In: x coordinate for top left
+    rPixelXTopRight: f32,         // In: x coordinate for top right
+    rPixelYBottom: f32,           // In: y coordinate of bottom of trapezoid
+    rPixelXBottomLeft: f32,       // In: x coordinate for bottom left
+    rPixelXBottomRight: f32,      // In: x coordinate for bottom right
+    rPixelXLeftDelta: f32,        // In: trapezoid expand radius for left edge
+    rPixelXRightDelta: f32        // In: trapezoid expand radius for right edge
+    ) -> HRESULT
 {
-    HRESULT hr = S_OK;
-    TVertex *pVertex;
+    type TVertex = CD3DVertexXYZDUV2;
+    let hr = S_OK;
+    //TVertex *pVertex;
 
-    IFC(PrepareStratum(
+    IFC!(self.PrepareStratum(
         rPixelYTop,
         rPixelYBottom,
         true, /* Trapezoid */
-        min(rPixelXTopLeft, rPixelXBottomLeft),
-        max(rPixelXTopRight, rPixelXBottomRight)
+        rPixelXTopLeft.min(rPixelXBottomLeft),
+        rPixelXTopRight.max(rPixelXBottomRight)
         ));
     
     //
     // Add the vertices
     //
 
-	UINT cVertices;
-	bool fNeedOutsideGeometry, fNeedInsideGeometry;
+	let mut cVertices:  UINT;
+	let fNeedOutsideGeometry: bool; let fNeedInsideGeometry: bool;
     cVertices = 8;
-    fNeedOutsideGeometry = NeedOutsideGeometry();
-    fNeedInsideGeometry = NeedInsideGeometry();
+    fNeedOutsideGeometry = self.NeedOutsideGeometry();
+    fNeedInsideGeometry = self.NeedInsideGeometry();
 
     if (!fNeedOutsideGeometry)
     {
@@ -2720,8 +2696,9 @@ CHwTVertexBuffer<TVertex>::Builder::AddTrapezoidStandard(
         cVertices += 2;
     }
 
-    IFC(m_pVB->AddTriStripVertices(cVertices, &pVertex));
+    let pVertex = self.m_pVB.AddTriStripVertices(cVertices);
 
+    let mut i = 0;
     if (!fNeedOutsideGeometry)
     {
         //
@@ -2729,69 +2706,69 @@ CHwTVertexBuffer<TVertex>::Builder::AddTrapezoidStandard(
         // the previous trapezoid to this one and another between vertices 0 and 1.
         //
 
-        pVertex->ptPt.X = rPixelXTopLeft - rPixelXLeftDelta;
-        pVertex->ptPt.Y = rPixelYTop;
-        pVertex->Diffuse = FLOAT_ZERO;
-        ++pVertex;
+        pVertex[i].X = rPixelXTopLeft - rPixelXLeftDelta;
+        pVertex[i].Y = rPixelYTop;
+        pVertex[i].Diffuse = FLOAT_ZERO;
+        i += 1;
     }
 
     //
     // Fill in the strip vertices
     //
 
-    pVertex->ptPt.X = rPixelXTopLeft - rPixelXLeftDelta;
-    pVertex->ptPt.Y = rPixelYTop;
-    pVertex->Diffuse = FLOAT_ZERO;
-    ++pVertex;
+    pVertex[i].X = rPixelXTopLeft - rPixelXLeftDelta;
+    pVertex[i].Y = rPixelYTop;
+    pVertex[i].Diffuse = FLOAT_ZERO;
+    i += 1;
 
-    pVertex->ptPt.X = rPixelXBottomLeft - rPixelXLeftDelta;
-    pVertex->ptPt.Y = rPixelYBottom;
-    pVertex->Diffuse = FLOAT_ZERO;
-    ++pVertex;
+    pVertex[i].X = rPixelXBottomLeft - rPixelXLeftDelta;
+    pVertex[i].Y = rPixelYBottom;
+    pVertex[i].Diffuse = FLOAT_ZERO;
+    i += 1;
 
-    pVertex->ptPt.X = rPixelXTopLeft + rPixelXLeftDelta;
-    pVertex->ptPt.Y = rPixelYTop;
-    pVertex->Diffuse = FLOAT_ONE;
-    ++pVertex;
+    pVertex[i].X = rPixelXTopLeft + rPixelXLeftDelta;
+    pVertex[i].Y = rPixelYTop;
+    pVertex[i].Diffuse = FLOAT_ONE;
+    i += 1;
 
-    pVertex->ptPt.X = rPixelXBottomLeft + rPixelXLeftDelta;
-    pVertex->ptPt.Y = rPixelYBottom;
-    pVertex->Diffuse = FLOAT_ONE;
-    ++pVertex;
+    pVertex[i].X = rPixelXBottomLeft + rPixelXLeftDelta;
+    pVertex[i].Y = rPixelYBottom;
+    pVertex[i].Diffuse = FLOAT_ONE;
+    i += 1;
 
     if (!fNeedInsideGeometry)
     {
         // Don't create inside geometry.
-        pVertex->ptPt.X = rPixelXBottomLeft + rPixelXLeftDelta;
-        pVertex->ptPt.Y = rPixelYBottom;
-        pVertex->Diffuse = FLOAT_ONE;
-        ++pVertex;
+        pVertex[i].X = rPixelXBottomLeft + rPixelXLeftDelta;
+        pVertex[i].Y = rPixelYBottom;
+        pVertex[i].Diffuse = FLOAT_ONE;
+        i += 1;
         
-        pVertex->ptPt.X = rPixelXTopRight - rPixelXRightDelta;
-        pVertex->ptPt.Y = rPixelYTop;
-        pVertex->Diffuse = FLOAT_ONE;
-        ++pVertex;
+        pVertex[i].X = rPixelXTopRight - rPixelXRightDelta;
+        pVertex[i].Y = rPixelYTop;
+        pVertex[i].Diffuse = FLOAT_ONE;
+        i += 1;
     }
 
-    pVertex->ptPt.X = rPixelXTopRight - rPixelXRightDelta;
-    pVertex->ptPt.Y = rPixelYTop;
-    pVertex->Diffuse = FLOAT_ONE;
-    ++pVertex;
+    pVertex[i].X = rPixelXTopRight - rPixelXRightDelta;
+    pVertex[i].Y = rPixelYTop;
+    pVertex[i].Diffuse = FLOAT_ONE;
+    i += 1;
 
-    pVertex->ptPt.X = rPixelXBottomRight - rPixelXRightDelta;
-    pVertex->ptPt.Y = rPixelYBottom;
-    pVertex->Diffuse = FLOAT_ONE;
-    ++pVertex;
+    pVertex[i].X = rPixelXBottomRight - rPixelXRightDelta;
+    pVertex[i].Y = rPixelYBottom;
+    pVertex[i].Diffuse = FLOAT_ONE;
+    i += 1;
 
-    pVertex->ptPt.X = rPixelXTopRight + rPixelXRightDelta;
-    pVertex->ptPt.Y = rPixelYTop;
-    pVertex->Diffuse = FLOAT_ZERO;
-    ++pVertex;
+    pVertex[i].X = rPixelXTopRight + rPixelXRightDelta;
+    pVertex[i].Y = rPixelYTop;
+    pVertex[i].Diffuse = FLOAT_ZERO;
+    i += 1;
 
-    pVertex->ptPt.X = rPixelXBottomRight + rPixelXRightDelta;
-    pVertex->ptPt.Y = rPixelYBottom;
-    pVertex->Diffuse = FLOAT_ZERO;
-    ++pVertex;
+    pVertex[i].X = rPixelXBottomRight + rPixelXRightDelta;
+    pVertex[i].Y = rPixelYBottom;
+    pVertex[i].Diffuse = FLOAT_ZERO;
+    i += 1;
 
     if (!fNeedOutsideGeometry)
     {
@@ -2801,16 +2778,17 @@ CHwTVertexBuffer<TVertex>::Builder::AddTrapezoidStandard(
         // next one.
         //
 
-        pVertex->ptPt.X = rPixelXBottomRight + rPixelXRightDelta;
-        pVertex->ptPt.Y = rPixelYBottom;
-        pVertex->Diffuse = FLOAT_ZERO;
-        ++pVertex;
+        pVertex[i].X = rPixelXBottomRight + rPixelXRightDelta;
+        pVertex[i].Y = rPixelYBottom;
+        pVertex[i].Diffuse = FLOAT_ZERO;
+        i += 1;
     }
 
-Cleanup:
-    RRETURN(hr);
+//Cleanup:
+    RRETURN!(hr);
 }
-
+}
+/* 
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::Builder::AddTrapezoidWaffle
