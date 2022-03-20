@@ -167,6 +167,17 @@ mod tests {
         assert_eq!(dbg!(calculate_hash(&result)), 0x91582a1f5e431eb6);
     }
 
+
+    #[test]
+    fn simple() {
+        let mut p = PathBuilder::new();
+        p.move_to(10., 10.);
+        p.line_to(40., 10.);
+        p.line_to(40., 40.);
+        let result = p.rasterize_to_tri_strip(100, 100);
+        //assert_eq!(dbg!(calculate_hash(&result)), 0x91582a1f5e431eb6);
+    }
+
     #[test]
     fn rust() {
         rasterize(0, 0, 100, 100);

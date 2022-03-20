@@ -1201,7 +1201,7 @@ pub fn FixedPointPathEnumerate(
     let mut bezierBuffer: [POINT; 4] = Default::default();
     let mut buffer: &mut [POINT];
     let mut bufferSize: usize;
-    let startFigure: POINT = Default::default();
+    let mut startFigure: [POINT; 1] = Default::default();
     let mut iStart: usize;
     let mut iEnd: usize;
     let mut runSize: usize;
@@ -1229,11 +1229,11 @@ pub fn FixedPointPathEnumerate(
             matrix,
             &rgpt[iStart..],
             1,
-            &mut [startFigure]
+            &mut startFigure
         ));
 
-        bufferStart[0].x = startFigure.x;
-        bufferStart[0].y = startFigure.y;
+        bufferStart[0].x = startFigure[0].x;
+        bufferStart[0].y = startFigure[0].y;
         let bufferStartPtr = bufferStart.as_ptr();
         buffer = &mut bufferStart[1..];
         bufferSize = ENUMERATE_BUFFER_NUMBER!() - 1;
@@ -1364,8 +1364,8 @@ pub fn FixedPointPathEnumerate(
         // 'close figure' (which is implicit for a fill):
         // Add the close-figure point:
 
-        buffer[0].x = startFigure.x;
-        buffer[0].y = startFigure.y;
+        buffer[0].x = startFigure[0].x;
+        buffer[0].y = startFigure[0].y;
         bufferSize -= 1;
 
         // We have to flush anything we might have in the batch, unless
