@@ -72,7 +72,7 @@ pub struct POINT {
     pub x: LONG,
     pub y: LONG
 }
-
+#[derive(Clone, Copy)]
 pub struct MilPoint2F
 {
     pub X: FLOAT,

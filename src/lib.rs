@@ -15,12 +15,12 @@ mod matrix;
 mod real;
 mod fix;
 
-use std::{ffi::c_void, rc::Rc, cell::RefCell};
+use std::{ffi::c_void, rc::Rc, cell::{RefCell, Cell}, mem::take};
 
 use hwrasterizer::CHwRasterizer;
 use hwvertexbuffer::{CHwVertexBufferBuilder, CHwVertexBuffer};
 use matrix::CMatrix;
-use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT, MilVertexFormat, MilVertexFormatAttribute};
+use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath};
 
 use crate::geometry_sink::IGeometrySink;
 #[repr(C)]
@@ -104,46 +104,169 @@ impl IShapeData for RectShape {
 }
 
 
-pub fn rasterize(clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Vec<OutputVertex> {
-    let mut rasterizer = CHwRasterizer::new();
-    let mut device = CD3DDeviceLevel1::new();
-    
-    device.clipRect.X = clip_x;
-    device.clipRect.Y = clip_y;
-    device.clipRect.Width = clip_width;
-    device.clipRect.Height = clip_height;
-    let device = Rc::new(device);
-    /* 
-    device.m_rcViewport = device.clipRect;
-*/
-    let shape = RectShape{};
-    let pointsScratch = Rc::new(RefCell::new(Vec::new()));
-    let typesScratch = Rc::new(RefCell::new(Vec::new()));
-    let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
 
-    rasterizer.Setup(device.clone(), Rc::new(shape), pointsScratch, typesScratch, Some(&worldToDevice));
 
-    let mut m_mvfIn: MilVertexFormat = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
-    let m_mvfGenerated: MilVertexFormat  = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
-    //let mvfaAALocation  = MILVFAttrNone;
-    const HWPIPELINE_ANTIALIAS_LOCATION: MilVertexFormatAttribute = MilVertexFormatAttribute::MILVFAttrDiffuse;
-    let mvfaAALocation = HWPIPELINE_ANTIALIAS_LOCATION;
-    struct CHwPipeline {
-        m_pDevice: Rc<CD3DDeviceLevel1>
+pub struct PathBuilderRust {
+    points: DynArray<MilPoint2F>,
+    types: DynArray<BYTE>,
+    initial_point: Option<MilPoint2F>,
+    fill_mode: MilFillMode,
+}
+
+/*struct PathBuilder : CShapeBase {
+    DynArray<MilPoint2F> points;
+    DynArray<BYTE> types;
+    bool has_initial = false;
+    MilPoint2F initial_point;
+    MilFillMode::Enum fill_mode = MilFillMode::Alternate;
+    override HRESULT ConvertToGpPath(
+                                         __out_ecount(1) DynArray<MilPoint2F> &rgPoints,
+                                         // Path points
+                                         __out_ecount(1) DynArray<BYTE>      &rgTypes,
+                                         // Path types
+                                         IN  bool                fStroking
+                                         // Stroking if true, filling otherwise (optional)
+                                    ) const
+    {
+            rgPoints.Copy(points);
+            rgTypes.Copy(types);
     }
-    let pipeline =  CHwPipeline { m_pDevice: device.clone() };
-    let m_pHP = &pipeline;
+    MilFillMode::Enum GetFillMode() const {
+                    return fill_mode;
+    }
+    bool HasGaps() const { return false;
+    }
+    bool HasHollows() const { return false; }
+    bool IsEmpty() const { return false; }
+    UINT GetFigureCount() const { return 1; }
+    bool IsAxisAlignedRectangle() const { return false; }
 
-    rasterizer.GetPerVertexDataType(&mut m_mvfIn);
-    let mut vertexBuilder= Rc::new(RefCell::new(CHwVertexBufferBuilder::Create(m_mvfIn,                                          m_mvfIn | m_mvfGenerated,
-        mvfaAALocation,
-        m_pHP.m_pDevice.clone())));
+    virtual bool GetCachedBoundsCore(
+    __out_ecount(1) MilRectF &rect) const { abort(); }
+    virtual void SetCachedBounds(
+    __in_ecount(1) const MilRectF &rect) const { abort(); };  // Bounding box to cache
 
-    vertexBuilder.borrow_mut().BeginBuilding();
+    virtual __outro_ecount(1) const IFigureData &GetFigure(IN UINT index) const { abort(); }
+    void line_to(float x, float y) {
+            types.Add(PathPointTypeLine);
+            points.Add({x, y});
+    }
+    void move_to(float x, float y) {
+            types.Add(PathPointTypeStart);
+            points.Add({x, y});
+            initial_point = {x, y};
+    }
+    void curve_to(float c1x, float c1y, float c2x, float c2y, float x, float y) {
+            points.Add({c1x, c1y});
+            points.Add({c2x, c2y});
+            points.Add({x, y});
+            types.AddAndSet(3, PathPointTypeBezier);
+    }
+    void close() {
+            if (has_initial) {
+                    points.Add(initial_point);
+                    types.Add(PathPointTypeLine | PathPointTypeCloseSubpath);
+            }
+    }
 
-    rasterizer.SendGeometry(vertexBuilder.clone());
-    vertexBuilder.borrow_mut().FlushTryGetVertexBuffer(None);
-    device.output.replace(Vec::new())
+    OutputVertex *rasterize(size_t *outLen, int clip_x, int clip_y, int clip_width, int clip_height);
+
+};*/
+
+impl PathBuilderRust {
+    pub fn new() -> Self {
+        Self {
+        points: Vec::new(),
+        types: Vec::new(),
+        initial_point: None,
+        fill_mode: MilFillMode::Alternate,
+        }
+    }
+    pub fn line_to(&mut self, x: f32, y: f32) {
+        self.types.push(PathPointTypeLine);
+        self.points.push(MilPoint2F{X: x, Y: y});
+    }
+    pub fn move_to(&mut self, x: f32, y: f32) {
+        self.types.push(PathPointTypeStart);
+        self.points.push(MilPoint2F{X: x, Y: y});
+        self.initial_point = Some(MilPoint2F{X: x, Y: y});
+    }
+    pub fn curve_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
+        self.types.push(PathPointTypeBezier);
+        self.points.push(MilPoint2F{X:c1x, Y:c1y});
+        self.types.push(PathPointTypeBezier);
+        self.points.push(MilPoint2F{X:c2x, Y: c2y});
+        self.types.push(PathPointTypeBezier);
+        self.points.push(MilPoint2F{X: x, Y: y});
+    }
+    pub fn close(&mut self) {
+        if let Some(initial_point) = &self.initial_point {
+            self.points.push(*initial_point);
+            self.types.push(PathPointTypeLine | PathPointTypeCloseSubpath);
+        }
+    }
+    pub fn rasterize_to_tri_strip(&mut self, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
+            let mut rasterizer = CHwRasterizer::new();
+            let mut device = CD3DDeviceLevel1::new();
+            
+            device.clipRect.X = 0;
+            device.clipRect.Y = 0;
+            device.clipRect.Width = clip_width;
+            device.clipRect.Height = clip_height;
+            let device = Rc::new(device);
+            /* 
+            device.m_rcViewport = device.clipRect;
+        */
+            let shape = RectShape{};
+            let pointsScratch = Rc::new(RefCell::new(Vec::new()));
+            let typesScratch = Rc::new(RefCell::new(Vec::new()));
+            let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
+
+            struct PathShape {
+                points: Cell<DynArray<MilPoint2F>>,
+                types: Cell<DynArray<BYTE>>,
+            };
+
+            impl IShapeData for PathShape {
+                fn GetFillMode(&self) -> MilFillMode {
+                    MilFillMode::Alternate
+                }
+            
+                fn ConvertToGpPath(&self, points: &mut types::DynArray<types::MilPoint2F>, types: &mut types::DynArray<types::BYTE>) -> HRESULT {
+                    points.append(&mut self.points.take());
+                    types.append(&mut self.types.take());
+            
+                    return types::S_OK;
+                }
+            }
+
+            let path = Rc::new(PathShape { points: Cell::new(take(&mut self.points)), types: Cell::new(take(&mut self.types))});
+        
+            rasterizer.Setup(device.clone(), path, pointsScratch, typesScratch, Some(&worldToDevice));
+        
+            let mut m_mvfIn: MilVertexFormat = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
+            let m_mvfGenerated: MilVertexFormat  = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
+            //let mvfaAALocation  = MILVFAttrNone;
+            const HWPIPELINE_ANTIALIAS_LOCATION: MilVertexFormatAttribute = MilVertexFormatAttribute::MILVFAttrDiffuse;
+            let mvfaAALocation = HWPIPELINE_ANTIALIAS_LOCATION;
+            struct CHwPipeline {
+                m_pDevice: Rc<CD3DDeviceLevel1>
+            }
+            let pipeline =  CHwPipeline { m_pDevice: device.clone() };
+            let m_pHP = &pipeline;
+        
+            rasterizer.GetPerVertexDataType(&mut m_mvfIn);
+            let mut vertexBuilder= Rc::new(RefCell::new(CHwVertexBufferBuilder::Create(m_mvfIn,                                          m_mvfIn | m_mvfGenerated,
+                mvfaAALocation,
+                m_pHP.m_pDevice.clone())));
+        
+            vertexBuilder.borrow_mut().BeginBuilding();
+        
+            rasterizer.SendGeometry(vertexBuilder.clone());
+            vertexBuilder.borrow_mut().FlushTryGetVertexBuffer(None);
+            device.output.replace(Vec::new()).into_boxed_slice()
+
+    }
 }
 
 #[cfg(test)]
@@ -180,8 +303,11 @@ mod tests {
 
     #[test]
     fn rust() {
-        let result = rasterize(0, 0, 100, 100);
+        let mut p = PathBuilderRust::new();
+        p.move_to(10., 10.);
+        p.line_to(40., 10.);
+        p.line_to(40., 40.);
+        let result = p.rasterize_to_tri_strip(100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0xa33cb40dd676741e);
-
     }
 }
