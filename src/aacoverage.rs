@@ -297,6 +297,7 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
         //Cleanup:
         // Update the coverage buffer new interval
         self.m_pIntervalNew = pIntervalNew;
+        return hr;
     }
 
     // Update coverage of current interval
