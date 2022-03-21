@@ -1736,15 +1736,15 @@ pub fn InitializeInactiveArray(
 *
 \**************************************************************************/
 
-pub fn InsertNewEdges<'a, 'b: 'a>(
+pub fn InsertNewEdges<'a>(
     mut pActiveList: *mut CEdge,
     iCurrentY: INT,
     /*__deref_inout_xcount(array terminated by an edge with StartY != iCurrentY)*/
-    ppInactiveEdge: &'a mut &'a [CInactiveEdge],
+    ppInactiveEdge: &'a mut [CInactiveEdge],
     pYNextInactive: &mut INT, // will be INT_MAX when no more
-) {
+) -> &'a mut [CInactiveEdge] {
     unsafe {
-    let mut inactive: &[CInactiveEdge] = *ppInactiveEdge;
+    let mut inactive: &mut [CInactiveEdge] = ppInactiveEdge;
 
     assert!((*inactive[0].Edge).StartY == iCurrentY);
 
@@ -1770,12 +1770,12 @@ pub fn InsertNewEdges<'a, 'b: 'a>(
         (*newActive).Next = (*pActiveList).Next;
         (*pActiveList).Next = newActive;
 
-        inactive = &inactive[1..];
+        inactive = &mut inactive[1..];
         (*(inactive[0]).Edge).StartY == iCurrentY
     } {}
 
     *pYNextInactive = (*(inactive[0]).Edge).StartY;
-    *ppInactiveEdge = inactive;
+    return inactive;
     }
 }
 

@@ -1380,10 +1380,10 @@ RasterizeEdges(&mut self,
     let mut nSubpixelYNextInactive: INT = 0;
     let mut nSubpixelYNext: INT;
 
-    InsertNewEdges(
+    pInactiveEdgeArray = InsertNewEdges(
         pEdgeActiveList,
         nSubpixelYCurrent,
-        &mut &*pInactiveEdgeArray,
+        pInactiveEdgeArray,
         &mut nSubpixelYNextInactive
         );
 
@@ -1512,10 +1512,10 @@ RasterizeEdges(&mut self,
 
         if (nSubpixelYCurrent == nSubpixelYNextInactive)
         {
-            InsertNewEdges(
+            pInactiveEdgeArray = InsertNewEdges(
                 pEdgeActiveList,
                 nSubpixelYCurrent,
-                &mut &*pInactiveEdgeArray,
+                pInactiveEdgeArray,
                 &mut nSubpixelYNextInactive
                 );
         }
