@@ -579,7 +579,7 @@ fn Grow(&mut self,
     let hr: HRESULT = S_OK;
     let mut pIntervalBufferNew = (*self.m_pIntervalBufferCurrent).m_pNext;
 
-    if (pIntervalBufferNew != NULL())
+    if (pIntervalBufferNew == NULL())
     {
         pIntervalBufferNew = Box::into_raw(Box::<CCoverageIntervalBuffer>::new(Default::default()));
 
