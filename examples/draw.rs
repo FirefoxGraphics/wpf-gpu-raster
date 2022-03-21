@@ -1,5 +1,5 @@
 use euclid::{default::Transform2D, point2};
-use wpf_gpu_raster::PathBuilder;
+use wpf_gpu_raster::{PathBuilder, PathBuilderRust};
 
 
 use std::{convert::TryInto, ops::{Index, Mul, Sub, Div, IndexMut, AddAssign}};

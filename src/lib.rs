@@ -203,6 +203,7 @@ impl PathBuilderRust {
         if let Some(initial_point) = &self.initial_point {
             self.points.push(*initial_point);
             self.types.push(PathPointTypeLine | PathPointTypeCloseSubpath);
+            self.initial_point = None;
         }
     }
     pub fn rasterize_to_tri_strip(&mut self, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {

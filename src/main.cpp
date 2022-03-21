@@ -76,6 +76,7 @@ struct PathBuilder : CShapeBase {
                 types.Add(PathPointTypeStart);
                 points.Add({x, y});
                 initial_point = {x, y};
+                has_initial = true;
         }
         void curve_to(float c1x, float c1y, float c2x, float c2y, float x, float y) {
                 points.Add({c1x, c1y});
@@ -87,6 +88,7 @@ struct PathBuilder : CShapeBase {
                 if (has_initial) {
                         points.Add(initial_point);
                         types.Add(PathPointTypeLine | PathPointTypeCloseSubpath);
+                        has_initial = false;
                 }
         }
 
