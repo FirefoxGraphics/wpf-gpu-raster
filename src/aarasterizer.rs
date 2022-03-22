@@ -801,7 +801,7 @@ fn InitializeEdges(
 
     store.StartAddBuffer(&mut edgeBuffer, &mut bufferCount);
 
-    loop {
+    'outer: loop { loop { 
         // Handle trivial rejection:
 
         if (yClipBottom >= 0) {
@@ -853,7 +853,7 @@ fn InitializeEdges(
             }
 
             if (clipHigh || clipLow) {
-                continue; // ======================>
+                break; // ======================>
             }
 
             if (edgeCount > 1) {
@@ -868,7 +868,7 @@ fn InitializeEdges(
 
                     pointArray[1] = pointArray[0];
 
-                    continue; // ======================>
+                    break; // ======================>
                 }
 
                 if (((pointArray[0]).x > xClipRight)
@@ -879,7 +879,7 @@ fn InitializeEdges(
 
                     pointArray[1] = pointArray[0];
 
-                    continue; // ======================>
+                    break; // ======================>
                 }
             }
         }
@@ -1011,11 +1011,13 @@ fn InitializeEdges(
             edgeBuffer = unsafe { edgeBuffer.offset(1) };
             bufferCount -= 1;
         }
-        pointArray = &mut pointArray[1..];
-        edgeCount -= 1;
-        if edgeCount == 0 {
-            break;
-        }
+        break;
+    }
+    pointArray = &mut pointArray[1..];
+    edgeCount -= 1;
+    if edgeCount == 0 {
+        break 'outer;
+    }
     }
 
     // We're done with this batch.  Let the store know how many edges
