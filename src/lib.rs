@@ -226,7 +226,7 @@ impl PathBuilderRust {
             struct PathShape {
                 points: Cell<DynArray<MilPoint2F>>,
                 types: Cell<DynArray<BYTE>>,
-            };
+            }
 
             impl IShapeData for PathShape {
                 fn GetFillMode(&self) -> MilFillMode {
