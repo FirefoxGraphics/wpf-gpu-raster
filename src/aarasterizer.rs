@@ -1023,7 +1023,6 @@ fn InitializeEdges(
     // We're done with this batch.  Let the store know how many edges
     // we ended up with:
 
-    println!("bufferCount {}", bufferCount);
     store.EndAddBuffer(edgeBuffer, bufferCount);
 
     pEdgeContext.MaxY = yMax;
