@@ -9,7 +9,7 @@ macro_rules! IsTagEnabled {
 
 #[macro_export]
 macro_rules! TraceTag {
-    ($e: expr) => {
+    (($e: expr, $s: expr)) => {
     }
 }
 
