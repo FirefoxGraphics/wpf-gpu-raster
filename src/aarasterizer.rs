@@ -1128,6 +1128,7 @@ fn ValidatePathTypes(typesArray: &[BYTE], mut count: INT) -> bool {
             // end of a subpath:
             if !(!((types[0] & PathPointTypeCloseSubpath) != 0)
                 && ((types[1] & PathPointTypePathTypeMask) != PathPointTypeStart)) {
+                    types = &types[1..];
                     break;
                 }
         }
