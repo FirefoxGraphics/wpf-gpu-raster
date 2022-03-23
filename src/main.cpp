@@ -55,6 +55,9 @@ struct PathBuilder : CShapeBase {
         MilFillMode::Enum GetFillMode() const {
                         return fill_mode;
         }
+        void set_fill_mode(MilFillMode::Enum mode) {
+                fill_mode = mode;
+        }
         bool HasGaps() const { return false;
         }
         bool HasHollows() const { return false; }
@@ -306,7 +309,9 @@ void *pathbuilder_new() {
 void pathbuilder_delete(void *ptr) {
         delete (PathBuilder*)ptr;
 }
-
+void pathbuilder_set_fill_mode(void *ptr, int fill_mode) {
+        ((PathBuilder*)ptr)->set_fill_mode((MilFillMode::Enum)fill_mode);
+}
 void pathbuilder_line_to(void *ptr, float x, float y) {
         ((PathBuilder*)ptr)->line_to(x, y);
 }
@@ -319,7 +324,7 @@ void pathbuilder_curve_to(void *ptr, float c1x, float c1y, float c2x, float c2y,
 void pathbuilder_close(void *ptr) {
         ((PathBuilder*)ptr)->close();
 }
-OutputVertex* pathbuilder_rasterize(void *ptr, size_t *outLen,  int clip_x, int clip_y, int clip_width, int clip_height) {
+OutputVertex* pathbuilder_rasterize(void *ptr, size_t *outLen, int clip_x, int clip_y, int clip_width, int clip_height) {
         return ((PathBuilder*)ptr)->rasterize(outLen, clip_x, clip_y, clip_width, clip_height);
 }
 

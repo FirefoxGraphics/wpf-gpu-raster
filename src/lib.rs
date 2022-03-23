@@ -22,13 +22,18 @@ use hwvertexbuffer::{CHwVertexBufferBuilder, CHwVertexBuffer};
 use matrix::CMatrix;
 use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath};
 
-use crate::geometry_sink::IGeometrySink;
+use crate::{geometry_sink::IGeometrySink, types::MilAntiAliasMode};
 #[repr(C)]
 #[derive(Debug, Default)]
 pub struct OutputVertex {
     pub x: f32,
     pub y: f32,
     pub coverage: f32
+}
+
+pub enum FillMode {
+    EvenOdd = 0,
+    Winding = 1,
 }
 
 impl std::hash::Hash for OutputVertex {
@@ -47,6 +52,7 @@ extern "C" {
     fn pathbuilder_close(ptr: *mut c_void);
     fn pathbuilder_rasterize(ptr: *mut c_void, out_len: *mut usize, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> *mut OutputVertex;
     fn pathbuilder_delete(ptr: *mut c_void);
+    fn pathbuilder_set_fill_mode(ptr: *mut c_void, fill_mode: i32); 
 }
 
 pub struct PathBuilder {
@@ -56,6 +62,9 @@ pub struct PathBuilder {
 impl PathBuilder {
     pub fn new() -> Self {
         Self { ptr: unsafe { pathbuilder_new() } }
+    }
+    pub fn set_fill_mode(&mut self, fill_mode: FillMode) {
+        unsafe { pathbuilder_set_fill_mode(self.ptr, fill_mode as i32); }
     }
     pub fn line_to(&mut self, x: f32, y: f32) {
         unsafe { pathbuilder_line_to(self.ptr, x, y); }
@@ -206,6 +215,12 @@ impl PathBuilderRust {
             self.initial_point = None;
         }
     }
+    pub fn set_fill_mode(&mut self, fill_mode: FillMode) {
+        self.fill_mode = match fill_mode {
+            FillMode::EvenOdd => MilFillMode::Alternate,
+            FillMode::Winding => MilFillMode::Winding,
+        }
+    }
     pub fn rasterize_to_tri_strip(&mut self, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
             let mut rasterizer = CHwRasterizer::new();
             let mut device = CD3DDeviceLevel1::new();
@@ -224,13 +239,14 @@ impl PathBuilderRust {
             let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
 
             struct PathShape {
+                fill_mode: MilFillMode,
                 points: Cell<DynArray<MilPoint2F>>,
                 types: Cell<DynArray<BYTE>>,
             }
 
             impl IShapeData for PathShape {
                 fn GetFillMode(&self) -> MilFillMode {
-                    MilFillMode::Alternate
+                    self.fill_mode
                 }
             
                 fn ConvertToGpPath(&self, points: &mut types::DynArray<types::MilPoint2F>, types: &mut types::DynArray<types::BYTE>) -> HRESULT {
@@ -241,7 +257,7 @@ impl PathBuilderRust {
                 }
             }
 
-            let path = Rc::new(PathShape { points: Cell::new(take(&mut self.points)), types: Cell::new(take(&mut self.types))});
+            let path = Rc::new(PathShape { fill_mode: self.fill_mode, points: Cell::new(take(&mut self.points)), types: Cell::new(take(&mut self.types))});
         
             rasterizer.Setup(device.clone(), path, pointsScratch, typesScratch, Some(&worldToDevice));
         
@@ -310,5 +326,38 @@ mod tests {
         p.line_to(40., 40.);
         let result = p.rasterize_to_tri_strip(100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0xa33cb40dd676741e);
+    }
+
+    #[test]
+    fn fill_mode() {
+        let mut p = PathBuilderRust::new();
+        p.move_to(10., 10.);
+        p.line_to(40., 10.);
+        p.line_to(40., 40.);
+        p.line_to(10., 40.);
+        p.close();
+        p.move_to(15., 15.);
+        p.line_to(35., 15.);
+        p.line_to(35., 35.);
+        p.line_to(15., 35.);
+        p.close();
+        let result = p.rasterize_to_tri_strip(100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x81d3f6981834234b);
+
+        let mut p = PathBuilderRust::new();
+        p.move_to(10., 10.);
+        p.line_to(40., 10.);
+        p.line_to(40., 40.);
+        p.line_to(10., 40.);
+        p.close();
+        p.move_to(15., 15.);
+        p.line_to(35., 15.);
+        p.line_to(35., 35.);
+        p.line_to(15., 35.);
+        p.close();
+        p.set_fill_mode(FillMode::Winding);
+        let result = p.rasterize_to_tri_strip(100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x6ebf6d38d18c3fa9);
+
     }
 }
