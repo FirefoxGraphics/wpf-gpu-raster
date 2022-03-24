@@ -360,4 +360,42 @@ mod tests {
         assert_eq!(dbg!(calculate_hash(&result)), 0x6ebf6d38d18c3fa9);
 
     }
+
+    #[test]
+    fn curve() {
+        let mut p = PathBuilderRust::new();
+        p.move_to(10., 10.);
+        p.curve_to(40., 10., 40., 10., 40., 40.);
+        p.close();
+        let result = p.rasterize_to_tri_strip(100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x2b4a3e89d19fb5d5);
+    }
+
+    #[test]
+    fn self_intersect() {
+        let mut p = PathBuilderRust::new();
+        p.move_to(10., 10.);
+        p.line_to(40., 10.);
+        p.line_to(10., 40.);
+        p.line_to(40., 40.);
+        p.close();
+        let result = p.rasterize_to_tri_strip(100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x27d610994219a978);
+    }
+
+    #[test]
+    fn grid() {
+        let mut p = PathBuilderRust::new();
+
+        for i in 0..200 {
+            let offset = i as f32 * 1.3;
+            p.move_to(0. + offset, -8.);
+            p.line_to(0.5 + offset, -8.);
+            p.line_to(0.5 + offset, 40.);
+            p.line_to(0. + offset, 40.);
+            p.close();
+        }
+        let result = p.rasterize_to_tri_strip(100, 100);
+        //assert_eq!(dbg!(calculate_hash(&result)), 0xab9e651ac1aa1d48);
+    }
 }
