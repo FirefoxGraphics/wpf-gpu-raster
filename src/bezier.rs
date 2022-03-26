@@ -2,6 +2,38 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+//+-----------------------------------------------------------------------------
+//
+//  class Bezier32
+//
+//  Bezier cracker.
+//
+//  A hybrid cubic Bezier curve flattener based on KirkO's error factor.
+//  Generates line segments fast without using the stack.  Used to flatten a
+//  path.
+//
+//  For an understanding of the methods used, see:
+//
+//  Kirk Olynyk, "..."
+//  Goossen and Olynyk, "System and Method of Hybrid Forward
+//      Differencing to Render Bezier Splines"
+//  Lien, Shantz and Vaughan Pratt, "Adaptive Forward Differencing for
+//  Rendering Curves and Surfaces", Computer Graphics, July 1987
+//  Chang and Shantz, "Rendering Trimmed NURBS with Adaptive Forward
+//      Differencing", Computer Graphics, August 1988
+//  Foley and Van Dam, "Fundamentals of Interactive Computer Graphics"
+//
+//  Public Interface:
+//      bInit(pptfx)                - pptfx points to 4 control points of
+//                                    Bezier.  Current point is set to the first
+//                                    point after the start-point.
+//      Bezier32(pptfx)             - Constructor with initialization.
+//      vGetCurrent(pptfx)          - Returns current polyline point.
+//      bCurrentIsEndPoint()        - TRUE if current point is end-point.
+//      vNext()                     - Moves to next polyline point.
+//
+
+
 #![allow(unused_parens)]
 //+-----------------------------------------------------------------------------
 //
