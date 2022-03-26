@@ -325,7 +325,7 @@ fn main() {
                     }
                 }
             }
-            let result = builder.rasterize_to_tri_strip(WIDTH as i32, HEIGHT as i32);
+            let result = builder.rasterize_to_tri_strip(0, 0, WIDTH as i32, HEIGHT as i32);
             println!("vertices {}", result.len());
             total_vertex_count += result.len();
             if result.len() == 0 {

@@ -78,9 +78,9 @@ impl PathBuilder {
     pub fn close(&mut self) {
         unsafe { pathbuilder_close(self.ptr); }
     }
-    pub fn rasterize_to_tri_strip(&mut self, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
+    pub fn rasterize_to_tri_strip(&mut self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
         let mut len = 0;
-        let ptr = unsafe { pathbuilder_rasterize(self.ptr, &mut len, 0, 0, clip_width, clip_height) };
+        let ptr = unsafe { pathbuilder_rasterize(self.ptr, &mut len, clip_x, clip_y, clip_width, clip_height) };
         unsafe { Box::from_raw(std::slice::from_raw_parts_mut(ptr, len)) }
     }
 }
@@ -221,12 +221,12 @@ impl PathBuilderRust {
             FillMode::Winding => MilFillMode::Winding,
         }
     }
-    pub fn rasterize_to_tri_strip(&mut self, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
+    pub fn rasterize_to_tri_strip(&mut self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
             let mut rasterizer = CHwRasterizer::new();
             let mut device = CD3DDeviceLevel1::new();
             
-            device.clipRect.X = 0;
-            device.clipRect.Y = 0;
+            device.clipRect.X = clip_x;
+            device.clipRect.Y = clip_y;
             device.clipRect.Width = clip_width;
             device.clipRect.Height = clip_height;
             let device = Rc::new(device);
@@ -303,7 +303,7 @@ mod tests {
         p.line_to(30., 30.);
         p.line_to(30., 10.);
         p.close();
-        let result = p.rasterize_to_tri_strip(100, 100);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x91582a1f5e431eb6);
     }
 
@@ -314,7 +314,7 @@ mod tests {
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(40., 40.);
-        let result = p.rasterize_to_tri_strip(100, 100);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0xa33cb40dd676741e);
     }
 
@@ -324,7 +324,7 @@ mod tests {
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(40., 40.);
-        let result = p.rasterize_to_tri_strip(100, 100);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0xa33cb40dd676741e);
     }
 
@@ -341,7 +341,7 @@ mod tests {
         p.line_to(35., 35.);
         p.line_to(15., 35.);
         p.close();
-        let result = p.rasterize_to_tri_strip(100, 100);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x81d3f6981834234b);
 
         let mut p = PathBuilderRust::new();
@@ -356,7 +356,7 @@ mod tests {
         p.line_to(15., 35.);
         p.close();
         p.set_fill_mode(FillMode::Winding);
-        let result = p.rasterize_to_tri_strip(100, 100);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x6ebf6d38d18c3fa9);
 
     }
@@ -367,7 +367,7 @@ mod tests {
         p.move_to(10., 10.);
         p.curve_to(40., 10., 40., 10., 40., 40.);
         p.close();
-        let result = p.rasterize_to_tri_strip(100, 100);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x2b4a3e89d19fb5d5);
     }
 
@@ -379,7 +379,7 @@ mod tests {
         p.line_to(10., 40.);
         p.line_to(40., 40.);
         p.close();
-        let result = p.rasterize_to_tri_strip(100, 100);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x27d610994219a978);
     }
 
@@ -395,7 +395,7 @@ mod tests {
             p.line_to(0. + offset, 40.);
             p.close();
         }
-        let result = p.rasterize_to_tri_strip(100, 100);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         //assert_eq!(dbg!(calculate_hash(&result)), 0xab9e651ac1aa1d48);
     }
 }
