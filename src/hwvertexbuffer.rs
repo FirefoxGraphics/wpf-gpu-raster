@@ -1947,7 +1947,8 @@ CHwTVertexBuffer<TVertex>::Builder::FinalizeMappings(
     }
 
     RRETURN(hr);
-}
+}*/
+impl<TVertex> CHwTVertexBufferBuilder<TVertex> {
 
 //+----------------------------------------------------------------------------
 //
@@ -1959,37 +1960,34 @@ CHwTVertexBuffer<TVertex>::Builder::FinalizeMappings(
 //             zero alpha.
 //
 
-template <class TVertex>
-void
-CHwTVertexBuffer<TVertex>::Builder::SetOutsideBounds(
-    __in_ecount_opt(1) const CMILSurfaceRect *prcOutsideBounds,
-    bool fNeedInside
+fn SetOutsideBounds(&mut self,
+    prcOutsideBounds: Option<&CMILSurfaceRect>,
+    fNeedInside: bool,
     )
 {
     // Waffling and outside bounds is not currently implemented.  It's
     // not difficult to do but currently there is no need.
-    Assert(!(AreWaffling() && prcOutsideBounds));
+    //assert!(!(self.AreWaffling() && self.prcOutsideBounds));
 
-    if (prcOutsideBounds)
+    if let Some(prcOutsideBounds) = prcOutsideBounds
     {
-        m_rcOutsideBounds = *prcOutsideBounds;
-        m_fNeedOutsideGeometry = true;
-        m_fNeedInsideGeometry = fNeedInside;
+        self.m_rcOutsideBounds = prcOutsideBounds.clone();
+        self.m_fNeedOutsideGeometry = true;
+        self.m_fNeedInsideGeometry = fNeedInside;
     }
     else
     {
-        m_fNeedOutsideGeometry = false;
-        m_fNeedInsideGeometry = true;
+        self.m_fNeedOutsideGeometry = false;
+        self.m_fNeedInsideGeometry = true;
     }
 }
-*/
+
 //+----------------------------------------------------------------------------
 //
 //  Member:    CHwTVertexBuffer<TVertex>::Builder::BeginBuilding
 //
 //  Synopsis:  Prepare for a new primitive by resetting the vertex buffer
 //
-impl<TVertex> CHwTVertexBufferBuilder<TVertex> {
 pub fn BeginBuilding(&mut self,
     ) -> HRESULT
 {
