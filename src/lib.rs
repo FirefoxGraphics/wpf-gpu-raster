@@ -20,7 +20,7 @@ use std::{ffi::c_void, rc::Rc, cell::{RefCell, Cell}, mem::take};
 use hwrasterizer::CHwRasterizer;
 use hwvertexbuffer::{CHwVertexBufferBuilder, CHwVertexBuffer};
 use matrix::CMatrix;
-use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath};
+use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath, CMILSurfaceRect};
 
 use crate::{geometry_sink::IGeometrySink, types::MilAntiAliasMode};
 #[repr(C)]
@@ -120,6 +120,8 @@ pub struct PathBuilderRust {
     types: DynArray<BYTE>,
     initial_point: Option<MilPoint2F>,
     fill_mode: MilFillMode,
+    outside_bounds: Option<CMILSurfaceRect>,
+    need_inside: bool
 }
 
 /*struct PathBuilder : CShapeBase {
@@ -189,6 +191,8 @@ impl PathBuilderRust {
         types: Vec::new(),
         initial_point: None,
         fill_mode: MilFillMode::Alternate,
+        outside_bounds: None,
+        need_inside: true,
         }
     }
     pub fn line_to(&mut self, x: f32, y: f32) {
@@ -220,6 +224,18 @@ impl PathBuilderRust {
             FillMode::EvenOdd => MilFillMode::Alternate,
             FillMode::Winding => MilFillMode::Winding,
         }
+    }
+    /// Enables rendering geometry for areas outside the shape but
+    /// within the bounds.  These areas will be created with
+    /// zero alpha.
+    /// 
+    /// This is useful for creating geometry for other blend modes.
+    /// For example:
+    /// IN can be done with outside_bounds and need_inside = false
+    /// IN with transparency can be done with outside_bounds and need_inside = true
+    pub fn set_outside_bounds(&mut self, outside_bounds: Option<(i32, i32, i32, i32)>, need_inside: bool) {
+        self.outside_bounds = outside_bounds.map(|r| CMILSurfaceRect { left: r.0, top: r.1, right: r.2, bottom: r.3 });
+        self.need_inside = need_inside;
     }
     pub fn rasterize_to_tri_strip(&mut self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
             let mut rasterizer = CHwRasterizer::new();
@@ -277,6 +293,7 @@ impl PathBuilderRust {
                 mvfaAALocation,
                 m_pHP.m_pDevice.clone())));
         
+            vertexBuilder.borrow_mut().SetOutsideBounds(self.outside_bounds.as_ref(), self.need_inside);
             vertexBuilder.borrow_mut().BeginBuilding();
         
             rasterizer.SendGeometry(vertexBuilder.clone());
@@ -395,6 +412,32 @@ mod tests {
             p.line_to(0. + offset, 40.);
             p.close();
         }
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        //assert_eq!(dbg!(calculate_hash(&result)), 0xab9e651ac1aa1d48);
+    }
+
+    #[test]
+    fn outside() {
+        let mut p = PathBuilderRust::new();
+        p.move_to(10., 10.);
+        p.line_to(40., 10.);
+        p.line_to(10., 40.);
+        p.line_to(40., 40.);
+        p.close();
+        p.set_outside_bounds(Some((0, 0, 50, 50)), false);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        //assert_eq!(dbg!(calculate_hash(&result)), 0xab9e651ac1aa1d48);
+    }
+
+    #[test]
+    fn outside_inside() {
+        let mut p = PathBuilderRust::new();
+        p.move_to(10., 10.);
+        p.line_to(40., 10.);
+        p.line_to(10., 40.);
+        p.line_to(40., 40.);
+        p.close();
+        p.set_outside_bounds(Some((0, 0, 50, 50)), true);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         //assert_eq!(dbg!(calculate_hash(&result)), 0xab9e651ac1aa1d48);
     }
