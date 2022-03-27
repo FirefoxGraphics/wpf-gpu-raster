@@ -901,3 +901,19 @@ fn flatten() {
     assert_eq!(count, 21);
     assert_eq!(more, false);
 }
+
+#[test]
+fn flatten32() {
+    let curve: [POINT; 4] = [
+    POINT{x: 100, y: 100},
+    POINT{x: 110, y: 100},
+    POINT{x: 110, y: 110},
+    POINT{x: 110, y: 100}];
+    let mut bez = CMILBezier::new(&curve, None);
+    let mut result: [POINT; 32] = Default::default();
+    let mut more: bool = false;
+    let count = bez.Flatten(&mut result, &mut more);
+    assert_eq!(count, 3);
+    assert_eq!(more, false);
+}
+
