@@ -277,24 +277,21 @@ impl Default for CEdgeStore {
 }
 
 impl CEdgeStore {
-    pub fn new() -> CEdgeStore {
-        let mut result = Self {
-            TotalCount: 0,
-            CurrentBuffer: NULL(),
-            CurrentEdge: NULL(),
-            Enumerator: NULL(),
-            CurrentRemaining: EDGE_STORE_STACK_NUMBER!() as u32,
+    pub fn init(&mut self) {
+        self.TotalCount = 0;
+        self.CurrentBuffer = NULL();
+        self.CurrentEdge = NULL();
+        self.Enumerator = NULL();
+        self.CurrentRemaining = EDGE_STORE_STACK_NUMBER!() as u32;
 
-            EdgeHead: CEdgeAllocation {
+        self.EdgeHead = CEdgeAllocation {
                 Count: EDGE_STORE_STACK_NUMBER!() as u32,
                 // hack to work around limited Default implementation for arrays
                 EdgeArray: [(); EDGE_STORE_STACK_NUMBER!()].map(|_| Default::default()),
                 Next: NULL(),
-            },
-        };
-        result.CurrentBuffer = &mut result.EdgeHead;
-        result.CurrentEdge = &mut result.EdgeHead.EdgeArray[0];
-        result
+            };
+        self.CurrentBuffer = &mut self.EdgeHead;
+        self.CurrentEdge = &mut self.EdgeHead.EdgeArray[0];
     }
 }
 

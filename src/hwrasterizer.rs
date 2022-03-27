@@ -532,7 +532,8 @@ pub fn RasterizePath(
     let mut edgeHead: CEdge = Default::default();
     let mut edgeTail: CEdge = Default::default();
     let pEdgeActiveList: *mut CEdge;
-    let mut edgeStore: CEdgeStore = CEdgeStore::new();
+    let mut edgeStore: CEdgeStore = Default::default();
+    edgeStore.init();
     let mut edgeContext: CInitializeEdgesContext = CInitializeEdgesContext::new(&mut edgeStore);
 
     edgeContext.ClipRect = None;
