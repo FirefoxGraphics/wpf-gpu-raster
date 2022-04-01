@@ -1543,53 +1543,51 @@ fn QuickSortEdges(
 \**************************************************************************/
 
 fn InsertionSortEdges(
-    /* __inout_xcount(count forward & -1 back)*/ mut inactive: *mut CInactiveEdge,
+    /* __inout_xcount(count forward & -1 back)*/ mut inactive: &mut [CInactiveEdge],
     mut count: INT,
 ) {
-    unsafe {
-    let mut p: *mut CInactiveEdge;
     let mut e: *mut CEdge;
     let mut y: LONGLONG;
     let mut yPrevious: LONGLONG;
 
-    assert!((*(inactive.offset(-1))).Yx == i64::MIN);
+    assert!(inactive[0].Yx == i64::MIN);
     assert!(count >= 2);
+    //inactive = &mut inactive[1..];
 
-    inactive = inactive.offset(1); // Skip first entry (by definition it's already in order!)
+    let mut indx = 2; // Skip first entry (by definition it's already in order!)
     count -= 1;
 
     while {
-        p = inactive;
+        let mut p = indx;
 
         // Copy the current stuff to temporary variables to make a hole:
 
-        e = (*inactive).Edge;
-        y = (*inactive).Yx;
+        e = (inactive[indx]).Edge;
+        y = (inactive[indx]).Yx;
 
         // Shift everything one slot to the right (effectively moving
         // the hole one position to the left):
 
-        while (y < {yPrevious = (*p.offset( -1)).Yx; yPrevious}) {
-            (*p).Yx = yPrevious;
-            (*p).Edge = (*p.offset(-1)).Edge;
-            p = p.offset(-1);
+        while (y < {yPrevious = inactive[p-1].Yx; yPrevious}) {
+            inactive[p].Yx = yPrevious;
+            inactive[p].Edge = inactive[p-1].Edge;
+            p -= 1;
         }
 
         // Drop the temporary stuff into the final hole:
 
-        (*p).Yx = y;
-        (*p).Edge = e;
+        inactive[p].Yx = y;
+        inactive[p].Edge = e;
 
         // The quicksort should have ensured that we don't have to move
         // any entry terribly far:
 
-        assert!(inactive.offset_from(p) <= QUICKSORT_THRESHOLD);
+        assert!((indx - p) <= QUICKSORT_THRESHOLD as usize);
 
-        inactive = inactive.offset(1);
+        indx += 1;
         count -= 1;
         count != 0
     } {}
-    }
 }
 
 /**************************************************************************\
@@ -1713,7 +1711,7 @@ pub fn InitializeInactiveArray(
 
     // Do a quick sort to handle the mostly sorted result:
 
-    InsertionSortEdges(rgInactiveArray[1..].as_mut_ptr(), count as i32);
+    InsertionSortEdges(rgInactiveArray, count as i32);
 
     ASSERTINACTIVEARRAY!(rgInactiveArray.as_mut_ptr().offset(1), count as i32);
 
