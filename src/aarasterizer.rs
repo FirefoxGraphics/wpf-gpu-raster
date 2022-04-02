@@ -4,6 +4,8 @@
 
 #![allow(unused_parens)]
 
+use std::cell::Cell;
+
 use crate::aacoverage::c_nShift;
 use crate::bezier::CMILBezier;
 use crate::helpers::Int32x32To64;
@@ -83,11 +85,11 @@ macro_rules! ASSERTACTIVELIST {
     };
 }
 pub struct CEdge {
-    pub Next: *mut CEdge, // Next active edge (don't check for NULL,
+    pub Next: Cell<*const CEdge>, // Next active edge (don't check for NULL,
     //   look for tail sentinel instead)
-    pub X: INT,                // Current X location
+    pub X: Cell<INT>,                // Current X location
     pub Dx: INT,               // X increment
-    pub Error: INT,            // Current DDA error
+    pub Error: Cell<INT>,            // Current DDA error
     pub ErrorUp: INT,          // Error increment
     pub ErrorDown: INT,        // Error decrement when the error rolls over
     pub StartY: INT,           // Y-row start
@@ -98,7 +100,7 @@ pub struct CEdge {
 impl std::default::Default for CEdge {
     fn default() -> Self {
         Self {
-            Next: NULL(),
+            Next: Cell::new(NULL()),
             X: Default::default(),
             Dx: Default::default(),
             Error: Default::default(),
@@ -139,11 +141,11 @@ impl Default for CInactiveEdge {
 *   06/20/2003 ashrafm
 *
 \**************************************************************************/
-pub fn AdvanceDDAAndUpdateActiveEdgeList(nSubpixelYCurrent: INT, pEdgeActiveList: *mut CEdge) {
+pub fn AdvanceDDAAndUpdateActiveEdgeList(nSubpixelYCurrent: INT, pEdgeActiveList: *const CEdge) {
     unsafe {
         let mut nOutOfOrderCount: INT = 0;
-        let mut pEdgePrevious: *mut CEdge = pEdgeActiveList;
-        let mut pEdgeCurrent: *mut CEdge = (*pEdgeActiveList).Next;
+        let mut pEdgePrevious: *const CEdge = pEdgeActiveList;
+        let mut pEdgeCurrent: *const CEdge = (*pEdgeActiveList).Next.get();
 
         // Advance DDA and update edge list
 
@@ -156,18 +158,18 @@ pub fn AdvanceDDAAndUpdateActiveEdgeList(nSubpixelYCurrent: INT, pEdgeActiveList
                 }
                 // This edge is stale, remove it from the list:
 
-                pEdgeCurrent = (*pEdgeCurrent).Next;
-                (*pEdgePrevious).Next = pEdgeCurrent;
+                pEdgeCurrent = (*pEdgeCurrent).Next.get();
+                (*pEdgePrevious).Next.set(pEdgeCurrent);
                 continue; // ============>
             }
 
             // Advance the DDA:
 
-            (*pEdgeCurrent).X += (*pEdgeCurrent).Dx;
-            (*pEdgeCurrent).Error += (*pEdgeCurrent).ErrorUp;
-            if ((*pEdgeCurrent).Error >= 0) {
-                (*pEdgeCurrent).Error -= (*pEdgeCurrent).ErrorDown;
-                (*pEdgeCurrent).X += 1;
+            (*pEdgeCurrent).X.set((*pEdgeCurrent).X.get() + (*pEdgeCurrent).Dx);
+            (*pEdgeCurrent).Error.set((*pEdgeCurrent).Error.get()+ (*pEdgeCurrent).ErrorUp);
+            if ((*pEdgeCurrent).Error.get() >= 0) {
+                (*pEdgeCurrent).Error.set((*pEdgeCurrent).Error.get() - (*pEdgeCurrent).ErrorDown);
+                (*pEdgeCurrent).X.set((*pEdgeCurrent).X.get() + 1);
             }
 
             // Is this entry out-of-order with respect to the previous one?
@@ -177,7 +179,7 @@ pub fn AdvanceDDAAndUpdateActiveEdgeList(nSubpixelYCurrent: INT, pEdgeActiveList
             // Advance:
 
             pEdgePrevious = pEdgeCurrent;
-            pEdgeCurrent = (*pEdgeCurrent).Next;
+            pEdgeCurrent = (*pEdgeCurrent).Next.get();
         }
 
         // It turns out that having any out-of-order edges at this point
@@ -460,29 +462,29 @@ pub fn AssertActiveList(mut list: *const CEdge, yCurrent: INT) -> bool {
     let mut b = true;
     let mut activeCount = 0;
 
-    assert!((*list).X == INT::MIN);
-    b &= ((*list).X == INT::MIN);
+    assert!((*list).X.get() == INT::MIN);
+    b &= ((*list).X.get() == INT::MIN);
 
     // Skip the head sentinel:
 
-    list = (*list).Next;
+    list = (*list).Next.get();
 
-    while ((*list).X != INT::MAX) {
-        assert!((*list).X != INT::MIN);
-        b &= ((*list).X != INT::MIN);
+    while ((*list).X.get() != INT::MAX) {
+        assert!((*list).X.get() != INT::MIN);
+        b &= ((*list).X.get() != INT::MIN);
 
-        assert!((*list).X <= (*(*list).Next).X);
-        b &= ((*list).X <= (*(*list).Next).X);
+        assert!((*list).X <= (*(*list).Next.get()).X);
+        b &= ((*list).X <= (*(*list).Next.get()).X);
 
         assert!(((*list).StartY <= yCurrent) && (yCurrent < (*list).EndY));
         b &= (((*list).StartY <= yCurrent) && (yCurrent < (*list).EndY));
 
         activeCount += 1;
-        list = (*list).Next;
+        list = (*list).Next.get();
     }
 
-    assert!((*list).X == INT::MAX);
-    b &= ((*list).X == INT::MAX);
+    assert!((*list).X.get() == INT::MAX);
+    b &= ((*list).X.get() == INT::MAX);
 
     // There should always be a multiple of 2 edges in the active list.
     //
@@ -521,21 +523,21 @@ fn AssertActiveListOrder(mut list: *const CEdge) {
 unsafe {
     let mut activeCount = 0;
 
-    assert!((*list).X == INT::MIN);
+    assert!((*list).X.get() == INT::MIN);
 
     // Skip the head sentinel:
 
-    list = (*list).Next;
+    list = (*list).Next.get();
 
-    while ((*list).X != INT::MAX) {
-        assert!((*list).X != INT::MIN);
-        assert!((*list).X <= (*(*list).Next).X);
+    while ((*list).X.get() != INT::MAX) {
+        assert!((*list).X.get() != INT::MIN);
+        assert!((*list).X <= (*(*list).Next.get()).X);
 
         activeCount += 1;
-        list = (*list).Next;
+        list = (*list).Next.get();
     }
 
-    assert!((*list).X == INT::MAX);
+    assert!((*list).X.get() == INT::MAX);
 }
 }
 
@@ -567,7 +569,7 @@ fn ClipEdge(edgeBuffer: &mut CEdge, yClipTopInteger: INT, dMOriginal: INT) {
 
     let dN: INT = edgeBuffer.ErrorDown;
     let mut bigNumerator: LONGLONG = Int32x32To64(dMOriginal, yClipTopInteger - edgeBuffer.StartY)
-        + (edgeBuffer.Error + dN) as LONGLONG;
+        + (edgeBuffer.Error.get() + dN) as LONGLONG;
     if (bigNumerator >= 0) {
         QUOTIENT_REMAINDER_64_32!(bigNumerator, dN, xDelta, error);
     } else {
@@ -584,8 +586,8 @@ fn ClipEdge(edgeBuffer: &mut CEdge, yClipTopInteger: INT, dMOriginal: INT) {
     // Update the edge data structure with the results:
 
     edgeBuffer.StartY = yClipTopInteger;
-    edgeBuffer.X += xDelta;
-    edgeBuffer.Error = error - dN; // Renormalize error
+    edgeBuffer.X.set(edgeBuffer.X.get() + xDelta);
+    edgeBuffer.Error.set(error - dN); // Renormalize error
 }
 //+-----------------------------------------------------------------------------
 //
@@ -981,10 +983,10 @@ fn InitializeEdges(
             }
 
             let mut edge = CEdge {
-                Next: NULL(),
-                X: xStart,
+                Next: Cell::new(NULL()),
+                X: Cell::new(xStart),
                 Dx: dX,
-                Error: error,
+                Error: Cell::new(error),
                 ErrorUp: errorUp,
                 ErrorDown: dN,
                 WindingDirection: windingDirection,
@@ -1624,7 +1626,7 @@ fn AssertInactiveArray(
 
     while {
         let mut yx: LONGLONG = 0;
-        YX((*(*inactive).Edge).X, (*(*inactive).Edge).StartY, &mut yx);
+        YX((*(*inactive).Edge).X.get(), (*(*inactive).Edge).StartY, &mut yx);
 
         assert!((*inactive).Yx == yx);
         /*#if !ANALYSIS*/
@@ -1678,7 +1680,7 @@ pub fn InitializeInactiveArray(
     for e in pEdgeStore.iter() {
 
             pInactiveEdge[0].Edge = e as *const CEdge as *mut CEdge;
-            YX(e.X, e.StartY, &mut pInactiveEdge[0].Yx);
+            YX(e.X.get(), e.StartY, &mut pInactiveEdge[0].Yx);
             pInactiveEdge = &mut pInactiveEdge[1..];
     }
 
@@ -1731,7 +1733,7 @@ pub fn InitializeInactiveArray(
 \**************************************************************************/
 
 pub fn InsertNewEdges<'a>(
-    mut pActiveList: *mut CEdge,
+    mut pActiveList: *const CEdge,
     iCurrentY: INT,
     /*__deref_inout_xcount(array terminated by an edge with StartY != iCurrentY)*/
     ppInactiveEdge: &'a mut [CInactiveEdge],
@@ -1748,21 +1750,21 @@ pub fn InsertNewEdges<'a>(
         // The activeList edge list sentinel has X = INT_MAX, so this always
         // terminates:
 
-        while ((*(*pActiveList).Next).X < (*newActive).X) {
-            pActiveList = (*pActiveList).Next;
+        while ((*(*pActiveList).Next.get()).X < (*newActive).X) {
+            pActiveList = (*pActiveList).Next.get();
         }
 
         if SORT_EDGES_INCLUDING_SLOPE {
             // The activeList edge list sentinel has Dx = INT_MAX, so this always
             // terminates:
 
-            while (((*(*pActiveList).Next).X == (*newActive).X) && ((*(*pActiveList).Next).Dx < (*newActive).Dx)) {
-                pActiveList = (*pActiveList).Next;
+            while (((*(*pActiveList).Next.get()).X == (*newActive).X) && ((*(*pActiveList).Next.get()).Dx < (*newActive).Dx)) {
+                pActiveList = (*pActiveList).Next.get();
             }
         }
 
-        (*newActive).Next = (*pActiveList).Next;
-        (*pActiveList).Next = newActive;
+        (*newActive).Next.set((*pActiveList).Next.get());
+        (*pActiveList).Next.set(newActive);
 
         inactive = &mut inactive[1..];
         (*(inactive[0]).Edge).StartY == iCurrentY
@@ -1788,38 +1790,38 @@ pub fn InsertNewEdges<'a>(
 *
 \**************************************************************************/
 
-fn SortActiveEdges(list: *mut CEdge) {
+fn SortActiveEdges(list: *const CEdge) {
     unsafe {
     let mut swapOccurred: bool;
-    let mut tmp: *mut CEdge;
+    let mut tmp: *const CEdge;
 
     // We should never be called with an empty active edge list:
 
-    assert!((*(*list).Next).X != INT::MAX);
+    assert!((*(*list).Next.get()).X.get() != INT::MAX);
 
     while {
         swapOccurred = false;
 
         let mut previous = list;
-        let mut current = (*list).Next;
-        let mut next = (*current).Next;
-        let mut nextX = (*next).X;
+        let mut current = (*list).Next.get();
+        let mut next = (*current).Next.get();
+        let mut nextX = (*next).X.get();
 
         while {
-            if (nextX < (*current).X) {
+            if (nextX < (*current).X.get()) {
                 swapOccurred = true;
 
-                (*previous).Next = next;
-                (*current).Next = (*next).Next;
-                (*next).Next = current;
+                (*previous).Next.set(next);
+                (*current).Next.set((*next).Next.get());
+                (*next).Next.set(current);
 
                 SWAP!(tmp, next, current);
             }
 
             previous = current;
             current = next;
-            next = (*next).Next;
-            nextX = (*next).X;
+            next = (*next).Next.get();
+            nextX = (*next).X.get();
             nextX != INT::MAX
         } {}
         swapOccurred
