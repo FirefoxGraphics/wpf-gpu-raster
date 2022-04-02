@@ -1430,11 +1430,10 @@ fn YX(x: INT, y: INT, p: &mut LONGLONG) {
 
 const QUICKSORT_THRESHOLD: isize = 8;
 
-fn QuickSortEdges(
-    /*__inout_xcount(f - l + 1 elements)*/ f: *mut CInactiveEdge,
-    /*__inout_xcount(array starts at f)*/ l: *mut CInactiveEdge,
+fn QuickSortEdges(inactive: &mut [CInactiveEdge],
+    /*__inout_xcount(f - l + 1 elements)*/ f: usize,
+    /*__inout_xcount(array starts at f)*/ l: usize,
 ) {
-    unsafe {
     let mut e: *mut CEdge;
     let mut y: LONGLONG;
     let mut first: LONGLONG;
@@ -1443,89 +1442,88 @@ fn QuickSortEdges(
 
     // Find the median of the first, middle, and last elements:
 
-    let m: *mut CInactiveEdge = f.offset(l.offset_from(f) >> 1);
+    let m = f + ((l - f) >> 1);
 
-    SWAP!(y, (*(f.offset(1))).Yx, (*m).Yx);
-    SWAP!(e, (*(f.offset(1))).Edge, (*m).Edge);
+    SWAP!(y, inactive[f + 1].Yx, inactive[m].Yx);
+    SWAP!(e, inactive[f + 1].Edge, inactive[m].Edge);
 
-    if {second = (*f.offset(1)).Yx; second > {last = (*l).Yx; last}} {
-        (*f.offset(1)).Yx = last;
-        (*l).Yx = second;
+    if {second = inactive[f + 1].Yx; second > {last = inactive[l].Yx; last}} {
+        inactive[f + 1].Yx = last;
+        inactive[l].Yx = second;
 
-        SWAP!(e, (*f.offset(1)).Edge, (*l).Edge);
+        SWAP!(e, inactive[f + 1].Edge, inactive[l].Edge);
     }
-    if {first = (*f).Yx; first} > {last = (*l).Yx; last} {
-        (*f).Yx = last;
-        (*l).Yx = first;
+    if {first = inactive[f].Yx; first} > {last = inactive[l].Yx; last} {
+        inactive[f].Yx = last;
+        inactive[l].Yx = first;
 
-        SWAP!(e, (*f).Edge, (*l).Edge);
+        SWAP!(e, inactive[f].Edge, inactive[l].Edge);
     }
-    if {second = (*f.offset(1)).Yx; second} > {first = (*f).Yx; first} {
-        (*f.offset(1)).Yx = first;
-        (*f).Yx = second;
+    if {second = inactive[f + 1].Yx; second} > {first = inactive[f].Yx; first} {
+        inactive[f + 1].Yx = first;
+        inactive[f].Yx = second;
 
-        SWAP!(e, (*f.offset(1)).Edge, (*f).Edge);
+        SWAP!(e, inactive[f + 1].Edge, inactive[f].Edge);
     }
 
     // f->Yx is now the desired median, and (f + 1)->Yx <= f->Yx <= l->Yx
 
-    assert!(((*f.offset(1)).Yx <= (*f).Yx) && ((*f).Yx <= (*l).Yx));
+    assert!((inactive[f + 1].Yx <= inactive[f].Yx) && (inactive[f].Yx <= inactive[l].Yx));
 
-    let median = (*f).Yx;
+    let median = inactive[f].Yx;
 
-    let mut i: *mut CInactiveEdge = f.offset(2);
-    while ((*i).Yx < median) {
-        i = i.offset(1);
+    let mut i = f + 2;
+    while (inactive[i].Yx < median) {
+        i += 1;
     }
 
-    let mut j: *mut CInactiveEdge = l.offset(-1);
-    while ((*j).Yx > median) {
-        j = j.offset(-1);
+    let mut j = l - 1;
+    while (inactive[j].Yx > median) {
+        j -= 1;
     }
 
     while (i < j) {
-        SWAP!(y, (*i).Yx, (*j).Yx);
-        SWAP!(e, (*i).Edge, (*j).Edge);
+        SWAP!(y, inactive[i].Yx, inactive[j].Yx);
+        SWAP!(e, inactive[i].Edge, inactive[j].Edge);
 
         while {
-            i = i.offset(1);
-            (*i).Yx < median
+            i = i + 1;
+            inactive[i].Yx < median
         } {}
 
         while {
-            j = j.offset(-1);
-            (*j).Yx > median
+            j = j - 1 ;
+            inactive[j].Yx > median
         } {}
     }
 
-    SWAP!(y, (*f).Yx, (*j).Yx);
-    SWAP!(e, (*f).Edge, (*j).Edge);
+    SWAP!(y, inactive[f].Yx, inactive[j].Yx);
+    SWAP!(e, inactive[f].Edge, inactive[j].Edge);
 
-    let a = j.offset_from(f);
-    let b = l.offset_from(j);
+    let a = j - f;
+    let b = l - j;
 
     // Use less stack space by recursing on the shorter subtable.  Also,
     // have the less-overhead insertion-sort handle small subtables.
 
     if (a <= b) {
-        if (a > QUICKSORT_THRESHOLD) {
+        if (a > QUICKSORT_THRESHOLD as usize) {
             // 'a' is the smallest, so do it first:
 
-            QuickSortEdges(f, j.offset(-1));
-            QuickSortEdges(j.offset(1), l);
-        } else if (b > QUICKSORT_THRESHOLD) {
-            QuickSortEdges(j.offset(1), l);
+            QuickSortEdges(inactive, f, j - 1);
+            QuickSortEdges(inactive, j + 1, l);
+        } else if (b > QUICKSORT_THRESHOLD as usize) {
+            QuickSortEdges(inactive, j + 1, l);
         }
     } else {
-        if (b > QUICKSORT_THRESHOLD) {
+        if (b > QUICKSORT_THRESHOLD as usize) {
             // 'b' is the smallest, so do it first:
 
-            QuickSortEdges(j.offset(1), l);
-            QuickSortEdges(f, j.offset(1));
-        } else if (a > QUICKSORT_THRESHOLD) {
-            QuickSortEdges(f, j.offset(-1));
+            QuickSortEdges(inactive, j + 1 , l);
+            QuickSortEdges(inactive, f, j + 1);
+        } else if (a > QUICKSORT_THRESHOLD as usize) {
+            QuickSortEdges(inactive, f, j -1);
         }
-    }
     }
 }
 
@@ -1706,7 +1704,7 @@ pub fn InitializeInactiveArray(
         // We do 'inactiveArray + count' to be inclusive of the last
         // element:
 
-        QuickSortEdges(rgInactiveArray.as_mut_ptr().offset(1), rgInactiveArray.as_mut_ptr().offset(count as isize));
+        QuickSortEdges(rgInactiveArray, 1, count as usize);
     }
 
     // Do a quick sort to handle the mostly sorted result:
