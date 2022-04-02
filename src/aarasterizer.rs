@@ -12,6 +12,7 @@ use crate::real::CFloatFPU;
 //use crate::types::PathPointType::*;
 use crate::{types::*, TraceTag, __analysis_assume, ASSERTACTIVELISTORDER, IFC, IFCOOM};
 use cfor::cfor;
+use typed_arena::Arena;
 
 const S_OK: HRESULT = 0;
 
@@ -689,12 +690,12 @@ pub struct CInitializeEdgesContext<'a> {
     pub MaxY: INT, // Maximum 'y' found, should be INT_MIN on
     //   first call to 'InitializeEdges'
     pub ClipRect: Option<&'a RECT>, // Bounding clip rectangle in 28.4 format
-    pub Store: &'a mut CEdgeStore,  // Where to stick the edges
+    pub Store: &'a Arena<CEdge>,  // Where to stick the edges
     pub AntiAliasMode: MilAntiAliasMode,
 }
 
 impl<'a> CInitializeEdgesContext<'a> {
-    pub fn new(store: &'a mut CEdgeStore) -> Self {
+    pub fn new(store: &'a Arena<CEdge>) -> Self {
         CInitializeEdgesContext { MaxY: Default::default(), ClipRect: Default::default(), Store: store, AntiAliasMode: MilAntiAliasMode::None }
     }
 }
@@ -796,7 +797,7 @@ fn InitializeEdges(
 
     // Warm up the store where we keep the edge data:
 
-    store.StartAddBuffer(&mut edgeBuffer, &mut bufferCount);
+    //store.StartAddBuffer(&mut edgeBuffer, &mut bufferCount);
 
     'outer: loop { loop { 
         // Handle trivial rejection:
@@ -976,19 +977,21 @@ fn InitializeEdges(
             error >>= 4;
 
             if (bufferCount == 0) {
-                IFC!(store.NextAddBuffer(&mut edgeBuffer, &mut bufferCount));
+                //IFC!(store.NextAddBuffer(&mut edgeBuffer, &mut bufferCount));
             }
 
-            unsafe {
-            (*edgeBuffer).X = xStart;
-            (*edgeBuffer).Dx = dX;
-            (*edgeBuffer).Error = error;
-            (*edgeBuffer).ErrorUp = errorUp;
-            (*edgeBuffer).ErrorDown = dN;
-            (*edgeBuffer).WindingDirection = windingDirection;
-            (*edgeBuffer).StartY = yStartInteger;
-            (*edgeBuffer).EndY = yEndInteger; // Exclusive of end
-            }
+            let mut edge = CEdge {
+                Next: NULL(),
+                X: xStart,
+                Dx: dX,
+                Error: error,
+                ErrorUp: errorUp,
+                ErrorDown: dN,
+                WindingDirection: windingDirection,
+                StartY: yStartInteger,
+                EndY: yEndInteger,// Exclusive of end
+            };
+
             assert!(error < 0);
 
             // Here we handle the case where the edge starts above the
@@ -998,15 +1001,16 @@ fn InitializeEdges(
             // Consequently, we advance the DDA here:
 
             if (yClipTopInteger > yStartInteger) {
-                assert!(unsafe { (*edgeBuffer).EndY } > yClipTopInteger);
+                assert!(edge.EndY  > yClipTopInteger);
 
-                ClipEdge(unsafe { &mut *edgeBuffer}, yClipTopInteger, dMOriginal);
+                ClipEdge(&mut edge, yClipTopInteger, dMOriginal);
             }
 
             // Advance to handle the next edge:
 
-            edgeBuffer = unsafe { edgeBuffer.offset(1) };
-            bufferCount -= 1;
+            //edgeBuffer = unsafe { edgeBuffer.offset(1) };
+            pEdgeContext.Store.alloc(edge);
+            //bufferCount -= 1;
         }
         break;
     }
@@ -1020,7 +1024,7 @@ fn InitializeEdges(
     // We're done with this batch.  Let the store know how many edges
     // we ended up with:
 
-    store.EndAddBuffer(edgeBuffer, bufferCount);
+    //store.EndAddBuffer(edgeBuffer, bufferCount);
 
     pEdgeContext.MaxY = yMax;
 
@@ -1655,13 +1659,13 @@ fn AssertInactiveArray(
 \**************************************************************************/
 
 pub fn InitializeInactiveArray(
-    pEdgeStore: &mut CEdgeStore,
+    pEdgeStore: &Arena<CEdge>,
     /*__in_ecount(count+2)*/ rgInactiveArray: &mut [CInactiveEdge],
     count: UINT,
     tailEdge: *mut CEdge, // Tail sentinel for inactive list
 ) -> INT {
     unsafe {
-    let mut isMore;
+    //let mut isMore;
     let mut pActiveEdge: *mut CEdge = NULL();
     let mut pActiveEdgeEnd: *mut CEdge = NULL();
     let rgInactiveArrayPtr = rgInactiveArray.as_mut_ptr();
@@ -1671,17 +1675,12 @@ pub fn InitializeInactiveArray(
 
     let mut pInactiveEdge = &mut rgInactiveArray[1..];
 
-    while {
-        isMore = pEdgeStore.Enumerate(&mut pActiveEdge, &mut pActiveEdgeEnd);
+    for e in pEdgeStore.iter() {
 
-        while (pActiveEdge != pActiveEdgeEnd) {
-            pInactiveEdge[0].Edge = pActiveEdge;
-            YX((*pActiveEdge).X, (*pActiveEdge).StartY, &mut pInactiveEdge[0].Yx);
+            pInactiveEdge[0].Edge = e as *const CEdge as *mut CEdge;
+            YX(e.X, e.StartY, &mut pInactiveEdge[0].Yx);
             pInactiveEdge = &mut pInactiveEdge[1..];
-            pActiveEdge = pActiveEdge.offset(1);
-        }
-        isMore
-    } {}
+    }
 
     assert!(pInactiveEdge.as_mut_ptr().offset_from(rgInactiveArrayPtr) as UINT == count + 1);
 

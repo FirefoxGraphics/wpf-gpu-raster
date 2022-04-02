@@ -19,6 +19,7 @@ use crate::helpers::Int32x32To64;
 use crate::types::*;
 use cfor::cfor;
 use scopeguard::defer;
+use typed_arena::Arena;
 
 //-----------------------------------------------------------------------------
 //
@@ -532,8 +533,8 @@ pub fn RasterizePath(
     let mut edgeHead: CEdge = Default::default();
     let mut edgeTail: CEdge = Default::default();
     let pEdgeActiveList: *mut CEdge;
-    let mut edgeStore: CEdgeStore = Default::default();
-    edgeStore.init();
+    let mut edgeStore = Arena::new();
+    //edgeStore.init();
     let mut edgeContext: CInitializeEdgesContext = CInitializeEdgesContext::new(&mut edgeStore);
 
     edgeContext.ClipRect = None;
@@ -603,7 +604,7 @@ pub fn RasterizePath(
         return hr;
     }
 
-    let nTotalCount: UINT; nTotalCount = edgeContext.Store.StartEnumeration();
+    let nTotalCount: UINT; nTotalCount = edgeContext.Store.len() as u32;
     if (nTotalCount == 0)
     {
         hr = S_OK;     // We're outta here (empty path or entirely clipped)
@@ -626,7 +627,7 @@ pub fn RasterizePath(
     // Initialize and sort the inactive array:
 
     let nSubpixelYCurrent = InitializeInactiveArray(
-        &mut edgeContext.Store,
+        edgeContext.Store,
         pInactiveArray,
         nTotalCount,
         &mut edgeTail
