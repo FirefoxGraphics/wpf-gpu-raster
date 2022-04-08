@@ -463,7 +463,7 @@ impl CEdgeStore {
 \**************************************************************************/
 
 pub fn AssertActiveList(mut list: Ref<CEdge>, yCurrent: INT) -> bool {
-    unsafe {
+
     let mut b = true;
     let mut activeCount = 0;
 
@@ -504,7 +504,7 @@ pub fn AssertActiveList(mut list: Ref<CEdge>, yCurrent: INT) -> bool {
     b &= ((activeCount & 1) == 0);
 
     return (b);
-    }
+
 }
 
 /**************************************************************************\
@@ -1670,10 +1670,10 @@ pub fn InitializeInactiveArray<'a>(
     count: UINT,
     tailEdge: Ref<'a, CEdge<'a>> // Tail sentinel for inactive list
 ) -> INT {
-    unsafe {
+
     //let mut isMore;
-    let mut pActiveEdge: Ref<CEdge> = Ref::null();
-    let mut pActiveEdgeEnd: Ref<CEdge> = Ref::null();
+    let mut pActiveEdge: Ref<CEdge> = unsafe { Ref::null() };
+    let mut pActiveEdgeEnd: Ref<CEdge> = unsafe { Ref::null() };
     let rgInactiveArrayPtr = rgInactiveArray.as_mut_ptr();
 
     // First initialize the inactive array.  Skip the first entry,
@@ -1688,7 +1688,7 @@ pub fn InitializeInactiveArray<'a>(
             pInactiveEdge = &mut pInactiveEdge[1..];
     }
 
-    assert!(pInactiveEdge.as_mut_ptr().offset_from(rgInactiveArrayPtr) as UINT == count + 1);
+    assert!(unsafe { pInactiveEdge.as_mut_ptr().offset_from(rgInactiveArrayPtr) } as UINT == count + 1);
 
     // Add the tail, which is used when reading back the array.  This
     // is why we had to allocate the array as 'count + 1':
@@ -1716,12 +1716,12 @@ pub fn InitializeInactiveArray<'a>(
 
     InsertionSortEdges(rgInactiveArray, count as i32);
 
-    ASSERTINACTIVEARRAY!(rgInactiveArray.as_mut_ptr().offset(1), count as i32);
+    ASSERTINACTIVEARRAY!(unsafe { rgInactiveArray.as_mut_ptr().offset(1) } , count as i32);
 
     // Return the 'y' value of the topmost edge:
 
     return (*rgInactiveArray[1].Edge).StartY;
-    }
+
 }
 
 /**************************************************************************\
@@ -1743,7 +1743,7 @@ pub fn InsertNewEdges<'a>(
     ppInactiveEdge: &'a mut [CInactiveEdge<'a>],
     pYNextInactive: &mut INT, // will be INT_MAX when no more
 ) -> &'a mut [CInactiveEdge<'a>] {
-    unsafe {
+
     let mut inactive: &mut [CInactiveEdge] = ppInactiveEdge;
 
     assert!((*inactive[0].Edge).StartY == iCurrentY);
@@ -1776,7 +1776,7 @@ pub fn InsertNewEdges<'a>(
 
     *pYNextInactive = (*(inactive[0]).Edge).StartY;
     return inactive;
-    }
+
 }
 
 /**************************************************************************\
