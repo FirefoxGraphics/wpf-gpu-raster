@@ -14,6 +14,7 @@ mod geometry_sink;
 mod matrix;
 mod real;
 mod fix;
+mod nullable_ref;
 
 use std::{ffi::c_void, rc::Rc, cell::{RefCell, Cell}, mem::take};
 

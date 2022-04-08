@@ -13,6 +13,7 @@ use std::rc::Rc;
 use crate::aacoverage::{CCoverageBuffer, c_rInvShiftSize, c_antiAliasMode, c_nShift, CCoverageInterval, c_nShiftMask, c_nShiftSize, c_nHalfShiftSize};
 use crate::hwvertexbuffer::CHwVertexBufferBuilder;
 use crate::matrix::{CMILMatrix, CMatrix};
+use crate::nullable_ref::Ref;
 use crate::{aarasterizer::*, ASSERTACTIVELIST, IsTagEnabled, RRETURN1, RRETURN, INACTIVE_LIST_NUMBER, FIX4_ONE, FIX4_PRECISION, TOREAL, EDGE_STORE_STACK_NUMBER};
 use crate::geometry_sink::IGeometrySink;
 use crate::helpers::Int32x32To64;
@@ -532,7 +533,7 @@ pub fn RasterizePath(
     let mut pInactiveArrayAllocation: Vec<CInactiveEdge>;
     let mut edgeHead: CEdge = Default::default();
     let mut edgeTail: CEdge = Default::default();
-    let pEdgeActiveList: *mut CEdge;
+    let pEdgeActiveList: Ref<CEdge>;
     let mut edgeStore = Arena::new();
     //edgeStore.init();
     let mut edgeContext: CInitializeEdgesContext = CInitializeEdgesContext::new(&mut edgeStore);
@@ -546,8 +547,8 @@ pub fn RasterizePath(
     edgeHead.X.set(i32::MIN);       // Beginning of active list
     edgeContext.MaxY = i32::MIN;
 
-    edgeHead.Next.set(&edgeTail);
-    pEdgeActiveList = &mut edgeHead;
+    edgeHead.Next.set(Ref::new(&edgeTail));
+    pEdgeActiveList = Ref::new(&mut edgeHead);
     //edgeContext.Store = &mut edgeStore;
 
     edgeContext.AntiAliasMode = c_antiAliasMode;
@@ -630,7 +631,7 @@ pub fn RasterizePath(
         edgeContext.Store,
         pInactiveArray,
         nTotalCount,
-        &mut edgeTail
+        Ref::new(&edgeTail)
         );
 
     let mut nSubpixelYBottom = edgeContext.MaxY;
@@ -908,15 +909,15 @@ GenerateOutputAndClearCoverage(&mut self,
 //-------------------------------------------------------------------------
 
 fn ComputeTrapezoidsEndScan(&mut self,
-    pEdgeCurrent: *const CEdge,
+    pEdgeCurrent: Ref<CEdge>,
     nSubpixelYCurrent: INT,
     nSubpixelYNextInactive: INT
     ) -> INT
 {
-    unsafe {
+
     let mut nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
-    let mut pEdgeLeft: *const CEdge;
-    let mut pEdgeRight: *const CEdge;
+    let mut pEdgeLeft: Ref<CEdge>;
+    let mut pEdgeRight: Ref<CEdge>;
 
     //
     // Trapezoids should always start at scanline boundaries
@@ -1182,7 +1183,6 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
 //Cleanup:
     return nSubpixelYBottomTrapezoids;
-    }
 }
 
 
@@ -1213,12 +1213,12 @@ fn ComputeTrapezoidsEndScan(&mut self,
 //-------------------------------------------------------------------------
 fn 
 OutputTrapezoids(&mut self,
-    pEdgeCurrent: *const CEdge,
+    pEdgeCurrent: Ref<CEdge>,
     nSubpixelYCurrent: INT, // inclusive
     nSubpixelYNext: INT     // exclusive
     ) -> HRESULT
 {
-    unsafe {
+
     let hr = S_OK;
     let mut nSubpixelYAdvance: INT;
     let mut rSubpixelLeftErrorDown: f32;
@@ -1356,7 +1356,7 @@ OutputTrapezoids(&mut self,
     }
 
     return hr;
-}
+
 }
 
 //-------------------------------------------------------------------------
@@ -1368,17 +1368,16 @@ OutputTrapezoids(&mut self,
 //
 //-------------------------------------------------------------------------
 fn
-RasterizeEdges(&mut self,
-    pEdgeActiveList: *mut CEdge,
-    mut pInactiveEdgeArray: &mut [CInactiveEdge],
+RasterizeEdges<'a>(&mut self,
+    pEdgeActiveList: Ref<'a, CEdge<'a>>,
+    mut pInactiveEdgeArray: &'a mut [CInactiveEdge<'a>],
     mut nSubpixelYCurrent: INT,
     nSubpixelYBottom: INT
     ) -> HRESULT
 {
-    unsafe {
     let mut hr: HRESULT = S_OK;
-    let mut pEdgePrevious: *const CEdge;
-    let mut pEdgeCurrent: *const CEdge;
+    let mut pEdgePrevious: Ref<CEdge>;
+    let mut pEdgeCurrent: Ref<CEdge>;
     let mut nSubpixelYNextInactive: INT = 0;
     let mut nSubpixelYNext: INT;
 
@@ -1417,7 +1416,7 @@ RasterizeEdges(&mut self,
             // can't even go one scanline, then nSubpixelYNext == nSubpixelYCurrent
             //
 
-            nSubpixelYNext = self.ComputeTrapezoidsEndScan(&*pEdgeCurrent, nSubpixelYCurrent, nSubpixelYNextInactive);
+            nSubpixelYNext = self.ComputeTrapezoidsEndScan(Ref::new(&*pEdgeCurrent), nSubpixelYCurrent, nSubpixelYNextInactive);
             assert!(nSubpixelYNext >= nSubpixelYCurrent);
 
             //
@@ -1533,7 +1532,6 @@ RasterizeEdges(&mut self,
     }
 
     RRETURN!(hr);
-    }
 }
 
     //+------------------------------------------------------------------------

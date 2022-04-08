@@ -11,6 +11,7 @@
 //      Coverage buffer implementation
 //
 use crate::aarasterizer::{AssertActiveList, CEdge};
+use crate::nullable_ref::Ref;
 use crate::{types::*, IFC, ASSERTACTIVELIST, IFCOOM};
 //struct CEdge;
 //struct CInactiveEdge;
@@ -385,14 +386,14 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
 //
 //-------------------------------------------------------------------------
 pub fn FillEdgesAlternating(&mut self,
-    pEdgeActiveList: *const CEdge,
+    pEdgeActiveList: Ref<CEdge>,
     nSubpixelYCurrent: INT
     ) -> HRESULT
 {
-unsafe {
+
     let hr: HRESULT = S_OK;
-    let mut pEdgeStart: *const CEdge = (*pEdgeActiveList).Next.get();
-    let mut pEdgeEnd: *const CEdge;
+    let mut pEdgeStart: Ref<CEdge> = (*pEdgeActiveList).Next.get();
+    let mut pEdgeEnd: Ref<CEdge>;
     let mut nSubpixelXLeft: INT;
     let mut nSubpixelXRight: INT;
 
@@ -421,11 +422,11 @@ unsafe {
 
         // Prepare for the next iteration:
         pEdgeStart = (*pEdgeEnd).Next.get();
-    } 
+    }
 
 //Cleanup:
     return hr
-}
+
 }
 
 //-------------------------------------------------------------------------
@@ -438,14 +439,14 @@ unsafe {
 //
 //-------------------------------------------------------------------------
 pub fn FillEdgesWinding(&mut self,
-    pEdgeActiveList: *const CEdge,
+    pEdgeActiveList: Ref<CEdge>,
     nSubpixelYCurrent: INT
     ) -> HRESULT
 {
-unsafe {
+
     let hr: HRESULT = S_OK;
-    let mut pEdgeStart: *const CEdge = (*pEdgeActiveList).Next.get();
-    let mut pEdgeEnd: *const CEdge;
+    let mut pEdgeStart: Ref<CEdge> = (*pEdgeActiveList).Next.get();
+    let mut pEdgeEnd: Ref<CEdge>;
     let mut nSubpixelXLeft: INT;
     let mut nSubpixelXRight: INT;
     let mut nWindingValue: INT;
@@ -495,7 +496,6 @@ unsafe {
 
 //Cleanup:
     return hr;//RRETURN(hr);
-}
 }
 
 //-------------------------------------------------------------------------
