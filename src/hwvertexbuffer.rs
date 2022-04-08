@@ -2204,7 +2204,7 @@ Cleanup:
     fn AddComplexScan(&mut self,
         nPixelY: INT,
             // In: y coordinate in pixel space
-            mut pIntervalSpanStart: *mut crate::aacoverage::CCoverageInterval
+            mut pIntervalSpanStart: *const crate::aacoverage::CCoverageInterval
             // In: coverage segments
         ) -> HRESULT {
     unsafe {
@@ -2279,9 +2279,9 @@ Cleanup:
     // Having allocated space (if not using sink), now let's actually output the vertices.
     //
 
-    while ((*pIntervalSpanStart).m_nPixelX != INT::MAX)
+    while ((*pIntervalSpanStart).m_nPixelX.get() != INT::MAX)
     {
-        assert!((*pIntervalSpanStart).m_pNext != NULL());
+        assert!((*pIntervalSpanStart).m_pNext.get() != NULL());
 
         //
         // Output line list segments
@@ -2297,12 +2297,12 @@ Cleanup:
         // Since our top left corner is integer, we add 0.5 to get to the
         // pixel center.
         //
-        if (self.NeedCoverageGeometry((*pIntervalSpanStart).m_nCoverage))
+        if (self.NeedCoverageGeometry((*pIntervalSpanStart).m_nCoverage.get()))
         {
-            let rCoverage: f32 = ((*pIntervalSpanStart).m_nCoverage as f32)/(c_nShiftSizeSquared as f32);
+            let rCoverage: f32 = ((*pIntervalSpanStart).m_nCoverage.get() as f32)/(c_nShiftSizeSquared as f32);
             
-            let mut iBegin: LONG = (*pIntervalSpanStart).m_nPixelX;
-            let mut iEnd: LONG = (*(*pIntervalSpanStart).m_pNext).m_nPixelX;
+            let mut iBegin: LONG = (*pIntervalSpanStart).m_nPixelX.get();
+            let mut iEnd: LONG = (*(*pIntervalSpanStart).m_pNext.get()).m_nPixelX.get();
             if (self.NeedOutsideGeometry())
             {
                 // Intersect the interval with the outside bounds to create
@@ -2361,7 +2361,7 @@ Cleanup:
         // Advance coverage buffer
         //
 
-        pIntervalSpanStart = (*pIntervalSpanStart).m_pNext;
+        pIntervalSpanStart = (*pIntervalSpanStart).m_pNext.get();
     }
 }
 

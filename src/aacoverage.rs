@@ -6,6 +6,8 @@
 //------------------------------------------------------------------------------
 //
 
+use std::cell::Cell;
+
 //
 //  Description:
 //      Coverage buffer implementation
@@ -40,14 +42,14 @@ pub const c_antiAliasMode: MilAntiAliasMode = MilAntiAliasMode::EightByEight;
 
 pub struct CCoverageInterval
 {
-    pub m_pNext: *mut CCoverageInterval, // m_pNext interval (look for sentinel, not NULL)
-    pub m_nPixelX: INT,              // Interval's left edge (m_pNext->X is the right edge)
-    pub m_nCoverage: INT,            // Pixel coverage for interval
+    pub m_pNext: Cell<*const CCoverageInterval>, // m_pNext interval (look for sentinel, not NULL)
+    pub m_nPixelX: Cell<INT>,              // Interval's left edge (m_pNext->X is the right edge)
+    pub m_nCoverage: Cell<INT>,            // Pixel coverage for interval
 }
 
 impl Default for CCoverageInterval {
     fn default() -> Self {
-        Self { m_pNext: NULL(), m_nPixelX: Default::default(), m_nCoverage: Default::default() }
+        Self { m_pNext: Cell::new(NULL()), m_nPixelX: Default::default(), m_nCoverage: Default::default() }
     }
 }
 
@@ -150,10 +152,10 @@ private:
         );
 
 public:*/
-    pub m_pIntervalStart: *mut CCoverageInterval,           // Points to list head entry
+    pub m_pIntervalStart: *const CCoverageInterval,           // Points to list head entry
 
 //private:
-    m_pIntervalNew: *mut CCoverageInterval,
+    m_pIntervalNew: *const CCoverageInterval,
 
     // The Minus4 in the below variable refers to the position at which
     // we need to Grow the buffer.  The buffer is grown once before an
@@ -170,7 +172,7 @@ public:*/
     // so we need to ensure that at least 4 intervals can be allocated.
     //
 
-    m_pIntervalEndMinus4:  *mut CCoverageInterval,
+    m_pIntervalEndMinus4:  *const CCoverageInterval,
 
     m_pIntervalBufferBuiltin: CCoverageIntervalBuffer,
     m_pIntervalBufferCurrent: *mut CCoverageIntervalBuffer,
@@ -229,21 +231,21 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
     // Skip any intervals less than 'nPixelLeft':
 
     loop {
-        nPixelXNext = (*(*pInterval).m_pNext).m_nPixelX;
+        nPixelXNext = (*(*pInterval).m_pNext.get()).m_nPixelX.get();
         if !(nPixelXNext < nPixelXLeft) { break }
 
-        pInterval = (*pInterval).m_pNext;
+        pInterval = (*pInterval).m_pNext.get();
     }
 
     // Insert a new interval if necessary:
 
     if (nPixelXNext != nPixelXLeft)
     {
-        (*pIntervalNew).m_nPixelX = nPixelXLeft;
-        (*pIntervalNew).m_nCoverage = (*pInterval).m_nCoverage;
+        (*pIntervalNew).m_nPixelX.set(nPixelXLeft);
+        (*pIntervalNew).m_nCoverage.set((*pInterval).m_nCoverage.get());
 
-        (*pIntervalNew).m_pNext = (*pInterval).m_pNext;
-        (*pInterval).m_pNext = pIntervalNew;
+        (*pIntervalNew).m_pNext.set((*pInterval).m_pNext.get());
+        (*pInterval).m_pNext.set(pIntervalNew);
 
         pInterval = pIntervalNew;
 
@@ -251,7 +253,7 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
     }
     else
     {
-        pInterval = (*pInterval).m_pNext;
+        pInterval = (*pInterval).m_pNext.get();
     }
 
     //
@@ -273,13 +275,13 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
     // for the end of the pixel 
 
     if ((nCoverageLeft < c_nShiftSize || (nPixelXLeft == nPixelXRight))
-        && nPixelXLeft + 1 != (*(*pInterval).m_pNext).m_nPixelX)
+        && nPixelXLeft + 1 != (*(*pInterval).m_pNext.get()).m_nPixelX.get())
     {
-        (*pIntervalNew).m_nPixelX = nPixelXLeft + 1;
-        (*pIntervalNew).m_nCoverage = (*pInterval).m_nCoverage;
+        (*pIntervalNew).m_nPixelX.set(nPixelXLeft + 1);
+        (*pIntervalNew).m_nCoverage.set((*pInterval).m_nCoverage.get());
 
-        (*pIntervalNew).m_pNext = (*pInterval).m_pNext;
-        (*pInterval).m_pNext = pIntervalNew;
+        (*pIntervalNew).m_pNext.set((*pInterval).m_pNext.get());
+        (*pInterval).m_pNext.set(pIntervalNew);
 
         pIntervalNew = pIntervalNew.offset(1);
     }
@@ -291,8 +293,8 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
 
     if (nPixelXLeft == nPixelXRight)
     {
-        (*pInterval).m_nCoverage += nSubpixelXRight - nSubpixelXLeft;
-        assert!((*pInterval).m_nCoverage <= c_nShiftSize*c_nShiftSize);
+        (*pInterval).m_nCoverage.set((*pInterval).m_nCoverage.get() + nSubpixelXRight - nSubpixelXLeft);
+        assert!((*pInterval).m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
         //goto Cleanup;
 
         //Cleanup:
@@ -302,32 +304,32 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
     }
 
     // Update coverage of current interval
-    (*pInterval).m_nCoverage += nCoverageLeft;
-    assert!((*pInterval).m_nCoverage <= c_nShiftSize*c_nShiftSize);
+    (*pInterval).m_nCoverage.set((*pInterval).m_nCoverage.get() + nCoverageLeft);
+    assert!((*pInterval).m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
 
     // Increase the coverage for any intervals between 'nPixelXLeft'
     // and 'nPixelXRight':
 
     loop {
-        (nPixelXNext = (*(*pInterval).m_pNext).m_nPixelX);
+        (nPixelXNext = (*(*pInterval).m_pNext.get()).m_nPixelX.get());
     
         if !(nPixelXNext < nPixelXRight) {
             break;
         }
-        pInterval = (*pInterval).m_pNext;
-        (*pInterval).m_nCoverage += c_nShiftSize;
-        assert!((*pInterval).m_nCoverage <= c_nShiftSize*c_nShiftSize);
+        pInterval = (*pInterval).m_pNext.get();
+        (*pInterval).m_nCoverage.set((*pInterval).m_nCoverage.get() + c_nShiftSize);
+        assert!((*pInterval).m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
     }
 
     // Insert another new interval if necessary:
 
     if (nPixelXNext != nPixelXRight)
     {
-        (*pIntervalNew).m_nPixelX = nPixelXRight;
-        (*pIntervalNew).m_nCoverage = (*pInterval).m_nCoverage - c_nShiftSize;
+        (*pIntervalNew).m_nPixelX.set(nPixelXRight);
+        (*pIntervalNew).m_nCoverage.set((*pInterval).m_nCoverage.get() - c_nShiftSize);
 
-        (*pIntervalNew).m_pNext = (*pInterval).m_pNext;
-        (*pInterval).m_pNext = pIntervalNew;
+        (*pIntervalNew).m_pNext.set((*pInterval).m_pNext.get());
+        (*pInterval).m_pNext.set(pIntervalNew);
 
         pInterval = pIntervalNew;
 
@@ -335,7 +337,7 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
     }
     else
     {
-        pInterval = (*pInterval).m_pNext;
+        pInterval = (*pInterval).m_pNext.get();
     }
 
     //
@@ -350,19 +352,19 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
     nCoverageRight = nSubpixelXRight & c_nShiftMask;
     if (nCoverageRight > 0)
     {
-        if (nPixelXRight + 1 != (*(*pInterval).m_pNext).m_nPixelX)
+        if (nPixelXRight + 1 != (*(*pInterval).m_pNext.get()).m_nPixelX.get())
         {
-            (*pIntervalNew).m_nPixelX = nPixelXRight + 1;
-            (*pIntervalNew).m_nCoverage = (*pInterval).m_nCoverage;
+            (*pIntervalNew).m_nPixelX.set(nPixelXRight + 1);
+            (*pIntervalNew).m_nCoverage.set((*pInterval).m_nCoverage.get());
 
-            (*pIntervalNew).m_pNext = (*pInterval).m_pNext;
-            (*pInterval).m_pNext = pIntervalNew;
+            (*pIntervalNew).m_pNext.set((*pInterval).m_pNext.get());
+            (*pInterval).m_pNext.set(pIntervalNew);
 
             pIntervalNew = pIntervalNew.offset(1);
         }
 
-        (*pInterval).m_nCoverage += nCoverageRight;
-        assert!((*pInterval).m_nCoverage <= c_nShiftSize*c_nShiftSize);
+        (*pInterval).m_nCoverage.set((*pInterval).m_nCoverage.get() + nCoverageRight);
+        assert!((*pInterval).m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
     }
 
 //Cleanup:
@@ -507,13 +509,13 @@ pub fn FillEdgesWinding(&mut self,
 //-------------------------------------------------------------------------
 pub fn Initialize(&mut self) 
 {
-    self.m_pIntervalBufferBuiltin.m_interval[0].m_nPixelX = INT::MIN;
-    self.m_pIntervalBufferBuiltin.m_interval[0].m_nCoverage = 0;
-    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext = &mut self.m_pIntervalBufferBuiltin.m_interval[1];
+    self.m_pIntervalBufferBuiltin.m_interval[0].m_nPixelX = Cell::new(INT::MIN);
+    self.m_pIntervalBufferBuiltin.m_interval[0].m_nCoverage = Cell::new(0);
+    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext = Cell::new(&mut self.m_pIntervalBufferBuiltin.m_interval[1]);
 
-    self.m_pIntervalBufferBuiltin.m_interval[1].m_nPixelX = INT::MAX;
-    self.m_pIntervalBufferBuiltin.m_interval[1].m_nCoverage = 0xdeadbeef;
-    self.m_pIntervalBufferBuiltin.m_interval[1].m_pNext = NULL();
+    self.m_pIntervalBufferBuiltin.m_interval[1].m_nPixelX = Cell::new(INT::MAX);
+    self.m_pIntervalBufferBuiltin.m_interval[1].m_nCoverage = Cell::new(0xdeadbeef);
+    self.m_pIntervalBufferBuiltin.m_interval[1].m_pNext = Cell::new(NULL());
 
     self.m_pIntervalBufferBuiltin.m_pNext = NULL();
     self.m_pIntervalBufferCurrent = &mut self.m_pIntervalBufferBuiltin;
@@ -556,7 +558,7 @@ pub fn Reset(&mut self)
     // Reset our coverage structure.  Point the head back to the tail,
     // and reset where the next new entry will be placed:
 
-    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext = &mut self.m_pIntervalBufferBuiltin.m_interval[1];
+    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext = Cell::new(&mut self.m_pIntervalBufferBuiltin.m_interval[1]);
 
     self.m_pIntervalBufferCurrent = &mut self.m_pIntervalBufferBuiltin;
     self.m_pIntervalNew = &mut self.m_pIntervalBufferBuiltin.m_interval[2];
@@ -572,8 +574,8 @@ pub fn Reset(&mut self)
 //
 //-------------------------------------------------------------------------
 fn Grow(&mut self,
-    ppIntervalNew: &mut *mut CCoverageInterval, 
-    ppIntervalEndMinus4: &mut *mut CCoverageInterval
+    ppIntervalNew: &mut *const CCoverageInterval, 
+    ppIntervalEndMinus4: &mut *const CCoverageInterval
     ) -> HRESULT
 {
     unsafe {
