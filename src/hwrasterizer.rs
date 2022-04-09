@@ -429,7 +429,7 @@ MilFillMode::Enum     m_fillMode;
 CCoverageBuffer m_coverageBuffer;
 
 CD3DDeviceLevel1 * m_pDeviceNoRef;*/
-    m_coverageBuffer: CCoverageBuffer,
+    //m_coverageBuffer: CCoverageBuffer,
     m_pDeviceNoRef: Option<Rc<CD3DDeviceLevel1>>
 }
 
@@ -483,7 +483,6 @@ impl CHwRasterizer {
         m_prgPoints: None,
         m_prgTypes: None,
         m_fillMode: MilFillMode::Alternate,
-        m_coverageBuffer: Default::default(),
         m_rcClipBounds: Default::default(),
         m_pIGeometrySink: None,
     
@@ -579,15 +578,11 @@ pub fn RasterizePath(
     let mut matrix: CMILMatrix = (*pmatWorldTransform).clone();
     AppendScaleToMatrix(&mut matrix, TOREAL!(16), TOREAL!(16));
 
+    let mut coverageBuffer: CCoverageBuffer = Default::default();
     // Initialize the coverage buffer
-    self.m_coverageBuffer.Initialize();
+    coverageBuffer.Initialize();
 
     // Enumerate the path and construct the edge table:
-
-    let mut coverage_guard = scopeguard::guard(self, |rasterizer| {
-        // Free coverage buffer
-        rasterizer.m_coverageBuffer.Destroy()
-    });
 
     MIL_THR!(FixedPointPathEnumerate(
         rgpt,
@@ -660,9 +655,10 @@ pub fn RasterizePath(
 
     assert!(nSubpixelYBottom > nSubpixelYCurrent);
 
-    IFC!(coverage_guard.RasterizeEdges(
+    IFC!(self.RasterizeEdges(
         pEdgeActiveList,
         pInactiveArray,
+        &mut coverageBuffer,
         nSubpixelYCurrent,
         nSubpixelYBottom
         ));
@@ -850,18 +846,18 @@ fn SendGeometryModifiers(&self,
 //
 //-------------------------------------------------------------------------
 fn
-GenerateOutputAndClearCoverage(&mut self,
+GenerateOutputAndClearCoverage(&mut self, coverageBuffer: &mut CCoverageBuffer,
     nSubpixelY: INT
     ) -> HRESULT
 {
     let hr = S_OK;
     let nPixelY = nSubpixelY >> c_nShift;
 
-    let pIntervalSpanStart: *const CCoverageInterval = self.m_coverageBuffer.m_pIntervalStart;
+    let pIntervalSpanStart: *const CCoverageInterval = coverageBuffer.m_pIntervalStart;
 
     IFC!(self.m_pIGeometrySink.as_ref().unwrap().borrow_mut().AddComplexScan(nPixelY, pIntervalSpanStart));
 
-    self.m_coverageBuffer.Reset();
+    coverageBuffer.Reset();
 
     return hr;
 }
@@ -1373,6 +1369,7 @@ fn
 RasterizeEdges<'a>(&mut self,
     pEdgeActiveList: Ref<'a, CEdge<'a>>,
     mut pInactiveEdgeArray: &'a mut [CInactiveEdge<'a>],
+    coverageBuffer: &mut CCoverageBuffer,
     mut nSubpixelYCurrent: INT,
     nSubpixelYBottom: INT
     ) -> HRESULT
@@ -1488,18 +1485,18 @@ RasterizeEdges<'a>(&mut self,
                 nSubpixelYNext = nSubpixelYCurrent + 1;
                 if (self.m_fillMode == MilFillMode::Alternate)
                 {
-                    IFC!(self.m_coverageBuffer.FillEdgesAlternating(pEdgeActiveList, nSubpixelYCurrent));
+                    IFC!(coverageBuffer.FillEdgesAlternating(pEdgeActiveList, nSubpixelYCurrent));
                 }
                 else
                 {
-                    IFC!(self.m_coverageBuffer.FillEdgesWinding(pEdgeActiveList, nSubpixelYCurrent));
+                    IFC!(coverageBuffer.FillEdgesWinding(pEdgeActiveList, nSubpixelYCurrent));
                 }
             }
 
             // If the next scan is done, output what's there:
             if (nSubpixelYNext > (nSubpixelYCurrent | c_nShiftMask))
             {
-                IFC!(self.GenerateOutputAndClearCoverage(nSubpixelYCurrent));
+                IFC!(self.GenerateOutputAndClearCoverage(coverageBuffer, nSubpixelYCurrent));
             }
 
             // Advance nSubpixelYCurrent
@@ -1530,7 +1527,7 @@ RasterizeEdges<'a>(&mut self,
 
     if ((nSubpixelYCurrent & c_nShiftMask) != 0)
     {
-        IFC!(self.GenerateOutputAndClearCoverage(nSubpixelYCurrent));
+        IFC!(self.GenerateOutputAndClearCoverage(coverageBuffer, nSubpixelYCurrent));
     }
 
     RRETURN!(hr);

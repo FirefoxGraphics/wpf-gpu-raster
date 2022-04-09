@@ -546,6 +546,7 @@ pub fn Destroy(&mut self)
     }
 }
 
+
 //-------------------------------------------------------------------------
 //
 //  Function:   CCoverageBuffer::Reset
@@ -605,3 +606,10 @@ fn Grow(&mut self,
 }
 
 }
+
+impl Drop for CCoverageBuffer {
+    fn drop(&mut self) {
+        self.Destroy();
+    }
+}
+
