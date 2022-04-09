@@ -579,6 +579,9 @@ pub fn RasterizePath(
     let mut matrix: CMILMatrix = (*pmatWorldTransform).clone();
     AppendScaleToMatrix(&mut matrix, TOREAL!(16), TOREAL!(16));
 
+    // Initialize the coverage buffer
+    self.m_coverageBuffer.Initialize();
+
     // Enumerate the path and construct the edge table:
 
     let mut coverage_guard = scopeguard::guard(self, |rasterizer| {
@@ -702,8 +705,7 @@ pub fn Setup(&mut self,
     self.m_rcClipBounds = Default::default();
     self.m_pIGeometrySink = None;
 
-    // Initialize the coverage buffer
-    self.m_coverageBuffer.Initialize();
+
 
     self.m_pDeviceNoRef = Some(pD3DDevice.clone());
 
