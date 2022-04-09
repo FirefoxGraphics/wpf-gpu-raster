@@ -8,6 +8,8 @@
 
 use std::cell::Cell;
 
+use typed_arena::Arena;
+
 //
 //  Description:
 //      Coverage buffer implementation
@@ -74,13 +76,13 @@ impl Default for CCoverageInterval {
 
 struct CCoverageIntervalBuffer
 {
-    m_pNext: *mut CCoverageIntervalBuffer,
+    m_pNext: Cell<*const CCoverageIntervalBuffer>,
     m_interval: [CCoverageInterval; INTERVAL_BUFFER_NUMBER],
 }
 
 impl Default for CCoverageIntervalBuffer {
     fn default() -> Self {
-        Self { m_pNext: NULL(), m_interval: Default::default() }
+        Self { m_pNext: Cell::new(NULL()), m_interval: Default::default() }
     }
 }
 
@@ -175,7 +177,9 @@ public:*/
     m_pIntervalEndMinus4:  *const CCoverageInterval,
 
     m_pIntervalBufferBuiltin: CCoverageIntervalBuffer,
-    m_pIntervalBufferCurrent: *mut CCoverageIntervalBuffer,
+    m_pIntervalBufferCurrent: *const CCoverageIntervalBuffer,
+
+    arena: Arena<CCoverageIntervalBuffer>
        
     // Disable instrumentation checks within all methods of this class
     //SET_MILINSTRUMENTATION_FLAGS(MILINSTRUMENTATIONFLAGS_DONOTHING);
@@ -183,7 +187,8 @@ public:*/
 
 impl Default for CCoverageBuffer {
     fn default() -> Self {
-        Self { m_pIntervalStart: NULL(), m_pIntervalNew: NULL(), m_pIntervalEndMinus4: NULL(), m_pIntervalBufferBuiltin: Default::default(), m_pIntervalBufferCurrent: NULL() }
+        Self { m_pIntervalStart: NULL(), m_pIntervalNew: NULL(), m_pIntervalEndMinus4: NULL(), m_pIntervalBufferBuiltin: Default::default(), m_pIntervalBufferCurrent: NULL(),
+                arena: Arena::new() }
     }
 }
 
@@ -517,12 +522,12 @@ pub fn Initialize(&mut self)
     self.m_pIntervalBufferBuiltin.m_interval[1].m_nCoverage = Cell::new(0xdeadbeef);
     self.m_pIntervalBufferBuiltin.m_interval[1].m_pNext = Cell::new(NULL());
 
-    self.m_pIntervalBufferBuiltin.m_pNext = NULL();
-    self.m_pIntervalBufferCurrent = &mut self.m_pIntervalBufferBuiltin;
+    self.m_pIntervalBufferBuiltin.m_pNext = Cell::new(NULL());
+    self.m_pIntervalBufferCurrent = &self.m_pIntervalBufferBuiltin;
 
-    self.m_pIntervalStart = &mut self.m_pIntervalBufferBuiltin.m_interval[0];
-    self.m_pIntervalNew = &mut self.m_pIntervalBufferBuiltin.m_interval[2];
-    self.m_pIntervalEndMinus4 = &mut self.m_pIntervalBufferBuiltin.m_interval[INTERVAL_BUFFER_NUMBER - 4];
+    self.m_pIntervalStart = &self.m_pIntervalBufferBuiltin.m_interval[0];
+    self.m_pIntervalNew = &self.m_pIntervalBufferBuiltin.m_interval[2];
+    self.m_pIntervalEndMinus4 = &self.m_pIntervalBufferBuiltin.m_interval[INTERVAL_BUFFER_NUMBER - 4];
 }
 
 //-------------------------------------------------------------------------
@@ -537,13 +542,7 @@ pub fn Destroy(&mut self)
     // Free the linked-list of allocations (skipping 'm_pIntervalBufferBuiltin',
     // which is built into the class):
 
-    let mut pIntervalBuffer = self.m_pIntervalBufferBuiltin.m_pNext;
-    while (pIntervalBuffer != NULL())
-    {
-        let pIntervalBufferNext = unsafe { (*pIntervalBuffer).m_pNext };
-        unsafe { drop(Box::from_raw(pIntervalBuffer)) };
-        pIntervalBuffer = pIntervalBufferNext;
-    }
+
 }
 
 
@@ -581,22 +580,22 @@ fn Grow(&mut self,
 {
     unsafe {
     let hr: HRESULT = S_OK;
-    let mut pIntervalBufferNew = (*self.m_pIntervalBufferCurrent).m_pNext;
+    let mut pIntervalBufferNew = (*self.m_pIntervalBufferCurrent).m_pNext.get();
 
     if (pIntervalBufferNew == NULL())
     {
-        pIntervalBufferNew = Box::into_raw(Box::<CCoverageIntervalBuffer>::new(Default::default()));
+        pIntervalBufferNew = self.arena.alloc(Default::default());
 
         IFCOOM!(pIntervalBufferNew);
 
-        (*pIntervalBufferNew).m_pNext = NULL();
-        (*self.m_pIntervalBufferCurrent).m_pNext = pIntervalBufferNew;
+        (*pIntervalBufferNew).m_pNext.set(NULL());
+        (*self.m_pIntervalBufferCurrent).m_pNext.set(pIntervalBufferNew);
     }
 
     self.m_pIntervalBufferCurrent = pIntervalBufferNew;
 
-    self.m_pIntervalNew = &mut (*pIntervalBufferNew).m_interval[2];
-    self.m_pIntervalEndMinus4 = &mut (*pIntervalBufferNew).m_interval[INTERVAL_BUFFER_NUMBER - 4];
+    self.m_pIntervalNew = &(*pIntervalBufferNew).m_interval[2];
+    self.m_pIntervalEndMinus4 = &(*pIntervalBufferNew).m_interval[INTERVAL_BUFFER_NUMBER - 4];
 
     *ppIntervalNew = self.m_pIntervalNew;
     *ppIntervalEndMinus4 = self.m_pIntervalEndMinus4;
