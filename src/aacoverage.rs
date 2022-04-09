@@ -74,15 +74,15 @@ impl Default for CCoverageInterval {
 // Allocator structure for the antialiased fill interval data
 //
 
-struct CCoverageIntervalBuffer
+struct CCoverageIntervalBuffer<'a>
 {
-    m_pNext: Cell<*const CCoverageIntervalBuffer>,
+    m_pNext: Cell<Ref<'a, CCoverageIntervalBuffer<'a>>>,
     m_interval: [CCoverageInterval; INTERVAL_BUFFER_NUMBER],
 }
 
-impl Default for CCoverageIntervalBuffer {
+impl<'a>  Default for CCoverageIntervalBuffer<'a> {
     fn default() -> Self {
-        Self { m_pNext: Cell::new(NULL()), m_interval: Default::default() }
+        Self { m_pNext: Cell::new(unsafe { Ref::null() }), m_interval: Default::default() }
     }
 }
 
@@ -113,7 +113,7 @@ impl Default for CCoverageIntervalBuffer {
 //       m_pNext: -------->|---->|---->|---->|---->| NULL
 //              
 //------------------------------------------------------------------------------
-pub struct CCoverageBuffer
+pub struct CCoverageBuffer<'a>
 {
     /*
 public:
@@ -154,10 +154,10 @@ private:
         );
 
 public:*/
-    pub m_pIntervalStart: *const CCoverageInterval,           // Points to list head entry
+    pub m_pIntervalStart: Cell<*const CCoverageInterval>,           // Points to list head entry
 
 //private:
-    m_pIntervalNew: *const CCoverageInterval,
+    m_pIntervalNew: Cell<*const CCoverageInterval>,
 
     // The Minus4 in the below variable refers to the position at which
     // we need to Grow the buffer.  The buffer is grown once before an
@@ -174,20 +174,20 @@ public:*/
     // so we need to ensure that at least 4 intervals can be allocated.
     //
 
-    m_pIntervalEndMinus4:  *const CCoverageInterval,
+    m_pIntervalEndMinus4:  Cell<*const CCoverageInterval>,
 
-    m_pIntervalBufferBuiltin: CCoverageIntervalBuffer,
-    m_pIntervalBufferCurrent: *const CCoverageIntervalBuffer,
+    m_pIntervalBufferBuiltin: CCoverageIntervalBuffer<'a>,
+    m_pIntervalBufferCurrent: Cell<Ref<'a, CCoverageIntervalBuffer<'a>>>,
 
-    arena: Arena<CCoverageIntervalBuffer>
+    arena: Arena<CCoverageIntervalBuffer<'a>>
        
     // Disable instrumentation checks within all methods of this class
     //SET_MILINSTRUMENTATION_FLAGS(MILINSTRUMENTATIONFLAGS_DONOTHING);
 }
 
-impl Default for CCoverageBuffer {
+impl<'a> Default for CCoverageBuffer<'a> {
     fn default() -> Self {
-        Self { m_pIntervalStart: NULL(), m_pIntervalNew: NULL(), m_pIntervalEndMinus4: NULL(), m_pIntervalBufferBuiltin: Default::default(), m_pIntervalBufferCurrent: NULL(),
+        Self { m_pIntervalStart: Cell::new(NULL()), m_pIntervalNew: Cell::new(NULL()), m_pIntervalEndMinus4: Cell::new(NULL()), m_pIntervalBufferBuiltin: Default::default(), m_pIntervalBufferCurrent: unsafe { Cell::new(Ref::null()) },
                 arena: Arena::new() }
     }
 }
@@ -196,7 +196,7 @@ impl Default for CCoverageBuffer {
 //
 // Inlines
 //
-impl CCoverageBuffer {
+impl<'a> CCoverageBuffer<'a> {
 //-------------------------------------------------------------------------
 //
 //  Function:   CCoverageBuffer::AddInterval
@@ -204,7 +204,7 @@ impl CCoverageBuffer {
 //  Synopsis:   Add a subpixel resolution interval to the coverage buffer
 // 
 //-------------------------------------------------------------------------
-pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESULT
+pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESULT
 {
     unsafe {
     let hr: HRESULT = S_OK;
@@ -214,9 +214,9 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
     let nCoverageLeft: INT;  // coverage from right edge of pixel for interval start
     let nCoverageRight: INT; // coverage from left edge of pixel for interval end
 
-    let mut pInterval = self.m_pIntervalStart;
-    let mut pIntervalNew = self.m_pIntervalNew;
-    let mut pIntervalEndMinus4 = self.m_pIntervalEndMinus4;
+    let mut pInterval = self.m_pIntervalStart.get();
+    let mut pIntervalNew = self.m_pIntervalNew.get();
+    let mut pIntervalEndMinus4 = self.m_pIntervalEndMinus4.get();
 
     // Make sure we have enough room to add two intervals if
     // necessary:
@@ -304,7 +304,7 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
 
         //Cleanup:
         // Update the coverage buffer new interval
-        self.m_pIntervalNew = pIntervalNew;
+        self.m_pIntervalNew.set(pIntervalNew);
         return hr;
     }
 
@@ -375,7 +375,7 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
 //Cleanup:
     // Update the coverage buffer new interval
 
-    self.m_pIntervalNew = pIntervalNew;
+    self.m_pIntervalNew.set(pIntervalNew);
     
 
     return hr;
@@ -392,7 +392,7 @@ pub fn AddInterval(&mut self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRES
 //      antialiased fill.
 //
 //-------------------------------------------------------------------------
-pub fn FillEdgesAlternating(&mut self,
+pub fn FillEdgesAlternating(&'a self,
     pEdgeActiveList: Ref<CEdge>,
     nSubpixelYCurrent: INT
     ) -> HRESULT
@@ -445,7 +445,7 @@ pub fn FillEdgesAlternating(&mut self,
 //      antialiased fill.
 //
 //-------------------------------------------------------------------------
-pub fn FillEdgesWinding(&mut self,
+pub fn FillEdgesWinding(&'a self,
     pEdgeActiveList: Ref<CEdge>,
     nSubpixelYCurrent: INT
     ) -> HRESULT
@@ -512,22 +512,22 @@ pub fn FillEdgesWinding(&mut self,
 //  Synopsis:   Set the coverage buffer to a valid initial state
 // 
 //-------------------------------------------------------------------------
-pub fn Initialize(&mut self) 
+pub fn Initialize(&'a self) 
 {
-    self.m_pIntervalBufferBuiltin.m_interval[0].m_nPixelX = Cell::new(INT::MIN);
-    self.m_pIntervalBufferBuiltin.m_interval[0].m_nCoverage = Cell::new(0);
-    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext = Cell::new(&mut self.m_pIntervalBufferBuiltin.m_interval[1]);
+    self.m_pIntervalBufferBuiltin.m_interval[0].m_nPixelX.set(INT::MIN);
+    self.m_pIntervalBufferBuiltin.m_interval[0].m_nCoverage.set(0);
+    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext.set(&self.m_pIntervalBufferBuiltin.m_interval[1]);
 
-    self.m_pIntervalBufferBuiltin.m_interval[1].m_nPixelX = Cell::new(INT::MAX);
-    self.m_pIntervalBufferBuiltin.m_interval[1].m_nCoverage = Cell::new(0xdeadbeef);
-    self.m_pIntervalBufferBuiltin.m_interval[1].m_pNext = Cell::new(NULL());
+    self.m_pIntervalBufferBuiltin.m_interval[1].m_nPixelX.set(INT::MAX);
+    self.m_pIntervalBufferBuiltin.m_interval[1].m_nCoverage.set(0xdeadbeef);
+    self.m_pIntervalBufferBuiltin.m_interval[1].m_pNext.set(NULL());
 
-    self.m_pIntervalBufferBuiltin.m_pNext = Cell::new(NULL());
-    self.m_pIntervalBufferCurrent = &self.m_pIntervalBufferBuiltin;
+    self.m_pIntervalBufferBuiltin.m_pNext.set(unsafe { Ref::null() });
+    self.m_pIntervalBufferCurrent.set(Ref::new(&self.m_pIntervalBufferBuiltin));
 
-    self.m_pIntervalStart = &self.m_pIntervalBufferBuiltin.m_interval[0];
-    self.m_pIntervalNew = &self.m_pIntervalBufferBuiltin.m_interval[2];
-    self.m_pIntervalEndMinus4 = &self.m_pIntervalBufferBuiltin.m_interval[INTERVAL_BUFFER_NUMBER - 4];
+    self.m_pIntervalStart.set(&self.m_pIntervalBufferBuiltin.m_interval[0]);
+    self.m_pIntervalNew.set(&self.m_pIntervalBufferBuiltin.m_interval[2]);
+    self.m_pIntervalEndMinus4.set(&self.m_pIntervalBufferBuiltin.m_interval[INTERVAL_BUFFER_NUMBER - 4]);
 }
 
 //-------------------------------------------------------------------------
@@ -553,16 +553,16 @@ pub fn Destroy(&mut self)
 //  Synopsis:   Reset the coverage buffer
 // 
 //-------------------------------------------------------------------------
-pub fn Reset(&mut self)
+pub fn Reset(&'a self)
 {
     // Reset our coverage structure.  Point the head back to the tail,
     // and reset where the next new entry will be placed:
 
-    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext = Cell::new(&mut self.m_pIntervalBufferBuiltin.m_interval[1]);
+    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext.set(&self.m_pIntervalBufferBuiltin.m_interval[1]);
 
-    self.m_pIntervalBufferCurrent = &mut self.m_pIntervalBufferBuiltin;
-    self.m_pIntervalNew = &mut self.m_pIntervalBufferBuiltin.m_interval[2];
-    self.m_pIntervalEndMinus4 = &mut self.m_pIntervalBufferBuiltin.m_interval[INTERVAL_BUFFER_NUMBER - 4];
+    self.m_pIntervalBufferCurrent.set(Ref::new(&self.m_pIntervalBufferBuiltin));
+    self.m_pIntervalNew.set(&self.m_pIntervalBufferBuiltin.m_interval[2]);
+    self.m_pIntervalEndMinus4.set(&self.m_pIntervalBufferBuiltin.m_interval[INTERVAL_BUFFER_NUMBER - 4]);
 }
 
 //-------------------------------------------------------------------------
@@ -573,42 +573,42 @@ pub fn Reset(&mut self)
 //      Grow our interval buffer.
 //
 //-------------------------------------------------------------------------
-fn Grow(&mut self,
+fn Grow(&'a self,
     ppIntervalNew: &mut *const CCoverageInterval, 
     ppIntervalEndMinus4: &mut *const CCoverageInterval
     ) -> HRESULT
 {
     unsafe {
     let hr: HRESULT = S_OK;
-    let mut pIntervalBufferNew = (*self.m_pIntervalBufferCurrent).m_pNext.get();
+    let mut pIntervalBufferNew = (*self.m_pIntervalBufferCurrent.get()).m_pNext.get();
 
-    if (pIntervalBufferNew == NULL())
+    if (pIntervalBufferNew.is_null())
     {
-        pIntervalBufferNew = self.arena.alloc(Default::default());
+        pIntervalBufferNew = Ref::new(self.arena.alloc(Default::default()));
 
-        IFCOOM!(pIntervalBufferNew);
+        assert!(!pIntervalBufferNew.is_null());
 
-        (*pIntervalBufferNew).m_pNext.set(NULL());
-        (*self.m_pIntervalBufferCurrent).m_pNext.set(pIntervalBufferNew);
+        (*pIntervalBufferNew).m_pNext.set(Ref::null());
+        (*self.m_pIntervalBufferCurrent.get()).m_pNext.set(pIntervalBufferNew);
     }
 
-    self.m_pIntervalBufferCurrent = pIntervalBufferNew;
+    self.m_pIntervalBufferCurrent.set(pIntervalBufferNew);
 
-    self.m_pIntervalNew = &(*pIntervalBufferNew).m_interval[2];
-    self.m_pIntervalEndMinus4 = &(*pIntervalBufferNew).m_interval[INTERVAL_BUFFER_NUMBER - 4];
+    self.m_pIntervalNew.set(&(*pIntervalBufferNew).m_interval[2]);
+    self.m_pIntervalEndMinus4.set(&(*pIntervalBufferNew).m_interval[INTERVAL_BUFFER_NUMBER - 4]);
 
-    *ppIntervalNew = self.m_pIntervalNew;
-    *ppIntervalEndMinus4 = self.m_pIntervalEndMinus4;
+    *ppIntervalNew = self.m_pIntervalNew.get();
+    *ppIntervalEndMinus4 = self.m_pIntervalEndMinus4.get();
 
     return hr;
     }
 }
 
 }
-
-impl Drop for CCoverageBuffer {
+/* 
+impl<'a> Drop for CCoverageBuffer<'a> {
     fn drop(&mut self) {
         self.Destroy();
     }
-}
+}*/
 

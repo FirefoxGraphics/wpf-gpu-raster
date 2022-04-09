@@ -578,7 +578,7 @@ pub fn RasterizePath(
     let mut matrix: CMILMatrix = (*pmatWorldTransform).clone();
     AppendScaleToMatrix(&mut matrix, TOREAL!(16), TOREAL!(16));
 
-    let mut coverageBuffer: CCoverageBuffer = Default::default();
+    let coverageBuffer: CCoverageBuffer = Default::default();
     // Initialize the coverage buffer
     coverageBuffer.Initialize();
 
@@ -658,7 +658,7 @@ pub fn RasterizePath(
     IFC!(self.RasterizeEdges(
         pEdgeActiveList,
         pInactiveArray,
-        &mut coverageBuffer,
+        &coverageBuffer,
         nSubpixelYCurrent,
         nSubpixelYBottom
         ));
@@ -846,14 +846,14 @@ fn SendGeometryModifiers(&self,
 //
 //-------------------------------------------------------------------------
 fn
-GenerateOutputAndClearCoverage(&mut self, coverageBuffer: &mut CCoverageBuffer,
+GenerateOutputAndClearCoverage<'a>(&mut self, coverageBuffer: &'a CCoverageBuffer<'a>,
     nSubpixelY: INT
     ) -> HRESULT
 {
     let hr = S_OK;
     let nPixelY = nSubpixelY >> c_nShift;
 
-    let pIntervalSpanStart: *const CCoverageInterval = coverageBuffer.m_pIntervalStart;
+    let pIntervalSpanStart: *const CCoverageInterval = coverageBuffer.m_pIntervalStart.get();
 
     IFC!(self.m_pIGeometrySink.as_ref().unwrap().borrow_mut().AddComplexScan(nPixelY, pIntervalSpanStart));
 
@@ -1366,10 +1366,10 @@ OutputTrapezoids(&mut self,
 //
 //-------------------------------------------------------------------------
 fn
-RasterizeEdges<'a>(&mut self,
+RasterizeEdges<'a, 'b>(&mut self,
     pEdgeActiveList: Ref<'a, CEdge<'a>>,
     mut pInactiveEdgeArray: &'a mut [CInactiveEdge<'a>],
-    coverageBuffer: &mut CCoverageBuffer,
+    coverageBuffer: &'b CCoverageBuffer<'b>,
     mut nSubpixelYCurrent: INT,
     nSubpixelYBottom: INT
     ) -> HRESULT

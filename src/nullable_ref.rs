@@ -20,6 +20,9 @@ impl<'a, T> Ref<'a, T> {
     pub unsafe fn null() -> Self {
         Ref { ptr: std::ptr::null(), _phantom: PhantomData}
     }
+    pub fn is_null(&self) -> bool {
+        self.ptr.is_null()
+    }
 }
 
 impl<'a, T> Deref for Ref<'a, T> {
