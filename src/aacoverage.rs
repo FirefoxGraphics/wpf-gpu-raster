@@ -76,13 +76,13 @@ impl Default for CCoverageInterval {
 
 struct CCoverageIntervalBuffer<'a>
 {
-    m_pNext: Cell<Ref<'a, CCoverageIntervalBuffer<'a>>>,
+    m_pNext: Cell<Option<& 'a CCoverageIntervalBuffer<'a>>>,
     m_interval: [CCoverageInterval; INTERVAL_BUFFER_NUMBER],
 }
 
 impl<'a>  Default for CCoverageIntervalBuffer<'a> {
     fn default() -> Self {
-        Self { m_pNext: Cell::new(unsafe { Ref::null() }), m_interval: Default::default() }
+        Self { m_pNext: Cell::new(None), m_interval: Default::default() }
     }
 }
 
@@ -522,7 +522,7 @@ pub fn Initialize(&'a self)
     self.m_pIntervalBufferBuiltin.m_interval[1].m_nCoverage.set(0xdeadbeef);
     self.m_pIntervalBufferBuiltin.m_interval[1].m_pNext.set(NULL());
 
-    self.m_pIntervalBufferBuiltin.m_pNext.set(unsafe { Ref::null() });
+    self.m_pIntervalBufferBuiltin.m_pNext.set(None);
     self.m_pIntervalBufferCurrent.set(Ref::new(&self.m_pIntervalBufferBuiltin));
 
     self.m_pIntervalStart.set(&self.m_pIntervalBufferBuiltin.m_interval[0]);
@@ -582,17 +582,16 @@ fn Grow(&'a self,
     let hr: HRESULT = S_OK;
     let mut pIntervalBufferNew = (*self.m_pIntervalBufferCurrent.get()).m_pNext.get();
 
-    if (pIntervalBufferNew.is_null())
+    let pIntervalBufferNew = pIntervalBufferNew.unwrap_or_else(||
     {
-        pIntervalBufferNew = Ref::new(self.arena.alloc(Default::default()));
+        let pIntervalBufferNew = self.arena.alloc(Default::default());
 
-        assert!(!pIntervalBufferNew.is_null());
+        (*pIntervalBufferNew).m_pNext.set(None);
+        (*self.m_pIntervalBufferCurrent.get()).m_pNext.set(Some(pIntervalBufferNew));
+        pIntervalBufferNew
+    });
 
-        (*pIntervalBufferNew).m_pNext.set(Ref::null());
-        (*self.m_pIntervalBufferCurrent.get()).m_pNext.set(pIntervalBufferNew);
-    }
-
-    self.m_pIntervalBufferCurrent.set(pIntervalBufferNew);
+    self.m_pIntervalBufferCurrent.set(Ref::new(pIntervalBufferNew));
 
     self.m_pIntervalNew.set(&(*pIntervalBufferNew).m_interval[2]);
     self.m_pIntervalEndMinus4.set(&(*pIntervalBufferNew).m_interval[INTERVAL_BUFFER_NUMBER - 4]);
