@@ -263,7 +263,7 @@ impl Default for CEdgeAllocation {
         Self { Next: NULL(), Count: Default::default(), EdgeArray: [(); EDGE_STORE_STACK_NUMBER!()].map(|_| Default::default()) }
     }
 }
-
+/* 
 pub struct CEdgeStore {
     /* __field_range(<=, UINT_MAX - 2) */ TotalCount: UINT, // Total edge count in store
     /* __field_range(<=, CurrentBuffer->Count) */
@@ -399,6 +399,8 @@ impl CEdgeStore {
         /*__deref_out_ecount(*puRemaining)*/ ppCurrentEdge: &mut *mut CEdge,
         puRemaining: &mut UINT,
     ) -> HRESULT {
+        panic!()
+        /* 
         unsafe {
             let hr = S_OK;
 
@@ -446,10 +448,10 @@ impl CEdgeStore {
             *puRemaining = EDGE_STORE_STACK_NUMBER!() as u32; //EDGE_STORE_ALLOCATION_NUMBER!();
 
             return hr;
-        }
+        }*/
     }
 }
-
+*/
 /**************************************************************************\
 *
 * Function Description:
@@ -1716,7 +1718,7 @@ pub fn InitializeInactiveArray<'a>(
 
     InsertionSortEdges(rgInactiveArray, count as i32);
 
-    ASSERTINACTIVEARRAY!(unsafe { rgInactiveArray.as_mut_ptr().offset(1) } , count as i32);
+    ASSERTINACTIVEARRAY!(unsafe { rgInactiveArray[1..].as_mut_ptr() } , count as i32);
 
     // Return the 'y' value of the topmost edge:
 
