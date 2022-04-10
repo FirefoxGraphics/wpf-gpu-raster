@@ -15,7 +15,7 @@ use crate::real::CFloatFPU;
 //use crate::types::PathPointType::*;
 use crate::{types::*, TraceTag, __analysis_assume, ASSERTACTIVELISTORDER, IFC, IFCOOM};
 use cfor::cfor;
-use typed_arena::Arena;
+use typed_arena_nomut::Arena;
 
 const S_OK: HRESULT = 0;
 

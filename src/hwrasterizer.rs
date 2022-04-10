@@ -20,7 +20,7 @@ use crate::helpers::Int32x32To64;
 use crate::types::*;
 use cfor::cfor;
 use scopeguard::defer;
-use typed_arena::Arena;
+use typed_arena_nomut::Arena;
 
 //-----------------------------------------------------------------------------
 //

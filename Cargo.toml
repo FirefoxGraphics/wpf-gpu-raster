@@ -17,4 +17,4 @@ usvg = "0.4"
 euclid = "0.22.6"
 cfor = "1.1.0"
 scopeguard = "1.1.0"
-typed-arena = { path = "../../src/rust-typed-arena/" }
+typed-arena-nomut = "0.1.0"

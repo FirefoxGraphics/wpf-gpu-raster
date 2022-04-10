@@ -8,7 +8,7 @@
 
 use std::cell::Cell;
 
-use typed_arena::Arena;
+use typed_arena_nomut::Arena;
 
 //
 //  Description:
