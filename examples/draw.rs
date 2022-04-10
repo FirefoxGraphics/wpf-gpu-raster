@@ -272,10 +272,11 @@ fn main() {
     let opt = usvg::Options::default();
 
     let rtree = usvg::Tree::from_file("tiger.svg", &opt).unwrap();
-    let mut total_vertex_count = 0;
 
     let mut image = TGAImage::new(WIDTH, HEIGHT);
-    for _ in 0..1 {
+    for _ in 0..10 {
+    let mut total_vertex_count = 0;
+    let mut total_time = std::time::Duration::default();
     for node in rtree.root().descendants() {
         use usvg::NodeExt;
         let t = node.transform();
@@ -325,7 +326,11 @@ fn main() {
                     }
                 }
             }
+            let start = std::time::Instant::now();
             let result = builder.rasterize_to_tri_strip(0, 0, WIDTH as i32, HEIGHT as i32);
+            let end = std::time::Instant::now();
+            total_time += (end - start);
+
             println!("vertices {}", result.len());
             total_vertex_count += result.len();
             if result.len() == 0 {
@@ -357,9 +362,9 @@ fn main() {
             }
         }
     }
-    }
 
-    println!("total vertex count {}", total_vertex_count);
+    println!("total vertex count {}, took {}ms", total_vertex_count, total_time.as_secs_f32()*1000.);
+    }
 
 
     image.write("out.png");
