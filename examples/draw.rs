@@ -1,5 +1,5 @@
 use euclid::{default::Transform2D, point2};
-use wpf_gpu_raster::{PathBuilder, PathBuilderRust};
+use wpf_gpu_raster::{PathBuilder};
 
 
 use std::{convert::TryInto, ops::{Index, Mul, Sub, Div, IndexMut, AddAssign}};
@@ -51,7 +51,7 @@ impl<T: Div<Output = T> + Clone + Copy, const N: usize> Div<T> for vec<T, N>  {
     type Output = vec<T, N>;
 
     fn div(self, rhs: T) -> Self::Output {
-        let mut result = self.clone();
+        let mut result = self;
         for i in 0..N {
             result[i] = result[i] / rhs
         }
@@ -75,7 +75,7 @@ trait Unit {
 }
 
 impl Unit for f32 {
-    fn unit() -> Self { return 1. }
+    fn unit() -> Self { 1. }
 }
 
 fn embed<T: Unit + Default + Copy, const DIM: usize, const LEN: usize>(v: &vec<T, DIM>) ->  vec<T, LEN> where [T; LEN]: Default {
@@ -88,20 +88,20 @@ fn embed<T: Unit + Default + Copy, const DIM: usize, const LEN: usize>(v: &vec<T
             fill
         }
     }
-    return ret;
+    ret
 }
 
 fn proj<T: Unit + Default + Copy, const LEN: usize, const DIM: usize>(v: &vec<T, DIM>) ->  vec<T, LEN> where [T; LEN]: Default {
-    let fill = 1;
+    let _fill = 1;
     let mut ret: vec<T, LEN> = Default::default();
     for i in (0..LEN).rev() {
         ret[i] = v[i];
     }
-    return ret;
+    ret
 }
 
 fn cross<T>(v1: vec<T, 3>, v2: vec<T, 3>) -> vec<T, 3> where T: Copy + Mul<Output = T> + Sub<Output = T> {
-    return vec::<T, 3>::new(&[v1[1]*v2[2] - v1[2]*v2[1], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v1[1]*v2[0]]);
+    vec::<T, 3>::new(&[v1[1]*v2[2] - v1[2]*v2[1], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v1[1]*v2[0]])
 }
 
 
@@ -205,7 +205,7 @@ impl TGAImage {
 
         let path = Path::new(path);
         let file = File::create(path).unwrap();
-        let ref mut w = BufWriter::new(file);
+        let w = &mut BufWriter::new(file);
 
         let mut encoder = png::Encoder::new(w, self.width, self.height); // Width is 2 pixels and height is 1.
         encoder.set_color(png::ColorType::Rgb);
@@ -223,12 +223,12 @@ impl Shader {
     fn vertex(&mut self, model: &Model, iface: i32, nthvert: i32) -> Vec4f {
         let gl_Vertex = embed::<_, 3, 4>(&model.vert(iface, nthvert)); // read the vertex from .obj file
         self.coverage[nthvert as usize] = model.color(iface, nthvert)[0]; // read the color from the .obj file
-        return gl_Vertex;
+        gl_Vertex
     }
 
     fn fragment(&self, bar: Vec3f, color: TGAColor) -> TGAColor {
         let intensity = self.coverage*bar;   // interpolate intensity for the current pixel
-        return color*intensity; // well duh
+        color*intensity // well duh
     }
 }
 
@@ -240,10 +240,10 @@ fn barycentric(A: Vec2f, B: Vec2f, C: Vec2f, P: Vec2f) -> Vec3f {
         s[i][2] = A[i]-P[i];
     }
     let u = cross(s[0], s[1]);
-    if (u[2].abs()>1e-2) {// dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
+    if u[2].abs()>1e-2 {// dont forget that u[2] is integer. If it is zero then triangle ABC is degenerate
         return Vec3f::new(&[1.-(u[0]+u[1])/u[2], u[1]/u[2], u[0]/u[2]]);
     }
-    return Vec3f::new(&[-1.,1.,1.]); // in this case generate negative coordinates, it will be thrown away by the rasterizator
+    Vec3f::new(&[-1.,1.,1.]) // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
 
 fn triangle(pts: &[Vec4f], shader: &Shader, image: &mut TGAImage, color: TGAColor) {
@@ -261,7 +261,7 @@ fn triangle(pts: &[Vec4f], shader: &Shader, image: &mut TGAImage, color: TGAColo
             P[0] = x;
             P[1] = y;
             let c = barycentric(proj::<_, 2, 4>(&(pts[0]/pts[0][3])), proj::<_, 2, 4>(&(pts[1]/pts[1][3])), proj::<_, 2, 4>(&(pts[2]/pts[2][3])), proj::<_, 2, 2>(&P.into()));
-            if (c[0]<0. || c[1]<0. || c[2]<0.) { continue };
+            if c[0]<0. || c[1]<0. || c[2]<0. { continue };
             let color = shader.fragment(c, color);
             image.blend(P[0], P[1], color);
         }
@@ -329,7 +329,7 @@ fn main() {
             let start = std::time::Instant::now();
             let result = builder.rasterize_to_tri_strip(0, 0, WIDTH as i32, HEIGHT as i32);
             let end = std::time::Instant::now();
-            total_time += (end - start);
+            total_time += end - start;
 
             println!("vertices {}", result.len());
             total_vertex_count += result.len();
@@ -344,7 +344,7 @@ fn main() {
                 model.colors.push(Vec3f::new(&[color, color, color]));
             }
             for n in 0..result.len()-2 {
-                if (n % 2 == 0) {
+                if n % 2 == 0 {
                     model.faces.push(vec![n, n+1, n+2]);
                 } else {
                     model.faces.push(vec![n+1, n, n+2]);
