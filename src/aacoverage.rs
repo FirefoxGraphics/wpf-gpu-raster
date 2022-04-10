@@ -42,16 +42,16 @@ pub const c_antiAliasMode: MilAntiAliasMode = MilAntiAliasMode::EightByEight;
 // Interval coverage descriptor for our antialiased filler
 //
 
-pub struct CCoverageInterval
+pub struct CCoverageInterval<'a>
 {
-    pub m_pNext: Cell<*const CCoverageInterval>, // m_pNext interval (look for sentinel, not NULL)
+    pub m_pNext: Cell<Ref<'a, CCoverageInterval<'a>>>, // m_pNext interval (look for sentinel, not NULL)
     pub m_nPixelX: Cell<INT>,              // Interval's left edge (m_pNext->X is the right edge)
     pub m_nCoverage: Cell<INT>,            // Pixel coverage for interval
 }
 
-impl Default for CCoverageInterval {
+impl<'a> Default for CCoverageInterval<'a> {
     fn default() -> Self {
-        Self { m_pNext: Cell::new(NULL()), m_nPixelX: Default::default(), m_nCoverage: Default::default() }
+        Self { m_pNext: Cell::new(unsafe { Ref::null() } ), m_nPixelX: Default::default(), m_nCoverage: Default::default() }
     }
 }
 
@@ -77,7 +77,7 @@ impl Default for CCoverageInterval {
 struct CCoverageIntervalBuffer<'a>
 {
     m_pNext: Cell<Option<& 'a CCoverageIntervalBuffer<'a>>>,
-    m_interval: [CCoverageInterval; INTERVAL_BUFFER_NUMBER],
+    m_interval: [CCoverageInterval<'a>; INTERVAL_BUFFER_NUMBER],
 }
 
 impl<'a>  Default for CCoverageIntervalBuffer<'a> {
@@ -154,10 +154,11 @@ private:
         );
 
 public:*/
-    pub m_pIntervalStart: Cell<*const CCoverageInterval>,           // Points to list head entry
+    pub m_pIntervalStart: Cell<Ref<'a, CCoverageInterval<'a>>>,           // Points to list head entry
 
 //private:
-    m_pIntervalNew: Cell<*const CCoverageInterval>,
+    m_pIntervalNew: Cell<Ref<'a, CCoverageInterval<'a>>>,
+    interval_new_index: Cell<usize>,
 
     // The Minus4 in the below variable refers to the position at which
     // we need to Grow the buffer.  The buffer is grown once before an
@@ -174,7 +175,7 @@ public:*/
     // so we need to ensure that at least 4 intervals can be allocated.
     //
 
-    m_pIntervalEndMinus4:  Cell<*const CCoverageInterval>,
+    m_pIntervalEndMinus4:  Cell<Ref<'a, CCoverageInterval<'a>>>,
 
     m_pIntervalBufferBuiltin: CCoverageIntervalBuffer<'a>,
     m_pIntervalBufferCurrent: Cell<Ref<'a, CCoverageIntervalBuffer<'a>>>,
@@ -187,8 +188,9 @@ public:*/
 
 impl<'a> Default for CCoverageBuffer<'a> {
     fn default() -> Self {
-        Self { m_pIntervalStart: Cell::new(NULL()), m_pIntervalNew: Cell::new(NULL()), m_pIntervalEndMinus4: Cell::new(NULL()), m_pIntervalBufferBuiltin: Default::default(), m_pIntervalBufferCurrent: unsafe { Cell::new(Ref::null()) },
-                arena: Arena::new() }
+        Self { m_pIntervalStart: Cell::new(unsafe { Ref::null() }), m_pIntervalNew: Cell::new(unsafe { Ref::null() }), m_pIntervalEndMinus4: Cell::new(unsafe { Ref::null() }), m_pIntervalBufferBuiltin: Default::default(), m_pIntervalBufferCurrent: unsafe { Cell::new(Ref::null()) },
+                arena: Arena::new(),
+            interval_new_index: Cell::new(0) }
     }
 }
 
@@ -206,7 +208,6 @@ impl<'a> CCoverageBuffer<'a> {
 //-------------------------------------------------------------------------
 pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESULT
 {
-    unsafe {
     let hr: HRESULT = S_OK;
     let mut nPixelXNext: INT;
     let nPixelXLeft: INT;
@@ -216,6 +217,7 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
 
     let mut pInterval = self.m_pIntervalStart.get();
     let mut pIntervalNew = self.m_pIntervalNew.get();
+    let mut interval_new_index = self.interval_new_index.get();
     let mut pIntervalEndMinus4 = self.m_pIntervalEndMinus4.get();
 
     // Make sure we have enough room to add two intervals if
@@ -223,7 +225,7 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
 
     if (pIntervalNew >= pIntervalEndMinus4)
     {
-        IFC!(self.Grow(&mut pIntervalNew, &mut pIntervalEndMinus4));
+        IFC!(self.Grow(&mut pIntervalNew, &mut pIntervalEndMinus4, &mut interval_new_index));
     }
 
     // Convert interval to pixel space so that we can insert it 
@@ -254,7 +256,9 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
 
         pInterval = pIntervalNew;
 
-        pIntervalNew = pIntervalNew.offset(1);
+        interval_new_index += 1;
+        pIntervalNew = Ref::new(&Ref::get_ref(self.m_pIntervalBufferCurrent.get()).m_interval[interval_new_index])
+
     }
     else
     {
@@ -288,7 +292,8 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
         (*pIntervalNew).m_pNext.set((*pInterval).m_pNext.get());
         (*pInterval).m_pNext.set(pIntervalNew);
 
-        pIntervalNew = pIntervalNew.offset(1);
+        interval_new_index += 1;
+        pIntervalNew = Ref::new(&Ref::get_ref(self.m_pIntervalBufferCurrent.get()).m_interval[interval_new_index])
     }
     
     //
@@ -304,6 +309,7 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
 
         //Cleanup:
         // Update the coverage buffer new interval
+        self.interval_new_index.set(interval_new_index);
         self.m_pIntervalNew.set(pIntervalNew);
         return hr;
     }
@@ -338,7 +344,8 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
 
         pInterval = pIntervalNew;
 
-        pIntervalNew = pIntervalNew.offset(1);
+        interval_new_index += 1;
+        pIntervalNew = Ref::new(&Ref::get_ref(self.m_pIntervalBufferCurrent.get()).m_interval[interval_new_index])
     }
     else
     {
@@ -365,7 +372,8 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
             (*pIntervalNew).m_pNext.set((*pInterval).m_pNext.get());
             (*pInterval).m_pNext.set(pIntervalNew);
 
-            pIntervalNew = pIntervalNew.offset(1);
+            interval_new_index += 1;
+            pIntervalNew = Ref::new(&Ref::get_ref(self.m_pIntervalBufferCurrent.get()).m_interval[interval_new_index])
         }
 
         (*pInterval).m_nCoverage.set((*pInterval).m_nCoverage.get() + nCoverageRight);
@@ -374,12 +382,11 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
 
 //Cleanup:
     // Update the coverage buffer new interval
-
+    self.interval_new_index.set(interval_new_index);
     self.m_pIntervalNew.set(pIntervalNew);
     
 
     return hr;
-    }
 }
 
 
@@ -516,18 +523,19 @@ pub fn Initialize(&'a self)
 {
     self.m_pIntervalBufferBuiltin.m_interval[0].m_nPixelX.set(INT::MIN);
     self.m_pIntervalBufferBuiltin.m_interval[0].m_nCoverage.set(0);
-    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext.set(&self.m_pIntervalBufferBuiltin.m_interval[1]);
+    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext.set(Ref::new(&self.m_pIntervalBufferBuiltin.m_interval[1]));
 
     self.m_pIntervalBufferBuiltin.m_interval[1].m_nPixelX.set(INT::MAX);
     self.m_pIntervalBufferBuiltin.m_interval[1].m_nCoverage.set(0xdeadbeef);
-    self.m_pIntervalBufferBuiltin.m_interval[1].m_pNext.set(NULL());
+    self.m_pIntervalBufferBuiltin.m_interval[1].m_pNext.set(unsafe { Ref::null() });
 
     self.m_pIntervalBufferBuiltin.m_pNext.set(None);
     self.m_pIntervalBufferCurrent.set(Ref::new(&self.m_pIntervalBufferBuiltin));
 
-    self.m_pIntervalStart.set(&self.m_pIntervalBufferBuiltin.m_interval[0]);
-    self.m_pIntervalNew.set(&self.m_pIntervalBufferBuiltin.m_interval[2]);
-    self.m_pIntervalEndMinus4.set(&self.m_pIntervalBufferBuiltin.m_interval[INTERVAL_BUFFER_NUMBER - 4]);
+    self.m_pIntervalStart.set(Ref::new(&self.m_pIntervalBufferBuiltin.m_interval[0]));
+    self.m_pIntervalNew.set(Ref::new(&self.m_pIntervalBufferBuiltin.m_interval[2]));
+    self.interval_new_index.set(2);
+    self.m_pIntervalEndMinus4.set(Ref::new(&self.m_pIntervalBufferBuiltin.m_interval[INTERVAL_BUFFER_NUMBER - 4]));
 }
 
 //-------------------------------------------------------------------------
@@ -558,11 +566,12 @@ pub fn Reset(&'a self)
     // Reset our coverage structure.  Point the head back to the tail,
     // and reset where the next new entry will be placed:
 
-    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext.set(&self.m_pIntervalBufferBuiltin.m_interval[1]);
+    self.m_pIntervalBufferBuiltin.m_interval[0].m_pNext.set(Ref::new(&self.m_pIntervalBufferBuiltin.m_interval[1]));
 
     self.m_pIntervalBufferCurrent.set(Ref::new(&self.m_pIntervalBufferBuiltin));
-    self.m_pIntervalNew.set(&self.m_pIntervalBufferBuiltin.m_interval[2]);
-    self.m_pIntervalEndMinus4.set(&self.m_pIntervalBufferBuiltin.m_interval[INTERVAL_BUFFER_NUMBER - 4]);
+    self.m_pIntervalNew.set(Ref::new(&self.m_pIntervalBufferBuiltin.m_interval[2]));
+    self.interval_new_index.set(2);
+    self.m_pIntervalEndMinus4.set(Ref::new(&self.m_pIntervalBufferBuiltin.m_interval[INTERVAL_BUFFER_NUMBER - 4]));
 }
 
 //-------------------------------------------------------------------------
@@ -574,11 +583,11 @@ pub fn Reset(&'a self)
 //
 //-------------------------------------------------------------------------
 fn Grow(&'a self,
-    ppIntervalNew: &mut *const CCoverageInterval, 
-    ppIntervalEndMinus4: &mut *const CCoverageInterval
+    ppIntervalNew: &mut Ref<'a, CCoverageInterval<'a>>, 
+    ppIntervalEndMinus4: &mut Ref<'a, CCoverageInterval<'a>>,
+    interval_new_index: &mut usize
     ) -> HRESULT
 {
-    unsafe {
     let hr: HRESULT = S_OK;
     let mut pIntervalBufferNew = (*self.m_pIntervalBufferCurrent.get()).m_pNext.get();
 
@@ -593,14 +602,15 @@ fn Grow(&'a self,
 
     self.m_pIntervalBufferCurrent.set(Ref::new(pIntervalBufferNew));
 
-    self.m_pIntervalNew.set(&(*pIntervalBufferNew).m_interval[2]);
-    self.m_pIntervalEndMinus4.set(&(*pIntervalBufferNew).m_interval[INTERVAL_BUFFER_NUMBER - 4]);
+    self.m_pIntervalNew.set(Ref::new(&(*pIntervalBufferNew).m_interval[2]));
+    self.interval_new_index.set(2);
+    self.m_pIntervalEndMinus4.set(Ref::new(&(*pIntervalBufferNew).m_interval[INTERVAL_BUFFER_NUMBER - 4]));
 
     *ppIntervalNew = self.m_pIntervalNew.get();
     *ppIntervalEndMinus4 = self.m_pIntervalEndMinus4.get();
+    *interval_new_index = 2;
 
     return hr;
-    }
 }
 
 }

@@ -1,4 +1,5 @@
 use crate::aacoverage::CCoverageInterval;
+use crate::nullable_ref::Ref;
 use crate::types::*;
 
 pub trait IGeometrySink
@@ -49,7 +50,7 @@ pub trait IGeometrySink
     fn AddComplexScan(&mut self,
         nPixelY: INT,
             // In: y coordinate in pixel space
-            pIntervalSpanStart: *const CCoverageInterval
+            pIntervalSpanStart: Ref<CCoverageInterval>
             // In: coverage segments
         ) -> HRESULT;
     

@@ -853,7 +853,7 @@ GenerateOutputAndClearCoverage<'a>(&mut self, coverageBuffer: &'a CCoverageBuffe
     let hr = S_OK;
     let nPixelY = nSubpixelY >> c_nShift;
 
-    let pIntervalSpanStart: *const CCoverageInterval = coverageBuffer.m_pIntervalStart.get();
+    let pIntervalSpanStart: Ref<CCoverageInterval> = coverageBuffer.m_pIntervalStart.get();
 
     IFC!(self.m_pIGeometrySink.as_ref().unwrap().borrow_mut().AddComplexScan(nPixelY, pIntervalSpanStart));
 

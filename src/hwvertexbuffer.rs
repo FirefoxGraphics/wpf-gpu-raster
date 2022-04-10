@@ -108,7 +108,7 @@ const FLOAT_ONE: DWORD = 0x3f800000;
 
 use std::rc::Rc;
 
-use crate::{types::*, RRETURN, geometry_sink::IGeometrySink, IFC, aacoverage::c_nShiftSizeSquared, OutputVertex};
+use crate::{types::*, RRETURN, geometry_sink::IGeometrySink, IFC, aacoverage::c_nShiftSizeSquared, OutputVertex, nullable_ref::Ref};
 
 
 //+----------------------------------------------------------------------------
@@ -2204,10 +2204,9 @@ Cleanup:
     fn AddComplexScan(&mut self,
         nPixelY: INT,
             // In: y coordinate in pixel space
-            mut pIntervalSpanStart: *const crate::aacoverage::CCoverageInterval
+            mut pIntervalSpanStart: Ref<crate::aacoverage::CCoverageInterval>
             // In: coverage segments
         ) -> HRESULT {
-    unsafe {
 
     let hr: HRESULT = S_OK;
     let pVertex: *mut CD3DVertexXYZDUV2 = NULL();
@@ -2281,7 +2280,7 @@ Cleanup:
 
     while ((*pIntervalSpanStart).m_nPixelX.get() != INT::MAX)
     {
-        assert!((*pIntervalSpanStart).m_pNext.get() != NULL());
+        assert!(!(*pIntervalSpanStart).m_pNext.get().is_null());
 
         //
         // Output line list segments
@@ -2367,7 +2366,7 @@ Cleanup:
 
 //Cleanup:
     RRETURN!(hr);
-}
+
 }
         }
 
