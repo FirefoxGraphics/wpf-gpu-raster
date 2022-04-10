@@ -1618,36 +1618,34 @@ macro_rules! ASSERTINACTIVEARRAY {
 }
 fn AssertInactiveArray(
     /*__in_ecount(count)*/
-    mut inactive: *const CInactiveEdge, // Annotation should allow the -1 element
+    mut inactive: &[CInactiveEdge], // Annotation should allow the -1 element
     mut count: INT,
 ) {
-    unsafe {
     // Verify the head:
 
     /*#if !ANALYSIS*/
     // #if needed because prefast don't know that the -1 element is avaliable
-    assert!((*inactive.offset(-1)).Yx == i64::MIN);
+    assert!(inactive[0].Yx == i64::MIN);
     /*#endif*/
-    assert!((*inactive).Yx != i64::MIN);
+    assert!(inactive[1].Yx != i64::MIN);
 
     while {
         let mut yx: LONGLONG = 0;
-        YX((*(*inactive).Edge).X.get(), (*(*inactive).Edge).StartY, &mut yx);
+        YX((*inactive[1].Edge).X.get(), (*inactive[1].Edge).StartY, &mut yx);
 
-        assert!((*inactive).Yx == yx);
+        assert!(inactive[1].Yx == yx);
         /*#if !ANALYSIS*/
         // #if needed because tools don't know that the -1 element is avaliable
-        assert!((*inactive).Yx >= (*inactive.offset(- 1)).Yx);
+        assert!(inactive[1].Yx >= inactive[0].Yx);
         /*#endif*/
-        inactive = inactive.offset(1);
+        inactive = &inactive[1..];
         count -= 1;
         count != 0
     } {}
 
     // Verify that the tail is setup appropriately:
 
-    assert!((*(*inactive).Edge).StartY == INT::MAX);
-    }
+    assert!((*inactive[1].Edge).StartY == INT::MAX);
 }
 
 /**************************************************************************\
@@ -1718,7 +1716,7 @@ pub fn InitializeInactiveArray<'a>(
 
     InsertionSortEdges(rgInactiveArray, count as i32);
 
-    ASSERTINACTIVEARRAY!(unsafe { rgInactiveArray[1..].as_mut_ptr() } , count as i32);
+    ASSERTINACTIVEARRAY!(rgInactiveArray, count as i32);
 
     // Return the 'y' value of the topmost edge:
 
