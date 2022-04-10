@@ -45,52 +45,7 @@ impl std::hash::Hash for OutputVertex {
     }
 }
 
-extern "C" {
-    fn pathbuilder_new() -> *mut c_void;
-    fn pathbuilder_line_to(ptr: *mut c_void, x: f32, y: f32);
-    fn pathbuilder_move_to(ptr: *mut c_void, x: f32, y: f32);
-    fn pathbuilder_curve_to(ptr: *mut c_void, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32);
-    fn pathbuilder_close(ptr: *mut c_void);
-    fn pathbuilder_rasterize(ptr: *mut c_void, out_len: *mut usize, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> *mut OutputVertex;
-    fn pathbuilder_delete(ptr: *mut c_void);
-    fn pathbuilder_set_fill_mode(ptr: *mut c_void, fill_mode: i32); 
-}
 
-pub struct PathBuilder {
-    ptr: *mut c_void
-}
-
-impl PathBuilder {
-    pub fn new() -> Self {
-        Self { ptr: unsafe { pathbuilder_new() } }
-    }
-    pub fn set_fill_mode(&mut self, fill_mode: FillMode) {
-        unsafe { pathbuilder_set_fill_mode(self.ptr, fill_mode as i32); }
-    }
-    pub fn line_to(&mut self, x: f32, y: f32) {
-        unsafe { pathbuilder_line_to(self.ptr, x, y); }
-    }
-    pub fn move_to(&mut self, x: f32, y: f32) {
-        unsafe { pathbuilder_move_to(self.ptr, x, y); }
-    }
-    pub fn curve_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
-        unsafe { pathbuilder_curve_to(self.ptr, c1x, c1y, c2x, c2y, x, y); }
-    }
-    pub fn close(&mut self) {
-        unsafe { pathbuilder_close(self.ptr); }
-    }
-    pub fn rasterize_to_tri_strip(&mut self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
-        let mut len = 0;
-        let ptr = unsafe { pathbuilder_rasterize(self.ptr, &mut len, clip_x, clip_y, clip_width, clip_height) };
-        unsafe { Box::from_raw(std::slice::from_raw_parts_mut(ptr, len)) }
-    }
-}
-
-impl Drop for PathBuilder {
-    fn drop(&mut self) {
-        unsafe { pathbuilder_delete(self.ptr); }
-    }
-}
 
 struct RectShape;
 
@@ -114,7 +69,7 @@ impl IShapeData for RectShape {
 }
 
 
-
+pub type PathBuilder = PathBuilderRust;
 
 pub struct PathBuilderRust {
     points: DynArray<MilPoint2F>,
@@ -124,66 +79,6 @@ pub struct PathBuilderRust {
     outside_bounds: Option<CMILSurfaceRect>,
     need_inside: bool
 }
-
-/*struct PathBuilder : CShapeBase {
-    DynArray<MilPoint2F> points;
-    DynArray<BYTE> types;
-    bool has_initial = false;
-    MilPoint2F initial_point;
-    MilFillMode::Enum fill_mode = MilFillMode::Alternate;
-    override HRESULT ConvertToGpPath(
-                                         __out_ecount(1) DynArray<MilPoint2F> &rgPoints,
-                                         // Path points
-                                         __out_ecount(1) DynArray<BYTE>      &rgTypes,
-                                         // Path types
-                                         IN  bool                fStroking
-                                         // Stroking if true, filling otherwise (optional)
-                                    ) const
-    {
-            rgPoints.Copy(points);
-            rgTypes.Copy(types);
-    }
-    MilFillMode::Enum GetFillMode() const {
-                    return fill_mode;
-    }
-    bool HasGaps() const { return false;
-    }
-    bool HasHollows() const { return false; }
-    bool IsEmpty() const { return false; }
-    UINT GetFigureCount() const { return 1; }
-    bool IsAxisAlignedRectangle() const { return false; }
-
-    virtual bool GetCachedBoundsCore(
-    __out_ecount(1) MilRectF &rect) const { abort(); }
-    virtual void SetCachedBounds(
-    __in_ecount(1) const MilRectF &rect) const { abort(); };  // Bounding box to cache
-
-    virtual __outro_ecount(1) const IFigureData &GetFigure(IN UINT index) const { abort(); }
-    void line_to(float x, float y) {
-            types.Add(PathPointTypeLine);
-            points.Add({x, y});
-    }
-    void move_to(float x, float y) {
-            types.Add(PathPointTypeStart);
-            points.Add({x, y});
-            initial_point = {x, y};
-    }
-    void curve_to(float c1x, float c1y, float c2x, float c2y, float x, float y) {
-            points.Add({c1x, c1y});
-            points.Add({c2x, c2y});
-            points.Add({x, y});
-            types.AddAndSet(3, PathPointTypeBezier);
-    }
-    void close() {
-            if (has_initial) {
-                    points.Add(initial_point);
-                    types.Add(PathPointTypeLine | PathPointTypeCloseSubpath);
-            }
-    }
-
-    OutputVertex *rasterize(size_t *outLen, int clip_x, int clip_y, int clip_width, int clip_height);
-
-};*/
 
 impl PathBuilderRust {
     pub fn new() -> Self {
