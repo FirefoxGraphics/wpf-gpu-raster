@@ -313,6 +313,7 @@ mod tests {
         t.hash(&mut s);
         s.finish()
     }
+    #[cfg(not(miri))]
     #[test]
     fn basic() {
         let mut p = PathBuilder::new();
@@ -325,7 +326,7 @@ mod tests {
         assert_eq!(dbg!(calculate_hash(&result)), 0x91582a1f5e431eb6);
     }
 
-
+    #[cfg(not(miri))]
     #[test]
     fn simple() {
         let mut p = PathBuilder::new();

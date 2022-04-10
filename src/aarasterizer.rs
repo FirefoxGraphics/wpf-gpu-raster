@@ -1283,7 +1283,7 @@ pub fn FixedPointPathEnumerate(
                     __analysis_assume!(
                         buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER
                     );
-                    assert!(unsafe { buffer.as_ptr().offset(bufferSize as isize) == bufferStartPtr.offset(ENUMERATE_BUFFER_NUMBER!()) });
+                    assert!(buffer.as_ptr().wrapping_offset(bufferSize as isize) == bufferStartPtr.wrapping_offset(ENUMERATE_BUFFER_NUMBER!()) );
 
                     iStart += thisCount;
                     buffer = &mut buffer[thisCount..];
@@ -1338,7 +1338,7 @@ pub fn FixedPointPathEnumerate(
                     __analysis_assume!(
                         buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER!()
                     );
-                    assert!(unsafe { buffer.as_ptr().offset(bufferSize as isize) == bufferStartPtr.offset(ENUMERATE_BUFFER_NUMBER!()) });
+                    assert!(buffer.as_ptr().wrapping_offset(bufferSize as isize) == bufferStartPtr.wrapping_offset(ENUMERATE_BUFFER_NUMBER!()));
 
                     buffer = &mut buffer[thisCount..];
                     bufferSize -= thisCount;
