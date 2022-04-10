@@ -1,5 +1,7 @@
 .*.swp
 *.o
 *.dSYM
+.vscode/
 main
 target
+tiger.svg
