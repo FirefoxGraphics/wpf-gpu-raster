@@ -11,4 +11,7 @@ Future
 When flatening curves if we try to flatten at integer values
 we can avoid the ComplexSpan code path.
 
+Direct2D uses a triangle for line segments intead of a quad. This reduces the number of vertices
+for a line segment from 6 down to 5
+
 
