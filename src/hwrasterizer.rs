@@ -6,20 +6,17 @@
 
 
 use std::cell::RefCell;
-use std::default;
-use std::ptr::NonNull;
 use std::rc::Rc;
 
 use crate::aacoverage::{CCoverageBuffer, c_rInvShiftSize, c_antiAliasMode, c_nShift, CCoverageInterval, c_nShiftMask, c_nShiftSize, c_nHalfShiftSize};
 use crate::hwvertexbuffer::CHwVertexBufferBuilder;
 use crate::matrix::{CMILMatrix, CMatrix};
 use crate::nullable_ref::Ref;
-use crate::{aarasterizer::*, ASSERTACTIVELIST, IsTagEnabled, RRETURN1, RRETURN, INACTIVE_LIST_NUMBER, FIX4_ONE, FIX4_PRECISION, TOREAL, EDGE_STORE_STACK_NUMBER};
+use crate::{aarasterizer::*, ASSERTACTIVELIST, IsTagEnabled, RRETURN1, RRETURN, INACTIVE_LIST_NUMBER, FIX4_ONE, FIX4_PRECISION, TOREAL, EDGE_STORE_STACK_NUMBER, IFC};
 use crate::geometry_sink::IGeometrySink;
 use crate::helpers::Int32x32To64;
 use crate::types::*;
 use cfor::cfor;
-use scopeguard::defer;
 use typed_arena_nomut::Arena;
 
 //-----------------------------------------------------------------------------
@@ -34,13 +31,6 @@ use typed_arena_nomut::Arena;
 //
 //   pursue reduced code duplication
 //
-
-
-macro_rules! IFC {
-    ($e: expr) => {
-        assert_eq!($e, S_OK);
-    }
-}
 
 macro_rules! MIL_THR {
     ($e: expr) => {

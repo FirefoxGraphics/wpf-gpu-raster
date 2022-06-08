@@ -1,7 +1,5 @@
 use std::{marker::PhantomData, ops::Deref};
 
-use png::ParameterError;
-
 pub struct Ref<'a, T> {
     ptr: *const T,
     _phantom: PhantomData<&'a T>
