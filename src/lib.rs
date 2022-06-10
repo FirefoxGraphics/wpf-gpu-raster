@@ -323,7 +323,7 @@ mod tests {
         p.close();
         p.set_outside_bounds(Some((0, 0, 50, 50)), false);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        //assert_eq!(dbg!(calculate_hash(&result)), 0xab9e651ac1aa1d48);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x27edd1fbd58b4d90);
     }
 
     #[test]
@@ -336,6 +336,6 @@ mod tests {
         p.close();
         p.set_outside_bounds(Some((0, 0, 50, 50)), true);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        //assert_eq!(dbg!(calculate_hash(&result)), 0xab9e651ac1aa1d48);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x74454613e878570);
     }
 }
