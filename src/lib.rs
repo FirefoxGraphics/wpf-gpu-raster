@@ -16,14 +16,14 @@ mod real;
 mod fix;
 mod nullable_ref;
 
-use std::{ffi::c_void, rc::Rc, cell::{RefCell, Cell}, mem::take};
+use std::{rc::Rc, cell::{RefCell, Cell}, mem::take};
 
 use hwrasterizer::CHwRasterizer;
-use hwvertexbuffer::{CHwVertexBufferBuilder, CHwVertexBuffer};
+use hwvertexbuffer::CHwVertexBufferBuilder;
 use matrix::CMatrix;
 use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath, CMILSurfaceRect};
 
-use crate::{geometry_sink::IGeometrySink, types::MilAntiAliasMode};
+
 #[repr(C)]
 #[derive(Debug, Default)]
 pub struct OutputVertex {
