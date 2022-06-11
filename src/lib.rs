@@ -287,6 +287,7 @@ mod tests {
     #[test]
     fn partial_coverage_last_line() {
         let mut p = PathBuilder::new();
+        
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(40., 39.6);
@@ -296,6 +297,21 @@ mod tests {
         assert_eq!(result.len(), 16);
         assert_eq!(dbg!(calculate_hash(&result)), 0xf31cd214f48dafbf);
     }
+
+    #[test]
+    fn delta_upper_bound() {
+        let mut p = PathBuilder::new();
+        p.move_to(-122.3 + 200.,84.285);
+        p.curve_to(-122.3 + 200., 84.285, -122.2 + 200.,86.179, -123.03 + 200., 86.16);
+        p.curve_to(-123.85 + 200., 86.141, -140.3 + 200., 38.066, -160.83 + 200., 40.309);
+        p.curve_to(-160.83 + 200., 40.309, -143.05 + 200., 32.956,  -122.3 + 200., 84.285);
+        p.close();
+
+        let result = p.rasterize_to_tri_strip(0, 0, 400, 400);
+        assert_eq!(result.len(), 676);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x3208fd473e65e40a);
+    }
+
 
     #[test]
     fn self_intersect() {

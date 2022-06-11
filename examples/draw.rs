@@ -301,6 +301,7 @@ fn main() {
                 }
             };
             let mut builder = PathBuilder::new();
+            dbg!(&usvg_path.segments);
             for segment in &usvg_path.segments {
                 match *segment {
                     usvg::PathSegment::MoveTo { x, y } => {
