@@ -208,7 +208,6 @@ mod tests {
         t.hash(&mut s);
         s.finish()
     }
-    #[cfg(not(miri))]
     #[test]
     fn basic() {
         let mut p = PathBuilder::new();
@@ -218,10 +217,10 @@ mod tests {
         p.line_to(30., 10.);
         p.close();
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 10);
         assert_eq!(dbg!(calculate_hash(&result)), 0x91582a1f5e431eb6);
     }
 
-    #[cfg(not(miri))]
     #[test]
     fn simple() {
         let mut p = PathBuilder::new();
@@ -283,6 +282,19 @@ mod tests {
         p.close();
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x2b4a3e89d19fb5d5);
+    }
+
+    #[test]
+    fn partial_coverage_last_line() {
+        let mut p = PathBuilder::new();
+        p.move_to(10., 10.);
+        p.line_to(40., 10.);
+        p.line_to(40., 39.6);
+        p.line_to(10., 39.6);
+
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 16);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xf31cd214f48dafbf);
     }
 
     #[test]
