@@ -16,7 +16,7 @@ use typed_arena_nomut::Arena;
 //
 use crate::aarasterizer::{AssertActiveList, CEdge};
 use crate::nullable_ref::Ref;
-use crate::{types::*, IFC, ASSERTACTIVELIST, IFCOOM};
+use crate::{types::*, IFC, ASSERTACTIVELIST};
 //struct CEdge;
 //struct CInactiveEdge;
 
@@ -589,7 +589,7 @@ fn Grow(&'a self,
     ) -> HRESULT
 {
     let hr: HRESULT = S_OK;
-    let mut pIntervalBufferNew = (*self.m_pIntervalBufferCurrent.get()).m_pNext.get();
+    let pIntervalBufferNew = (*self.m_pIntervalBufferCurrent.get()).m_pNext.get();
 
     let pIntervalBufferNew = pIntervalBufferNew.unwrap_or_else(||
     {

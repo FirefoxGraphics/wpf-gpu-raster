@@ -35,6 +35,7 @@
 
 
 #![allow(unused_parens)]
+#![allow(non_upper_case_globals)]
 //+-----------------------------------------------------------------------------
 //
 
@@ -80,7 +81,7 @@ const HFD32_ADDITIONAL_SHIFT: i32 = 3;
 #else
 */
 use crate::types::*;
-
+/* 
 // Flatten to an error of 1/4.  During initial phase, use 18.14 format.
 
 const TEST_MAGNITUDE_INITIAL: i32 =   (6 * 0x00001000);
@@ -88,7 +89,7 @@ const TEST_MAGNITUDE_INITIAL: i32 =   (6 * 0x00001000);
 // Error of 1/4.  During normal phase, use 15.17 format.
 
 const TEST_MAGNITUDE_NORMAL: i32 =    (TEST_MAGNITUDE_INITIAL << 3);
-
+*/
 
 // I have modified the constants for HFD32 as part of fixing accuracy errors
 // (Bug 816015).  Something similar could be done for the 64 bit hfd, but it ain't
@@ -178,10 +179,6 @@ const HFD32_MAX_SIZE: LONGLONG = 0xffffc000;
 // 
 // In vDoubleStepSize we know that abs(e2), abs(e3) < HFD32_TEST_MAGNITUDE/4, otherwise we
 // would not have doubled the step.
-
-struct BEZIERCONTROLS {
-    ptfx: [POINT; 4],
-}
 
 #[derive(Default)]
 struct HfdBasis32
@@ -541,8 +538,8 @@ fn fxValue(&self) -> INT
 fn vInit(&mut self, p1: INT, p2: INT, p3: INT, p4: INT)
 {
     let mut eqTmp;
-    let mut eqP2 = p2 as LONGLONG;
-    let mut eqP3 = p3 as LONGLONG;
+    let eqP2 = p2 as LONGLONG;
+    let eqP3 = p3 as LONGLONG;
 
 // e0 = p1
 // e1 = p4 - p1
@@ -726,7 +723,6 @@ fn cFlatten(
     let mut aptfx: [POINT; 4] = Default::default();
     let mut cptfx = pptfx.len();
     let mut rcfxBound: RECT;
-    let eqTmp: LONGLONG;
     let cptfxOriginal = cptfx;
 
     assert!(cptfx > 0);

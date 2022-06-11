@@ -2,6 +2,7 @@
 #![allow(overflowing_literals)]
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
+#![allow(non_upper_case_globals)]
 
 mod bezier;
 mod hwrasterizer;
@@ -185,7 +186,7 @@ impl PathBuilderRust {
             let m_pHP = &pipeline;
         
             rasterizer.GetPerVertexDataType(&mut m_mvfIn);
-            let mut vertexBuilder= Rc::new(RefCell::new(CHwVertexBufferBuilder::Create(m_mvfIn,                                          m_mvfIn | m_mvfGenerated,
+            let vertexBuilder= Rc::new(RefCell::new(CHwVertexBufferBuilder::Create(m_mvfIn,                                          m_mvfIn | m_mvfGenerated,
                 mvfaAALocation,
                 m_pHP.m_pDevice.clone())));
         
