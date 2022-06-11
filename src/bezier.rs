@@ -917,3 +917,19 @@ fn flatten32() {
     assert_eq!(more, false);
 }
 
+#[test]
+fn flatten32_double_step_size() {
+    let curve: [POINT; 4] = [
+    POINT{x: 1761, y: 8152},
+    POINT{x: 1761, y: 8152},
+    POINT{x: 1750, y: 8355},
+    POINT{x: 1795, y: 8445}];
+    let mut bez = CMILBezier::new(&curve, None);
+    let mut result: [POINT; 32] = Default::default();
+    let mut more: bool = false;
+    let count = bez.Flatten(&mut result, &mut more);
+    assert_eq!(count, 7);
+    assert_eq!(more, false);
+}
+
+
