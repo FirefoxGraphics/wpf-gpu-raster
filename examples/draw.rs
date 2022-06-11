@@ -1,3 +1,5 @@
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
 use euclid::{default::Transform2D, point2};
 use wpf_gpu_raster::{PathBuilder};
 

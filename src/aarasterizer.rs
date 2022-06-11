@@ -13,7 +13,7 @@ use crate::matrix::CMILMatrix;
 use crate::nullable_ref::Ref;
 use crate::real::CFloatFPU;
 //use crate::types::PathPointType::*;
-use crate::{types::*, TraceTag, __analysis_assume, ASSERTACTIVELISTORDER, IFC, IFCOOM};
+use crate::{types::*, TraceTag, __analysis_assume, ASSERTACTIVELISTORDER, IFC};
 use cfor::cfor;
 use typed_arena_nomut::Arena;
 
@@ -1670,10 +1670,6 @@ pub fn InitializeInactiveArray<'a>(
     count: UINT,
     tailEdge: Ref<'a, CEdge<'a>> // Tail sentinel for inactive list
 ) -> INT {
-
-    //let mut isMore;
-    let mut pActiveEdge: Ref<CEdge> = unsafe { Ref::null() };
-    let mut pActiveEdgeEnd: Ref<CEdge> = unsafe { Ref::null() };
     let rgInactiveArrayPtr = rgInactiveArray.as_mut_ptr();
 
     // First initialize the inactive array.  Skip the first entry,
