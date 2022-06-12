@@ -7,8 +7,9 @@
 #[macro_use]
 mod fix;
 mod bezier;
-mod hwrasterizer;
+#[macro_use]
 mod aarasterizer;
+mod hwrasterizer;
 mod aacoverage;
 mod hwvertexbuffer;
 mod helpers;

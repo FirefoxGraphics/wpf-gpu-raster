@@ -13,7 +13,7 @@ use crate::matrix::CMILMatrix;
 use crate::nullable_ref::Ref;
 use crate::real::CFloatFPU;
 //use crate::types::PathPointType::*;
-use crate::{types::*, TraceTag, __analysis_assume, ASSERTACTIVELISTORDER, IFC};
+use crate::{types::*, TraceTag, __analysis_assume, IFC};
 use cfor::cfor;
 use typed_arena_nomut::Arena;
 
@@ -79,7 +79,6 @@ macro_rules! NOMINAL_FILL_POINT_NUMBER {
     };
 }
 
-#[macro_export]
 macro_rules! ASSERTACTIVELIST {
     ($list: expr, $y: expr) => {
         AssertActiveList($list, $y);
@@ -129,6 +128,12 @@ impl<'a> Default for CInactiveEdge<'a> {
             Yx: Default::default(),
         }
     }
+}
+
+macro_rules! ASSERTACTIVELISTORDER {
+    ($list: expr) => {
+        AssertActiveListOrder($list)
+    };
 }
 
 /**************************************************************************\
@@ -520,12 +525,7 @@ pub fn AssertActiveList(mut list: Ref<CEdge>, yCurrent: INT) -> bool {
 *   03/25/2000 andrewgo
 *
 \**************************************************************************/
-#[macro_export]
-macro_rules! ASSERTACTIVELISTORDER {
-    ($list: expr) => {
-        AssertActiveListOrder($list)
-    };
-}
+
 fn AssertActiveListOrder(mut list:  Ref<CEdge>) {
 
     let mut activeCount = 0;
