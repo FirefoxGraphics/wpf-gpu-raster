@@ -6,17 +6,21 @@
 
 #[macro_use]
 mod fix;
+#[macro_use]
+mod helpers;
+#[macro_use]
+mod real;
 mod bezier;
 #[macro_use]
 mod aarasterizer;
 mod hwrasterizer;
 mod aacoverage;
 mod hwvertexbuffer;
-mod helpers;
+
 mod types;
 mod geometry_sink;
 mod matrix;
-mod real;
+
 mod nullable_ref;
 
 use std::{rc::Rc, cell::{RefCell, Cell}, mem::take};

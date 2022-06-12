@@ -16,7 +16,7 @@ use typed_arena_nomut::Arena;
 //
 use crate::aarasterizer::{AssertActiveList, CEdge};
 use crate::nullable_ref::Ref;
-use crate::{types::*, IFC};
+use crate::types::*;
 //struct CEdge;
 //struct CInactiveEdge;
 

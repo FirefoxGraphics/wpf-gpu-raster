@@ -13,14 +13,13 @@ use crate::matrix::CMILMatrix;
 use crate::nullable_ref::Ref;
 use crate::real::CFloatFPU;
 //use crate::types::PathPointType::*;
-use crate::{types::*, TraceTag, __analysis_assume, IFC};
+use crate::types::*;
 use cfor::cfor;
 use typed_arena_nomut::Arena;
 
 const S_OK: HRESULT = 0;
 
 #[cfg(debug)]
-#[macro_export]
 macro_rules! EDGE_STORE_STACK_NUMBER {
     () => {
         10
@@ -33,7 +32,6 @@ macro_rules! EDGE_STORE_ALLOCATION_NUMBER {
     };
 }
 #[cfg(debug)]
-#[macro_export]
 macro_rules! INACTIVE_LIST_NUMBER {
     () => {
         12
@@ -55,7 +53,6 @@ macro_rules! NOMINAL_FILL_POINT_NUMBER {
 }
 
 #[cfg(not(debug))]
-#[macro_export]
 macro_rules! EDGE_STORE_STACK_NUMBER {
     () => {
         (1600 / std::mem::size_of::<CEdge>())
@@ -68,7 +65,6 @@ macro_rules! EDGE_STORE_ALLOCATION_NUMBER {
     };
 }
 #[cfg(not(debug))]
-#[macro_export]
 macro_rules! INACTIVE_LIST_NUMBER { () => { EDGE_STORE_STACK_NUMBER!() }; }
 #[cfg(not(debug))]
 macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 32 }; }

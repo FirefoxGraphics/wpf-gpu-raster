@@ -12,7 +12,7 @@ use crate::aacoverage::{CCoverageBuffer, c_rInvShiftSize, c_antiAliasMode, c_nSh
 use crate::hwvertexbuffer::CHwVertexBufferBuilder;
 use crate::matrix::{CMILMatrix, CMatrix};
 use crate::nullable_ref::Ref;
-use crate::{aarasterizer::*, IsTagEnabled, RRETURN1, RRETURN, INACTIVE_LIST_NUMBER, TOREAL, EDGE_STORE_STACK_NUMBER, IFC};
+use crate::aarasterizer::*;
 use crate::geometry_sink::IGeometrySink;
 use crate::helpers::Int32x32To64;
 use crate::types::*;

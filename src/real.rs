@@ -156,5 +156,4 @@ pub fn Round(x: f32) -> i32
 }
 }
 
-#[macro_export]
 macro_rules! TOREAL { ($e: expr) => { $e as REAL } }

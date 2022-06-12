@@ -108,7 +108,7 @@ const FLOAT_ONE: DWORD = 0x3f800000;
 
 use std::rc::Rc;
 
-use crate::{types::*, RRETURN, geometry_sink::IGeometrySink, IFC, aacoverage::c_nShiftSizeSquared, OutputVertex, nullable_ref::Ref};
+use crate::{types::*, geometry_sink::IGeometrySink, aacoverage::c_nShiftSizeSquared, OutputVertex, nullable_ref::Ref};
 
 
 //+----------------------------------------------------------------------------
