@@ -75,10 +75,7 @@ impl IShapeData for RectShape {
     }
 }
 
-
-pub type PathBuilder = PathBuilderRust;
-
-pub struct PathBuilderRust {
+pub struct PathBuilder {
     points: DynArray<MilPoint2F>,
     types: DynArray<BYTE>,
     initial_point: Option<MilPoint2F>,
@@ -87,7 +84,7 @@ pub struct PathBuilderRust {
     need_inside: bool
 }
 
-impl PathBuilderRust {
+impl PathBuilder {
     pub fn new() -> Self {
         Self {
         points: Vec::new(),
@@ -152,7 +149,6 @@ impl PathBuilderRust {
             /* 
             device.m_rcViewport = device.clipRect;
         */
-            let shape = RectShape{};
             let pointsScratch = Rc::new(RefCell::new(Vec::new()));
             let typesScratch = Rc::new(RefCell::new(Vec::new()));
             let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
@@ -240,7 +236,7 @@ mod tests {
 
     #[test]
     fn rust() {
-        let mut p = PathBuilderRust::new();
+        let mut p = PathBuilder::new();
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(40., 40.);
@@ -250,7 +246,7 @@ mod tests {
 
     #[test]
     fn fill_mode() {
-        let mut p = PathBuilderRust::new();
+        let mut p = PathBuilder::new();
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(40., 40.);
@@ -264,7 +260,7 @@ mod tests {
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x81d3f6981834234b);
 
-        let mut p = PathBuilderRust::new();
+        let mut p = PathBuilder::new();
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(40., 40.);
@@ -283,7 +279,7 @@ mod tests {
 
     #[test]
     fn curve() {
-        let mut p = PathBuilderRust::new();
+        let mut p = PathBuilder::new();
         p.move_to(10., 10.);
         p.curve_to(40., 10., 40., 10., 40., 40.);
         p.close();
@@ -322,7 +318,7 @@ mod tests {
 
     #[test]
     fn self_intersect() {
-        let mut p = PathBuilderRust::new();
+        let mut p = PathBuilder::new();
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(10., 40.);
@@ -334,7 +330,7 @@ mod tests {
 
     #[test]
     fn grid() {
-        let mut p = PathBuilderRust::new();
+        let mut p = PathBuilder::new();
 
         for i in 0..200 {
             let offset = i as f32 * 1.3;
@@ -350,7 +346,7 @@ mod tests {
 
     #[test]
     fn outside() {
-        let mut p = PathBuilderRust::new();
+        let mut p = PathBuilder::new();
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(10., 40.);
@@ -363,7 +359,7 @@ mod tests {
 
     #[test]
     fn outside_inside() {
-        let mut p = PathBuilderRust::new();
+        let mut p = PathBuilder::new();
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(10., 40.);
