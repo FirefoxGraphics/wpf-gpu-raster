@@ -4,6 +4,8 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+#[macro_use]
+mod fix;
 mod bezier;
 mod hwrasterizer;
 mod aarasterizer;
@@ -14,7 +16,6 @@ mod types;
 mod geometry_sink;
 mod matrix;
 mod real;
-mod fix;
 mod nullable_ref;
 
 use std::{rc::Rc, cell::{RefCell, Cell}, mem::take};
