@@ -899,6 +899,32 @@ fn flatten() {
 }
 
 #[test]
+fn split_flatten32() {
+    let curve: [POINT; 4] = [
+    POINT{x: 1795, y: 8445},
+    POINT{x: 1795, y: 8445},
+    POINT{x: 1908, y: 8683},
+    POINT{x: 2043, y: 8705}];
+    let mut bez = CMILBezier::new(&curve, None);
+    let mut result: [POINT; 8] = Default::default();
+    let mut more: bool = false;
+    let count = bez.Flatten(&mut result[..5], &mut more);
+    assert_eq!(count, 5);
+    assert_eq!(more, true);
+    let count = bez.Flatten(&mut result[5..], &mut more);
+    assert_eq!(count, 3);
+    assert_eq!(more, false);
+
+    let mut bez = CMILBezier::new(&curve, None);
+    let mut full_result: [POINT; 8] = Default::default();
+    let mut more: bool = false;
+    let count = bez.Flatten(&mut full_result, &mut more);
+    assert_eq!(count, 8);
+    assert_eq!(more, false);
+    assert!(result == full_result);
+}
+
+#[test]
 fn flatten32() {
     let curve: [POINT; 4] = [
     POINT{x: 100, y: 100},

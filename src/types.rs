@@ -67,7 +67,7 @@ pub struct RECT {
     pub right: LONG,
     pub bottom: LONG,
 }
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub struct POINT {
     pub x: LONG,
     pub y: LONG

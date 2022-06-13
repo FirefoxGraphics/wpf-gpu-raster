@@ -92,7 +92,7 @@
 //
 //-----------------------------------------------------------------------------
 const FORCE_TRIANGLES: bool = true;
-const c_rMinWaffleWidthPixels: f32 = 0.25;
+//const c_rMinWaffleWidthPixels: f32 = 0.25;
 
 
 const FLOAT_ZERO: DWORD = 0x00000000;
