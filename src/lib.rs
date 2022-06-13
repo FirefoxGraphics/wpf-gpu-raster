@@ -1,3 +1,16 @@
+/*!
+Converts a 2D path into a set of vertices of a triangle strip mesh that represents the antialiased fill of that path.
+
+```rust
+    use wpf_gpu_raster::PathBuilder;
+    let mut p = PathBuilder::new();
+    p.move_to(10., 10.);
+    p.line_to(40., 10.);
+    p.line_to(40., 40.);
+    let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+```
+
+*/
 #![allow(unused_parens)]
 #![allow(overflowing_literals)]
 #![allow(non_snake_case)]
