@@ -34,6 +34,4 @@ impl<InCoordSpace: Default, OutCoordSpace: Default> CMatrix<InCoordSpace, OutCoo
     pub fn SetM22(&mut self, r: f32) { self._22 = r}
     pub fn SetDx(&mut self, dx: f32) { self._41 = dx }
     pub fn SetDy(&mut self, dy: f32) { self._42 = dy }
-
-    pub fn SetToIdentity(&mut self) { todo!() }
 }

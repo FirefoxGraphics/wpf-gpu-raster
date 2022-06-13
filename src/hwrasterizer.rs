@@ -903,7 +903,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
     ) -> INT
 {
 
-    let mut nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
+    let mut nSubpixelYBottomTrapezoids;
     let mut pEdgeLeft: Ref<CEdge>;
     let mut pEdgeRight: Ref<CEdge>;
 
@@ -1208,7 +1208,7 @@ OutputTrapezoids(&mut self,
 {
 
     let hr = S_OK;
-    let mut nSubpixelYAdvance: INT;
+    let nSubpixelYAdvance: INT;
     let mut rSubpixelLeftErrorDown: f32;
     let mut rSubpixelRightErrorDown: f32;
     let mut rPixelXLeft: f32;

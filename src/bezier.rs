@@ -900,11 +900,14 @@ fn flatten() {
 
 #[test]
 fn split_flatten32() {
+    // make sure that flattening a curve into two small buffers matches
+    // doing it into a large buffer
     let curve: [POINT; 4] = [
     POINT{x: 1795, y: 8445},
     POINT{x: 1795, y: 8445},
     POINT{x: 1908, y: 8683},
     POINT{x: 2043, y: 8705}];
+
     let mut bez = CMILBezier::new(&curve, None);
     let mut result: [POINT; 8] = Default::default();
     let mut more: bool = false;

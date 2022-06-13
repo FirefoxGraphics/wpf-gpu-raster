@@ -1570,9 +1570,9 @@ Cleanup:
     RRETURN(hr);*/
     //hr
 }
-    fn AreWafffling(&self) -> bool {
+    /*fn AreWafffling(&self) -> bool {
         false
-    }
+    }*/
 
         // Helpful m_rcOutsideBounds casts.
         fn OutsideLeft(&self) -> f32  { return self.m_rcOutsideBounds.left as f32; }

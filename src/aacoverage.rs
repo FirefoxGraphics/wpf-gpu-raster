@@ -33,8 +33,8 @@ pub const c_nShiftSize: INT = 8;
 pub const c_nShiftSizeSquared: INT = c_nShiftSize * c_nShiftSize; 
 pub const c_nHalfShiftSize: INT = 4; 
 pub const c_nShiftMask: INT = 7; 
-pub const c_rShiftSize: f32 = 8.0;
-pub const c_rHalfShiftSize: f32 = 4.0;
+//pub const c_rShiftSize: f32 = 8.0;
+//pub const c_rHalfShiftSize: f32 = 4.0;
 pub const c_rInvShiftSize: f32 = 1.0/8.0;
 pub const c_antiAliasMode: MilAntiAliasMode = MilAntiAliasMode::EightByEight;
 
