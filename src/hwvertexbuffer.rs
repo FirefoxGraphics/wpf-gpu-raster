@@ -75,6 +75,7 @@
 //  
 //-----------------------------------------------------------------------------
 
+const FORCE_TRIANGLES: bool = true;
 
 //+----------------------------------------------------------------------------
 //
@@ -91,7 +92,6 @@
 //    - clipping primitives to approximately the screen size
 //
 //-----------------------------------------------------------------------------
-const FORCE_TRIANGLES: bool = true;
 //const c_rMinWaffleWidthPixels: f32 = 0.25;
 
 
@@ -685,9 +685,9 @@ protected:
     // Dynamic array of vertices for which all allocations are zeroed.
     // XXX: the zero has been removed
     m_rgVerticesTriList: DynArray<TVertex>,             // Indexed triangle list vertices
-    m_rgVerticesNonIndexedTriList: DynArray<TVertex>,   // Non-indexed triangle list vertices
+    //m_rgVerticesNonIndexedTriList: DynArray<TVertex>,   // Non-indexed triangle list vertices
     m_rgVerticesTriStrip: DynArray<TVertex>,            // Triangle strip vertices
-    m_rgVerticesLineList: DynArray<TVertex>,            // Linelist vertices
+    //m_rgVerticesLineList: DynArray<TVertex>,            // Linelist vertices
 
     #[cfg(debug)]
     // In debug make a note if we add a triangle strip that doesn't have 6 vertices
@@ -768,8 +768,8 @@ impl<TVertex> CHwTVertexBuffer<TVertex> {
         self.m_rgIndices.SetCount(0);
         self.m_rgVerticesTriList.SetCount(0);
         self.m_rgVerticesTriStrip.SetCount(0);
-        self.m_rgVerticesLineList.SetCount(0);
-        self.m_rgVerticesNonIndexedTriList.SetCount(0);
+        //self.m_rgVerticesLineList.SetCount(0);
+        //self.m_rgVerticesNonIndexedTriList.SetCount(0);
 
         //self.m_pBuilder = pVBB;
     }
@@ -778,9 +778,9 @@ impl<TVertex> CHwTVertexBuffer<TVertex> {
     {
         return 
                (self.m_rgIndices.GetCount() == 0)
-            && (self.m_rgVerticesLineList.GetCount() == 0)
+            //&& (self.m_rgVerticesLineList.GetCount() == 0)
             && (self.m_rgVerticesTriStrip.GetCount() == 0)
-            && (self.m_rgVerticesNonIndexedTriList.GetCount() == 0);
+            //&& (self.m_rgVerticesNonIndexedTriList.GetCount() == 0);
     }
 
 }
