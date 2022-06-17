@@ -1129,7 +1129,7 @@ private:
     m_rguPrecomputedTriListIndices: *const UINT,
     m_cPrecomputedTriListIndices: UINT,
 
-    m_map: CHwTVertexMappings<TVertex>,
+    //m_map: CHwTVertexMappings<TVertex>,
 
     // This is true if we had to flush the pipeline as we were getting
     // geometry rather than just filling up a single vertex buffer.
@@ -1801,7 +1801,7 @@ fn new(pVertexBuffer: Box<CHwTVertexBuffer<TVertex>>, device: Rc<CD3DDeviceLevel
     m_rLastTrapezoidRight: -f32::MAX,
     m_fHasFlushed: false,
     m_iViewportTop: 0,
-    m_map: Default::default(),
+    //m_map: Default::default(),
     m_rcOutsideBounds: Default::default(),
     m_pDeviceNoRef: device,
         m_mvfIn: MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat,
