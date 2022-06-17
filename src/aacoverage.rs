@@ -413,20 +413,20 @@ pub fn FillEdgesAlternating(&'a self,
 
     ASSERTACTIVELIST!(pEdgeActiveList, nSubpixelYCurrent);
 
-    while ((*pEdgeStart).X.get() != INT::MAX)
+    while (pEdgeStart.X.get() != INT::MAX)
     {
-        pEdgeEnd = (*pEdgeStart).Next.get();
+        pEdgeEnd = pEdgeStart.Next.get();
 
         // We skip empty pairs:
-        (nSubpixelXLeft = (*pEdgeStart).X.get());
-        if (nSubpixelXLeft != (*pEdgeEnd).X.get())
+        (nSubpixelXLeft = pEdgeStart.X.get());
+        if (nSubpixelXLeft != pEdgeEnd.X.get())
         {
             // We now know we have a non-empty interval.  Skip any
             // empty interior pairs:
 
-            while ({(nSubpixelXRight = (*pEdgeEnd).X.get()); (*pEdgeEnd).X == (*(*pEdgeEnd).Next.get()).X})
+            while ({(nSubpixelXRight = pEdgeEnd.X.get()); pEdgeEnd.X == pEdgeEnd.Next.get().X})
             {
-                pEdgeEnd = (*(*pEdgeEnd).Next.get()).Next.get();
+                pEdgeEnd = pEdgeEnd.Next.get().Next.get();
             }
 
             assert!((nSubpixelXLeft < nSubpixelXRight) && (nSubpixelXRight < INT::MAX));
@@ -435,7 +435,7 @@ pub fn FillEdgesAlternating(&'a self,
         }
 
         // Prepare for the next iteration:
-        pEdgeStart = (*pEdgeEnd).Next.get();
+        pEdgeStart = pEdgeEnd.Next.get();
     }
 
 //Cleanup:
@@ -459,7 +459,7 @@ pub fn FillEdgesWinding(&'a self,
 {
 
     let hr: HRESULT = S_OK;
-    let mut pEdgeStart: Ref<CEdge> = (*pEdgeActiveList).Next.get();
+    let mut pEdgeStart: Ref<CEdge> = pEdgeActiveList.Next.get();
     let mut pEdgeEnd: Ref<CEdge>;
     let mut nSubpixelXLeft: INT;
     let mut nSubpixelXRight: INT;
@@ -467,34 +467,34 @@ pub fn FillEdgesWinding(&'a self,
 
     ASSERTACTIVELIST!(pEdgeActiveList, nSubpixelYCurrent);
 
-    while ((*pEdgeStart).X.get() != INT::MAX)
+    while (pEdgeStart.X.get() != INT::MAX)
     {
-        pEdgeEnd = (*pEdgeStart).Next.get();
+        pEdgeEnd = pEdgeStart.Next.get();
 
-        nWindingValue = (*pEdgeStart).WindingDirection;
-        while ({nWindingValue += (*pEdgeEnd).WindingDirection; nWindingValue != 0})
+        nWindingValue = pEdgeStart.WindingDirection;
+        while ({nWindingValue += pEdgeEnd.WindingDirection; nWindingValue != 0})
         {
-            pEdgeEnd = (*pEdgeEnd).Next.get();
+            pEdgeEnd = pEdgeEnd.Next.get();
         }
 
-        assert!((*pEdgeEnd).X.get() != INT::MAX);
+        assert!(pEdgeEnd.X.get() != INT::MAX);
 
         // We skip empty pairs:
 
-        if ({nSubpixelXLeft = (*pEdgeStart).X.get(); nSubpixelXLeft != (*pEdgeEnd).X.get()})
+        if ({nSubpixelXLeft = pEdgeStart.X.get(); nSubpixelXLeft != pEdgeEnd.X.get()})
         {
             // We now know we have a non-empty interval.  Skip any
             // empty interior pairs:
 
-            while ({nSubpixelXRight = (*pEdgeEnd).X.get(); nSubpixelXRight == (*(*pEdgeEnd).Next.get()).X.get()})
+            while ({nSubpixelXRight = pEdgeEnd.X.get(); nSubpixelXRight == pEdgeEnd.Next.get().X.get()})
             {
-                pEdgeStart = (*pEdgeEnd).Next.get();
-                pEdgeEnd = (*pEdgeStart).Next.get();
+                pEdgeStart = pEdgeEnd.Next.get();
+                pEdgeEnd = pEdgeStart.Next.get();
 
-                nWindingValue = (*pEdgeStart).WindingDirection;
-                while ({nWindingValue += (*pEdgeEnd).WindingDirection; nWindingValue != 0})
+                nWindingValue = pEdgeStart.WindingDirection;
+                while ({nWindingValue += pEdgeEnd.WindingDirection; nWindingValue != 0})
                 {
-                    pEdgeEnd = (*pEdgeEnd).Next.get();
+                    pEdgeEnd = pEdgeEnd.Next.get();
                 }
             }
 
@@ -505,7 +505,7 @@ pub fn FillEdgesWinding(&'a self,
 
         // Prepare for the next iteration:
 
-        pEdgeStart = (*pEdgeEnd).Next.get();
+        pEdgeStart = pEdgeEnd.Next.get();
     } 
 
 //Cleanup:
