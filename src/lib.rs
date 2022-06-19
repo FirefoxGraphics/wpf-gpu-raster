@@ -148,6 +148,8 @@ impl PathBuilder {
         if let Some(last) = self.types.last_mut() {
             *last |= PathPointTypeCloseSubpath;
         }
+        self.in_shape = false;
+        self.initial_point = None;
     }
     pub fn set_fill_mode(&mut self, fill_mode: FillMode) {
         self.fill_mode = match fill_mode {
@@ -320,6 +322,16 @@ mod tests {
         let mut p = PathBuilder::new();
         p.line_to(10., 10.);
         p.move_to(0., 0.);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn path_closing() {
+        let mut p = PathBuilder::new();
+        p.curve_to(0., 0., 0., 0., 0., 32.0);
+        p.close();
+        p.curve_to(0., 0., 0., 0., 0., 32.0);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(result.len(), 0);
     }
