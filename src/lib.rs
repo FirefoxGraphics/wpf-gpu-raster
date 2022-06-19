@@ -305,6 +305,7 @@ mod tests {
         let mut p = PathBuilder::new();
         p.curve_to(8.872974e16, 0., 0., 0., 0., 0.);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 0);
     }
 
 
