@@ -109,7 +109,12 @@ impl PathBuilder {
         }
     }
     pub fn line_to(&mut self, x: f32, y: f32) {
-        self.types.push(PathPointTypeLine);
+        if self.initial_point.is_some() {
+            self.types.push(PathPointTypeLine);
+        } else {
+            self.types.push(PathPointTypeStart);
+            self.initial_point = Some(MilPoint2F{X: x, Y: y});
+        }
         self.points.push(MilPoint2F{X: x, Y: y});
     }
     pub fn move_to(&mut self, x: f32, y: f32) {
@@ -118,6 +123,11 @@ impl PathBuilder {
         self.initial_point = Some(MilPoint2F{X: x, Y: y});
     }
     pub fn curve_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
+        if self.initial_point.is_none() {
+            self.types.push(PathPointTypeStart);
+            self.points.push(MilPoint2F{X:c1x, Y:c1y});
+            self.initial_point = Some(MilPoint2F{X:c1x, Y:c1y});
+        }
         self.types.push(PathPointTypeBezier);
         self.points.push(MilPoint2F{X:c1x, Y:c1y});
         self.types.push(PathPointTypeBezier);
