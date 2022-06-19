@@ -92,6 +92,7 @@ pub struct PathBuilder {
     points: DynArray<MilPoint2F>,
     types: DynArray<BYTE>,
     initial_point: Option<MilPoint2F>,
+    in_shape: bool,
     fill_mode: MilFillMode,
     outside_bounds: Option<CMILSurfaceRect>,
     need_inside: bool
@@ -103,30 +104,38 @@ impl PathBuilder {
         points: Vec::new(),
         types: Vec::new(),
         initial_point: None,
+        in_shape: false,
         fill_mode: MilFillMode::Alternate,
         outside_bounds: None,
         need_inside: true,
         }
     }
     pub fn line_to(&mut self, x: f32, y: f32) {
-        if self.initial_point.is_some() {
+        if let Some(initial_point) = self.initial_point {
+            if !self.in_shape {
+                self.types.push(PathPointTypeStart);
+                self.points.push(initial_point);
+                self.in_shape = true;
+            }
             self.types.push(PathPointTypeLine);
+            self.points.push(MilPoint2F{X: x, Y: y});
         } else {
-            self.types.push(PathPointTypeStart);
-            self.initial_point = Some(MilPoint2F{X: x, Y: y});
+            self.initial_point = Some(MilPoint2F{X: x, Y: y})
         }
-        self.points.push(MilPoint2F{X: x, Y: y});
     }
     pub fn move_to(&mut self, x: f32, y: f32) {
-        self.types.push(PathPointTypeStart);
-        self.points.push(MilPoint2F{X: x, Y: y});
+        self.in_shape = false;
         self.initial_point = Some(MilPoint2F{X: x, Y: y});
     }
     pub fn curve_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
-        if self.initial_point.is_none() {
+        let initial_point = match self.initial_point {
+            Some(initial_point) => initial_point,
+            None => MilPoint2F{X:c1x, Y:c1y}
+        };
+        if !self.in_shape {
             self.types.push(PathPointTypeStart);
-            self.points.push(MilPoint2F{X:c1x, Y:c1y});
-            self.initial_point = Some(MilPoint2F{X:c1x, Y:c1y});
+            self.points.push(initial_point);
+            self.in_shape = true;
         }
         self.types.push(PathPointTypeBezier);
         self.points.push(MilPoint2F{X:c1x, Y:c1y});
