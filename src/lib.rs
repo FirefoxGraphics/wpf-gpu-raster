@@ -301,6 +301,14 @@ mod tests {
     }
 
     #[test]
+    fn range() {
+        let mut p = PathBuilder::new();
+        p.curve_to(8.872974e16, 0., 0., 0., 0., 0.);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+    }
+
+
+    #[test]
     fn curve() {
         let mut p = PathBuilder::new();
         p.move_to(10., 10.);

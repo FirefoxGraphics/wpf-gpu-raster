@@ -8,12 +8,20 @@ macro_rules! IsTagEnabled {
 
 macro_rules! TraceTag {
     (($e: expr, $s: expr)) => {
+        dbg!($s)
     }
 }
 
 macro_rules! IFC {
     ($e: expr) => {
         assert_eq!($e, S_OK);
+    }
+}
+
+macro_rules! IFR {
+    ($e: expr) => {
+        let hresult = $e;
+        if (hresult != S_OK) { return hresult }
     }
 }
 

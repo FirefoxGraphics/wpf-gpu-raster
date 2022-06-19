@@ -1232,7 +1232,7 @@ pub fn FixedPointPathEnumerate(
         // Add the start point to the beginning of the batch, and
         // remember it for handling the close figure:
 
-        IFC!(TransformRasterizerPointsTo28_4(
+        IFR!(TransformRasterizerPointsTo28_4(
             matrix,
             &rgpt[iStart..],
             1,
@@ -1269,7 +1269,7 @@ pub fn FixedPointPathEnumerate(
                 loop {
                     thisCount = bufferSize.min(runSize);
 
-                    IFC!(TransformRasterizerPointsTo28_4(
+                    IFR!(TransformRasterizerPointsTo28_4(
                         matrix,
                         &rgpt[iStart..],
                         thisCount as u32,

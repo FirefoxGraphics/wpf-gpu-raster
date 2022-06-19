@@ -34,7 +34,7 @@ use typed_arena_nomut::Arena;
 
 macro_rules! MIL_THR {
     ($e: expr) => {
-        assert_eq!($e, S_OK);
+        $e//assert_eq!($e, S_OK);
     }
 }
 
@@ -574,7 +574,7 @@ pub fn RasterizePath(
 
     // Enumerate the path and construct the edge table:
 
-    MIL_THR!(FixedPointPathEnumerate(
+    hr = MIL_THR!(FixedPointPathEnumerate(
         rgpt,
         rgTypes,
         cPoints,
@@ -768,7 +768,7 @@ pub fn SendGeometry(&mut self,
     let points = self.m_prgPoints.as_ref().unwrap().clone();
     let types = self.m_prgTypes.as_ref().unwrap().clone();
     let count = self.m_prgPoints.as_ref().unwrap().borrow().GetCount() as u32;
-    IFC!(self.RasterizePath(
+    IFR!(self.RasterizePath(
         points.borrow().GetDataBuffer(),
         types.borrow().GetDataBuffer(),
         count,
