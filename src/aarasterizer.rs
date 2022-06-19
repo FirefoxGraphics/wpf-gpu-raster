@@ -1257,7 +1257,7 @@ pub fn FixedPointPathEnumerate(
 
                     xLast = bufferStart[ENUMERATE_BUFFER_NUMBER!() - 1].x;
                     yLast = bufferStart[ENUMERATE_BUFFER_NUMBER!() - 1].y;
-                    IFC!(InitializeEdges(
+                    IFR!(InitializeEdges(
                         enumerateContext,
                         &mut bufferStart,
                         ENUMERATE_BUFFER_NUMBER!()
@@ -1279,7 +1279,7 @@ pub fn FixedPointPathEnumerate(
                 assert!((rgTypes[iStart + 1] & PathPointTypePathTypeMask) == PathPointTypeBezier);
                 assert!((rgTypes[iStart + 2] & PathPointTypePathTypeMask) == PathPointTypeBezier);
 
-                IFC!(TransformRasterizerPointsTo28_4(
+                IFR!(TransformRasterizerPointsTo28_4(
                     matrix,
                     &rgpt[(iStart - 1)..],
                     4,
@@ -1310,7 +1310,7 @@ pub fn FixedPointPathEnumerate(
 
                     xLast = bufferStart[ENUMERATE_BUFFER_NUMBER!() - 1].x;
                     yLast = bufferStart[ENUMERATE_BUFFER_NUMBER!() - 1].y;
-                    IFC!(InitializeEdges(
+                    IFR!(InitializeEdges(
                         enumerateContext,
                         &mut bufferStart,
                         ENUMERATE_BUFFER_NUMBER!()
@@ -1352,7 +1352,7 @@ pub fn FixedPointPathEnumerate(
 
         let verticesInBatch = ENUMERATE_BUFFER_NUMBER!() - bufferSize;
         if (verticesInBatch > 1) {
-            IFC!(InitializeEdges(
+            IFR!(InitializeEdges(
                 enumerateContext,
                 &mut bufferStart,
                 (verticesInBatch) as UINT

@@ -299,8 +299,15 @@ mod tests {
 
     #[test]
     fn range() {
+        // test for a start point out of range
         let mut p = PathBuilder::new();
         p.curve_to(8.872974e16, 0., 0., 0., 0., 0.);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 0);
+
+        // test for a subsequent point out of range
+        let mut p = PathBuilder::new();
+        p.curve_to(0., 0., 8.872974e16, 0., 0., 0.);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(result.len(), 0);
     }
