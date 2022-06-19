@@ -315,6 +315,14 @@ mod tests {
         assert_eq!(result.len(), 0);
     }
 
+    #[test]
+    fn multiple_starts() {
+        let mut p = PathBuilder::new();
+        p.line_to(10., 10.);
+        p.move_to(0., 0.);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 0);
+    }
 
     #[test]
     fn curve() {
