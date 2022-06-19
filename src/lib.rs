@@ -136,10 +136,8 @@ impl PathBuilder {
         self.points.push(MilPoint2F{X: x, Y: y});
     }
     pub fn close(&mut self) {
-        if let Some(initial_point) = &self.initial_point {
-            self.points.push(*initial_point);
-            self.types.push(PathPointTypeLine | PathPointTypeCloseSubpath);
-            self.initial_point = None;
+        if let Some(last) = self.types.last_mut() {
+            *last |= PathPointTypeCloseSubpath;
         }
     }
     pub fn set_fill_mode(&mut self, fill_mode: FillMode) {
