@@ -428,4 +428,13 @@ mod tests {
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x74454613e878570);
     }
+
+    #[test]
+    fn clip_edge() {
+        let mut p = PathBuilder::new();
+        // tests the bigNumerator < 0 case of aarasterizer::ClipEdge
+        p.curve_to(-24., -10., -300., 119., 0.0, 0.0);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 170);
+    }
 }
