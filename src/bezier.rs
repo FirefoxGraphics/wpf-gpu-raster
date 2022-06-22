@@ -957,4 +957,32 @@ fn flatten32_double_step_size() {
     assert_eq!(more, false);
 }
 
+#[test]
+fn bezier64_init_high_num_steps() {
+    let curve: [POINT; 4] = [
+    POINT{x: 33, y: -1},
+    POINT{x: -1, y: -1},
+    POINT{x: -1, y: -16385},
+    POINT{x: -226, y: 10}];
+    let mut bez = CMILBezier::new(&curve, None);
+    let mut result: [POINT; 32] = Default::default();
+    let mut more: bool = false;
+    let count = bez.Flatten(&mut result, &mut more);
+    assert_eq!(count, 32);
+    assert_eq!(more, true);
+}
 
+#[test]
+fn bezier64_high_error() {
+    let curve: [POINT; 4] = [
+    POINT{x: -1, y: -1},
+    POINT{x: -4097, y: -1},
+    POINT{x: 65471, y: -256},
+    POINT{x: -1, y: 0}];
+    let mut bez = CMILBezier::new(&curve, None);
+    let mut result: [POINT; 32] = Default::default();
+    let mut more: bool = false;
+    let count = bez.Flatten(&mut result, &mut more);
+    assert_eq!(count, 32);
+    assert_eq!(more, true);
+}
