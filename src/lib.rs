@@ -435,6 +435,14 @@ mod tests {
         // tests the bigNumerator < 0 case of aarasterizer::ClipEdge
         p.curve_to(-24., -10., -300., 119., 0.0, 0.0);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(result.len(), 170);
+        // The edge merging only happens between points inside the enumerate buffer. This means
+        // that the vertex output can depend on the size of the enumerate buffer because there
+        // the number of edges and positions of vertices will change depending on edge merging.
+        if ENUMERATE_BUFFER_NUMBER!() == 32 {
+            assert_eq!(result.len(), 170);
+        } else {
+            assert_eq!(result.len(), 238);
+        }
+
     }
 }

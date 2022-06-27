@@ -689,7 +689,7 @@ protected:
     m_rgVerticesTriStrip: DynArray<TVertex>,            // Triangle strip vertices
     //m_rgVerticesLineList: DynArray<TVertex>,            // Linelist vertices
 
-    #[cfg(debug)]
+    #[cfg(debug_assertions)]
     // In debug make a note if we add a triangle strip that doesn't have 6 vertices
     // so that we can ensure that we only waffle 6-vertex tri strips.
     m_fDbgNonLineSegmentTriangleStrip: bool
@@ -760,7 +760,7 @@ impl<TVertex> CHwTVertexBuffer<TVertex> {
         /*pVBB: &mut CHwTVertexBufferBuilder<TVertex>*/
         )
     {
-        #[cfg(debug)]
+        #[cfg(debug_assertions)]
         {
             self.m_fDbgNonLineSegmentTriangleStrip = false;
         }
@@ -800,7 +800,7 @@ pub struct CHwTVertexBufferBuilder<TVertex>
     m_iViewportTop: INT,
      m_mvfIn: MilVertexFormat,         // Vertex fields that are pre-generated
 
-    #[cfg(debug)]
+    #[cfg(debug_assertions)]
     m_mvfDbgOut: MilVertexFormat,     // Output format of the vertex
     
     m_mvfGenerated: MilVertexFormat,  // Vertex fields that are dyn
@@ -1354,12 +1354,12 @@ fn AddTriStripVertices(
 {
     let hr: HRESULT = S_OK;
 
-    #[cfg(debug)]
+    #[cfg(debug_assertions)]
     if (uCount != 6)
     {
         // Make a note that we added a tristrip using other than
         // 6 elements.
-        m_fDbgNonLineSegmentTriangleStrip = true;
+        self.m_fDbgNonLineSegmentTriangleStrip = true;
     }
 
     let Count = (self.m_rgVerticesTriStrip.GetCount() as UINT);
@@ -1804,6 +1804,8 @@ fn new(pVertexBuffer: Box<CHwTVertexBuffer<TVertex>>, device: Rc<CD3DDeviceLevel
     //m_map: Default::default(),
     m_rcOutsideBounds: Default::default(),
     m_pDeviceNoRef: device,
+        #[cfg(debug_assertions)]
+        m_mvfDbgOut: MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat,
         m_mvfIn: MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat,
         m_mvfGenerated: MilVertexFormatAttribute::MILVFAttrNone  as MilVertexFormat,
         m_mvfaAntiAliasScaleLocation: MilVertexFormatAttribute::MILVFAttrNone,
@@ -1827,7 +1829,7 @@ fn SetupConverter(&mut self,
 
     self.m_mvfIn = mvfIn;
 
-    #[cfg(Debug)]
+    #[cfg(debug_assertions)]
     {
     self.m_mvfDbgOut = mvfOut;
     }

@@ -19,25 +19,25 @@ use typed_arena_nomut::Arena;
 
 const S_OK: HRESULT = 0;
 
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 macro_rules! EDGE_STORE_STACK_NUMBER {
     () => {
         10
     };
 }
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 macro_rules! EDGE_STORE_ALLOCATION_NUMBER {
     () => {
         11
     };
 }
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 macro_rules! INACTIVE_LIST_NUMBER {
     () => {
         12
     };
 }
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 macro_rules! ENUMERATE_BUFFER_NUMBER {
     () => {
         15
@@ -45,30 +45,30 @@ macro_rules! ENUMERATE_BUFFER_NUMBER {
 }
 
 // Must be at least 4
-#[cfg(debug)]
+#[cfg(debug_assertions)]
 macro_rules! NOMINAL_FILL_POINT_NUMBER {
     () => {
         4
     };
 }
 
-#[cfg(not(debug))]
+#[cfg(not(debug_assertions))]
 macro_rules! EDGE_STORE_STACK_NUMBER {
     () => {
         (1600 / std::mem::size_of::<CEdge>())
     };
 }
-#[cfg(not(debug))]
+#[cfg(not(debug_assertions))]
 macro_rules! EDGE_STORE_ALLOCATION_NUMBER {
     () => {
         (4032 / std::mem::size_of::<CEdge>()) as u32
     };
 }
-#[cfg(not(debug))]
+#[cfg(not(debug_assertions))]
 macro_rules! INACTIVE_LIST_NUMBER { () => { EDGE_STORE_STACK_NUMBER!() }; }
-#[cfg(not(debug))]
+#[cfg(not(debug_assertions))]
 macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 32 }; }
-#[cfg(not(debug))]
+#[cfg(not(debug_assertions))]
 macro_rules! NOMINAL_FILL_POINT_NUMBER {
     () => {
         32
@@ -827,26 +827,26 @@ fn InitializeEdges(
 
             let clipLow = ((pointArray[0]).y > yClipBottom) && ((pointArray[1]).y > yClipBottom);
 
-            #[cfg(debug)]
+            #[cfg(debug_assertions)]
             {
-                let (yRectTop, yRectBottom, y0, y1, yTop, yBottom);
+                let (mut yRectTop, mut yRectBottom, y0, y1, yTop, yBottom);
 
                 // Getting the trivial rejection code right is tricky.
                 // So on checked builds let's verify that we're doing it
                 // correctly, using a different approach:
 
-                let clipped = false;
-                if (clipRect != NULL) {
+                let mut clipped = false;
+                if let Some(clipRect) = clipRect {
                     yRectTop = clipRect.top >> 4;
                     yRectBottom = clipRect.bottom >> 4;
                     if (pEdgeContext.AntiAliasMode != MilAntiAliasMode::None) {
                         yRectTop <<= c_nShift;
                         yRectBottom <<= c_nShift;
                     }
-                    y0 = ((pointArray).y + 15) >> 4;
-                    y1 = ((pointArray + 1).y + 15) >> 4;
-                    yTop = min(y0, y1);
-                    yBottom = max(y0, y1);
+                    y0 = ((pointArray[0]).y + 15) >> 4;
+                    y1 = ((pointArray[1]).y + 15) >> 4;
+                    yTop = y0.min(y1);
+                    yBottom = y0.max(y1);
 
                     clipped = ((yTop >= yRectBottom) || (yBottom <= yRectTop));
                 }

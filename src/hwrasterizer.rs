@@ -174,14 +174,14 @@ AdvanceDDAMultipleSteps(
     //
     //                   This assumption is ensured by TransformRasterizerPointsTo28_4.
     //
-    #[cfg(debug)]
+    #[cfg(debug_assertions)]
     {
-    nDbgPixelCoordinateMax = (1 << 26);
-    nDbgPixelCoordinateMin = -nDbgPixelCoordinateMax;
+    let nDbgPixelCoordinateMax = (1 << 26);
+    let nDbgPixelCoordinateMin = -nDbgPixelCoordinateMax;
 
-    assert!(pEdgeLeft.X >= nDbgPixelCoordinateMin && pEdgeLeft.X <= nDbgPixelCoordinateMax);
+    assert!(pEdgeLeft.X.get() >= nDbgPixelCoordinateMin && pEdgeLeft.X.get() <= nDbgPixelCoordinateMax);
     assert!(pEdgeLeft.EndY >= nDbgPixelCoordinateMin && pEdgeLeft.EndY <= nDbgPixelCoordinateMax);
-    assert!(pEdgeRight.X >= nDbgPixelCoordinateMin && pEdgeRight.X <= nDbgPixelCoordinateMax);
+    assert!(pEdgeRight.X.get() >= nDbgPixelCoordinateMin && pEdgeRight.X.get() <= nDbgPixelCoordinateMax);
     assert!(pEdgeRight.EndY >= nDbgPixelCoordinateMin && pEdgeRight.EndY <= nDbgPixelCoordinateMax);
 
     //
@@ -1128,7 +1128,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
                     assert!(nSubpixelXTopDistanceLowerBound >= 0);
                     assert!(nSubpixelXBottomDistanceUpperBound > 0);
 
-                    #[cfg(debug)]
+                    #[cfg(debug_assertions)]
                     let nDbgPreviousSubpixelXBottomTrapezoids: INT = nSubpixelYBottomTrapezoids;
 
 
@@ -1137,7 +1137,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
                         (nSubpixelYAdvance * nSubpixelXTopDistanceLowerBound) /
                         (nSubpixelXTopDistanceLowerBound + nSubpixelXBottomDistanceUpperBound);
 
-                    #[cfg(debug)]
+                    #[cfg(debug_assertions)]
                     assert!(nDbgPreviousSubpixelXBottomTrapezoids >= nSubpixelYBottomTrapezoids);
 
                     if (nSubpixelYBottomTrapezoids < nSubpixelYCurrent + c_nShiftSize)

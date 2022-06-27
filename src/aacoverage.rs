@@ -62,11 +62,11 @@ impl<'a> Default for CCoverageInterval<'a> {
 // We make the debug versions small so that we hit the 'grow' cases more
 // frequently, for better testing:
 
-#[cfg(debug)]
+#[cfg(debug_assertions)]
     // Must be at least 6 now: 4 for the "minus4" logic in hwrasterizer.*, and then 
     // 1 each for the head and tail sentinels (since their allocation doesn't use Grow).
     const INTERVAL_BUFFER_NUMBER: usize = 8;        
-#[cfg(not(debug))]   
+#[cfg(not(debug_assertions))]
     const INTERVAL_BUFFER_NUMBER: usize = 32;
 
 
