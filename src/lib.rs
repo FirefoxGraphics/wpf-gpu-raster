@@ -135,6 +135,7 @@ impl PathBuilder {
         if !self.in_shape {
             self.types.push(PathPointTypeStart);
             self.points.push(initial_point);
+            self.initial_point = Some(initial_point);
             self.in_shape = true;
         }
         self.types.push(PathPointTypeBezier);
@@ -445,4 +446,15 @@ mod tests {
         }
 
     }
+
+    #[test]
+    fn enum_buffer_num() {
+        let mut p = PathBuilder::new();
+        p.curve_to(0.0, 0.0, 0.0, 12.0, 0.0, 44.919434);
+        p.line_to(64.0, 36.0 );
+        p.line_to(0.0, 80.0,);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 574);
+    }
+
 }
