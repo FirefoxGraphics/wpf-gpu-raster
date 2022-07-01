@@ -457,4 +457,23 @@ mod tests {
         assert_eq!(result.len(), 574);
     }
 
+    #[test]
+    fn fill_alternating_empty_interior_pairs() {
+        let mut p = PathBuilder::new();
+        p.line_to( 0., 2. );
+        p.curve_to(0.0, 0.0,1., 6., 0.0, 0.0);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 18);
+    }
+
+    #[test]
+    fn fill_winding_empty_interior_pairs() {
+        let mut p = PathBuilder::new();
+        p.curve_to(45., 61., 0.09, 0., 0., 0.);
+        p.curve_to(45., 61., 0.09, 0., 0., 0.);
+        p.curve_to(0., 0., 0., 38., 0.09, 15.);
+        p.set_fill_mode(FillMode::Winding);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 820);
+    }
 }
