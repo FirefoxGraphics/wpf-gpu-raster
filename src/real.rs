@@ -2,7 +2,7 @@ pub mod CFloatFPU {
     use std::arch::x86_64::{__m128, _mm_set_ss, _mm_cvtss_si32, _mm_cvtsi32_ss, _mm_sub_ss, _mm_cmple_ss, _mm_store_ss, _mm_setzero_ps};
 
     // Maximum allowed argument for SmallRound
-    const sc_uSmallMax: u32 = 0xFFFFF;
+    // const sc_uSmallMax: u32 = 0xFFFFF;
 
     // Binary representation of static_cast<float>(sc_uSmallMax)
     const sc_uBinaryFloatSmallMax: u32 = 0x497ffff0;
