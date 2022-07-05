@@ -16,6 +16,7 @@ Converts a 2D path into a set of vertices of a triangle strip mesh that represen
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
+#![allow(dead_code)]
 
 #[macro_use]
 mod fix;
