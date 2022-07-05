@@ -511,8 +511,7 @@ pub fn RasterizePath(
     rgpt: &[MilPoint2F],
     rgTypes: &[BYTE],
     cPoints: UINT,
-    pmatWorldTransform: &CMILMatrix,
-    fillMode: MilFillMode
+    pmatWorldTransform: &CMILMatrix
     ) -> HRESULT
 {
     let mut hr = S_OK;
@@ -773,7 +772,6 @@ pub fn SendGeometry(&mut self,
         types.borrow().GetDataBuffer(),
         count,
         &self.m_matWorldToDevice.clone(),
-        self.m_fillMode
         ));
         /* 
     IFC!(self.RasterizePath(
