@@ -44,14 +44,6 @@ macro_rules! ENUMERATE_BUFFER_NUMBER {
     };
 }
 
-// Must be at least 4
-#[cfg(debug_assertions)]
-macro_rules! NOMINAL_FILL_POINT_NUMBER {
-    () => {
-        4
-    };
-}
-
 #[cfg(not(debug_assertions))]
 macro_rules! EDGE_STORE_STACK_NUMBER {
     () => {
@@ -68,12 +60,6 @@ macro_rules! EDGE_STORE_ALLOCATION_NUMBER {
 macro_rules! INACTIVE_LIST_NUMBER { () => { EDGE_STORE_STACK_NUMBER!() }; }
 #[cfg(not(debug_assertions))]
 macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 32 }; }
-#[cfg(not(debug_assertions))]
-macro_rules! NOMINAL_FILL_POINT_NUMBER {
-    () => {
-        32
-    };
-}
 
 macro_rules! ASSERTACTIVELIST {
     ($list: expr, $y: expr) => {
@@ -729,7 +715,7 @@ fn InitializeEdges(
     let mut remainder: i32;
     let mut error: i32;
     let mut windingDirection;
-    let mut edgeBuffer: *mut CEdge = NULL();
+    //let mut edgeBuffer: *mut CEdge = NULL();
     let mut bufferCount: UINT = 0;
     let mut yClipTopInteger;
     let mut yClipTop;

@@ -1352,8 +1352,6 @@ fn AddTriStripVertices(
     uCount: UINT,
     ) -> &mut [TVertex]
 {
-    let hr: HRESULT = S_OK;
-
     #[cfg(debug_assertions)]
     if (uCount != 6)
     {
