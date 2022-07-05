@@ -188,9 +188,15 @@ public:*/
 
 impl<'a> Default for CCoverageBuffer<'a> {
     fn default() -> Self {
-        Self { m_pIntervalStart: Cell::new(unsafe { Ref::null() }), m_pIntervalNew: Cell::new(unsafe { Ref::null() }), m_pIntervalEndMinus4: Cell::new(unsafe { Ref::null() }), m_pIntervalBufferBuiltin: Default::default(), m_pIntervalBufferCurrent: unsafe { Cell::new(Ref::null()) },
-                arena: Arena::new(),
-            interval_new_index: Cell::new(0) }
+        Self {
+            m_pIntervalStart: Cell::new(unsafe { Ref::null() }),
+            m_pIntervalNew: Cell::new(unsafe { Ref::null() }),
+            m_pIntervalEndMinus4: Cell::new(unsafe { Ref::null() }),
+            m_pIntervalBufferBuiltin: Default::default(),
+            m_pIntervalBufferCurrent: unsafe { Cell::new(Ref::null()) },
+            arena: Arena::new(),
+            interval_new_index: Cell::new(0),
+        }
     }
 }
 
@@ -620,4 +626,3 @@ impl<'a> Drop for CCoverageBuffer<'a> {
         self.Destroy();
     }
 }*/
-
