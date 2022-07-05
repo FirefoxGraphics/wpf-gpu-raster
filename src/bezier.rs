@@ -351,6 +351,8 @@ fn bInit(&mut self,
         let mut fxOr;
         let mut fxOffset;
 
+        // find out if the coordinates minus the bounding box
+        // exceed 10 bits
         fxOffset = self.rcfxBound.left;
         fxOr  = {aptfx[0].x -= fxOffset; aptfx[0].x};
         fxOr |= {aptfx[1].x -= fxOffset; aptfx[1].x};
