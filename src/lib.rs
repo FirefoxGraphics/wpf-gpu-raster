@@ -149,56 +149,55 @@ impl PathBuilder {
         self.need_inside = need_inside;
     }
     pub fn rasterize_to_tri_strip(&self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
-            let mut rasterizer = CHwRasterizer::new();
-            let mut device = CD3DDeviceLevel1::new();
-            
-            device.clipRect.X = clip_x;
-            device.clipRect.Y = clip_y;
-            device.clipRect.Width = clip_width;
-            device.clipRect.Height = clip_height;
-            let device = Rc::new(device);
-            /* 
-            device.m_rcViewport = device.clipRect;
-        */
-            let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
+        let mut rasterizer = CHwRasterizer::new();
+        let mut device = CD3DDeviceLevel1::new();
+        
+        device.clipRect.X = clip_x;
+        device.clipRect.Y = clip_y;
+        device.clipRect.Width = clip_width;
+        device.clipRect.Height = clip_height;
+        let device = Rc::new(device);
+        /* 
+        device.m_rcViewport = device.clipRect;
+    */
+        let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
 
-            struct PathShape {
-                fill_mode: MilFillMode,
+        struct PathShape {
+            fill_mode: MilFillMode,
+        }
+
+        impl IShapeData for PathShape {
+            fn GetFillMode(&self) -> MilFillMode {
+                self.fill_mode
             }
+        }
 
-            impl IShapeData for PathShape {
-                fn GetFillMode(&self) -> MilFillMode {
-                    self.fill_mode
-                }
-            }
-
-            let path = Rc::new(PathShape { fill_mode: self.fill_mode });
-        
-            rasterizer.Setup(device.clone(), path, Some(&worldToDevice));
-        
-            let mut m_mvfIn: MilVertexFormat = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
-            let m_mvfGenerated: MilVertexFormat  = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
-            //let mvfaAALocation  = MILVFAttrNone;
-            const HWPIPELINE_ANTIALIAS_LOCATION: MilVertexFormatAttribute = MilVertexFormatAttribute::MILVFAttrDiffuse;
-            let mvfaAALocation = HWPIPELINE_ANTIALIAS_LOCATION;
-            struct CHwPipeline {
-                m_pDevice: Rc<CD3DDeviceLevel1>
-            }
-            let pipeline =  CHwPipeline { m_pDevice: device.clone() };
-            let m_pHP = &pipeline;
-        
-            rasterizer.GetPerVertexDataType(&mut m_mvfIn);
-            let vertexBuilder= Rc::new(RefCell::new(CHwVertexBufferBuilder::Create(m_mvfIn,                                          m_mvfIn | m_mvfGenerated,
-                mvfaAALocation,
-                m_pHP.m_pDevice.clone())));
-        
-            vertexBuilder.borrow_mut().SetOutsideBounds(self.outside_bounds.as_ref(), self.need_inside);
-            vertexBuilder.borrow_mut().BeginBuilding();
-        
-            rasterizer.SendGeometry(vertexBuilder.clone(), &self.points, &self.types);
-            vertexBuilder.borrow_mut().FlushTryGetVertexBuffer(None);
-            device.output.replace(Vec::new()).into_boxed_slice()
-
+        let path = Rc::new(PathShape { fill_mode: self.fill_mode });
+    
+        rasterizer.Setup(device.clone(), path, Some(&worldToDevice));
+    
+        let mut m_mvfIn: MilVertexFormat = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
+        let m_mvfGenerated: MilVertexFormat  = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
+        //let mvfaAALocation  = MILVFAttrNone;
+        const HWPIPELINE_ANTIALIAS_LOCATION: MilVertexFormatAttribute = MilVertexFormatAttribute::MILVFAttrDiffuse;
+        let mvfaAALocation = HWPIPELINE_ANTIALIAS_LOCATION;
+        struct CHwPipeline {
+            m_pDevice: Rc<CD3DDeviceLevel1>
+        }
+        let pipeline =  CHwPipeline { m_pDevice: device.clone() };
+        let m_pHP = &pipeline;
+    
+        rasterizer.GetPerVertexDataType(&mut m_mvfIn);
+        let vertexBuilder= Rc::new(RefCell::new(CHwVertexBufferBuilder::Create(m_mvfIn,                                          m_mvfIn | m_mvfGenerated,
+            mvfaAALocation,
+            m_pHP.m_pDevice.clone())));
+    
+        vertexBuilder.borrow_mut().SetOutsideBounds(self.outside_bounds.as_ref(), self.need_inside);
+        vertexBuilder.borrow_mut().BeginBuilding();
+    
+        rasterizer.SendGeometry(vertexBuilder.clone(), &self.points, &self.types);
+        vertexBuilder.borrow_mut().FlushTryGetVertexBuffer(None);
+        device.output.replace(Vec::new()).into_boxed_slice()
     }
 }
 
