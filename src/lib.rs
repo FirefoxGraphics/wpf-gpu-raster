@@ -66,29 +66,6 @@ impl std::hash::Hash for OutputVertex {
     }
 }
 
-
-
-struct RectShape;
-
-impl IShapeData for RectShape {
-    fn GetFillMode(&self) -> MilFillMode {
-        MilFillMode::Alternate
-    }
-
-    fn ConvertToGpPath(&self, points: &mut types::DynArray<types::MilPoint2F>, types: &mut types::DynArray<types::BYTE>) -> HRESULT {
-        types.push(PathPointTypeStart);
-        points.push(MilPoint2F{X: 10., Y: 10.});
-
-        types.push(PathPointTypeLine);
-        points.push(MilPoint2F{X: 40., Y: 10.});
-
-        types.push(PathPointTypeLine);
-        points.push(MilPoint2F{X: 40., Y: 40.});
-
-        return types::S_OK;
-    }
-}
-
 pub struct PathBuilder {
     points: DynArray<MilPoint2F>,
     types: DynArray<BYTE>,
