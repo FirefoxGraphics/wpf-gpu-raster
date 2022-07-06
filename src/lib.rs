@@ -160,14 +160,10 @@ impl PathBuilder {
             /* 
             device.m_rcViewport = device.clipRect;
         */
-            let pointsScratch = Rc::new(RefCell::new(Vec::new()));
-            let typesScratch = Rc::new(RefCell::new(Vec::new()));
             let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
 
             struct PathShape {
                 fill_mode: MilFillMode,
-                //points: Cell<DynArray<MilPoint2F>>,
-                //types: Cell<DynArray<BYTE>>,
             }
 
             impl IShapeData for PathShape {
@@ -178,7 +174,7 @@ impl PathBuilder {
 
             let path = Rc::new(PathShape { fill_mode: self.fill_mode });
         
-            rasterizer.Setup(device.clone(), path, pointsScratch, typesScratch, Some(&worldToDevice));
+            rasterizer.Setup(device.clone(), path, Some(&worldToDevice));
         
             let mut m_mvfIn: MilVertexFormat = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
             let m_mvfGenerated: MilVertexFormat  = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
