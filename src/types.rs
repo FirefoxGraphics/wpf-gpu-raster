@@ -168,7 +168,6 @@ pub mod CoordinateSpace {
 
 pub trait IShapeData {
     fn GetFillMode(&self) -> MilFillMode;
-    fn ConvertToGpPath(&self, points: &mut DynArray<MilPoint2F>, types: &mut DynArray<BYTE>) -> HRESULT;
 }
 
 pub type MilVertexFormat = DWORD;

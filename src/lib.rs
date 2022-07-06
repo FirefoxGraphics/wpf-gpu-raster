@@ -148,7 +148,7 @@ impl PathBuilder {
         self.outside_bounds = outside_bounds.map(|r| CMILSurfaceRect { left: r.0, top: r.1, right: r.2, bottom: r.3 });
         self.need_inside = need_inside;
     }
-    pub fn rasterize_to_tri_strip(&mut self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
+    pub fn rasterize_to_tri_strip(&self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
             let mut rasterizer = CHwRasterizer::new();
             let mut device = CD3DDeviceLevel1::new();
             
@@ -166,24 +166,17 @@ impl PathBuilder {
 
             struct PathShape {
                 fill_mode: MilFillMode,
-                points: Cell<DynArray<MilPoint2F>>,
-                types: Cell<DynArray<BYTE>>,
+                //points: Cell<DynArray<MilPoint2F>>,
+                //types: Cell<DynArray<BYTE>>,
             }
 
             impl IShapeData for PathShape {
                 fn GetFillMode(&self) -> MilFillMode {
                     self.fill_mode
                 }
-            
-                fn ConvertToGpPath(&self, points: &mut types::DynArray<types::MilPoint2F>, types: &mut types::DynArray<types::BYTE>) -> HRESULT {
-                    points.append(&mut self.points.take());
-                    types.append(&mut self.types.take());
-            
-                    return types::S_OK;
-                }
             }
 
-            let path = Rc::new(PathShape { fill_mode: self.fill_mode, points: Cell::new(take(&mut self.points)), types: Cell::new(take(&mut self.types))});
+            let path = Rc::new(PathShape { fill_mode: self.fill_mode });
         
             rasterizer.Setup(device.clone(), path, pointsScratch, typesScratch, Some(&worldToDevice));
         
@@ -206,7 +199,7 @@ impl PathBuilder {
             vertexBuilder.borrow_mut().SetOutsideBounds(self.outside_bounds.as_ref(), self.need_inside);
             vertexBuilder.borrow_mut().BeginBuilding();
         
-            rasterizer.SendGeometry(vertexBuilder.clone());
+            rasterizer.SendGeometry(vertexBuilder.clone(), &self.points, &self.types);
             vertexBuilder.borrow_mut().FlushTryGetVertexBuffer(None);
             device.output.replace(Vec::new()).into_boxed_slice()
 

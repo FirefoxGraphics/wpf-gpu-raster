@@ -727,7 +727,7 @@ pub fn Setup(&mut self,
 
     pD3DDevice.GetClipRect(&mut self.m_rcClipBounds);
 
-    IFC!(pShape.ConvertToGpPath(&mut *Rc::get_mut(self.m_prgPoints.as_mut().unwrap()).unwrap().borrow_mut(), &mut *Rc::get_mut(self.m_prgTypes.as_mut().unwrap()).unwrap().borrow_mut()));
+    //IFC!(pShape.ConvertToGpPath(&mut *Rc::get_mut(self.m_prgPoints.as_mut().unwrap()).unwrap().borrow_mut(), &mut *Rc::get_mut(self.m_prgTypes.as_mut().unwrap()).unwrap().borrow_mut()));
 
     self.m_matWorldToDevice = matWorldHPCToDeviceIPC;
     self.m_fillMode = pShape.GetFillMode();
@@ -749,7 +749,9 @@ pub fn Setup(&mut self,
 //
 //-------------------------------------------------------------------------
 pub fn SendGeometry(&mut self,
-    pIGeometrySink: Rc<RefCell<CHwVertexBufferBuilder>>
+    pIGeometrySink: Rc<RefCell<CHwVertexBufferBuilder>>,
+    points: &[MilPoint2F],
+    types: &[BYTE],
     ) -> HRESULT
 {
     let mut hr = S_OK;
@@ -764,12 +766,10 @@ pub fn SendGeometry(&mut self,
     //
     // Rasterize the path
     //
-    let points = self.m_prgPoints.as_ref().unwrap().clone();
-    let types = self.m_prgTypes.as_ref().unwrap().clone();
-    let count = self.m_prgPoints.as_ref().unwrap().borrow().GetCount() as u32;
+    let count = points.len() as u32;
     IFR!(self.RasterizePath(
-        points.borrow().GetDataBuffer(),
-        types.borrow().GetDataBuffer(),
+        points,
+        types,
         count,
         &self.m_matWorldToDevice.clone(),
         ));
