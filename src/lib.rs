@@ -123,6 +123,23 @@ impl PathBuilder {
         self.types.push(PathPointTypeBezier);
         self.points.push(MilPoint2F{X: x, Y: y});
     }
+    pub fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
+        // For now we just implement quad_to on top of curve_to.
+        // Long term we probably want to support quad curves
+        // directly.
+        let c0 = match self.initial_point {
+            Some(initial_point) => initial_point,
+            None => MilPoint2F{X:cx, Y:cy}
+        };
+
+        let c1x = c0.X + (2./3.) * (cx - c0.X);
+        let c1y = c0.Y + (2./3.) * (cx - c0.Y);
+
+        let c2x = x + (2./3.) * (cx - x);
+        let c2y = y + (2./3.) * (cy - y);
+
+        self.curve_to(c1x, c1y, c2x, c2y, x, y);
+    }
     pub fn close(&mut self) {
         if let Some(last) = self.types.last_mut() {
             *last |= PathPointTypeCloseSubpath;
