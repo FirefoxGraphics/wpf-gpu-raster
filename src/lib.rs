@@ -237,7 +237,7 @@ mod tests {
         p.close();
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(result.len(), 10);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x91582a1f5e431eb6);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x5851570566450135);
     }
 
     #[test]
@@ -247,7 +247,7 @@ mod tests {
         p.line_to(40., 10.);
         p.line_to(40., 40.);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xa33cb40dd676741e);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x81a9af7769f88e68);
     }
 
     #[test]
@@ -257,7 +257,7 @@ mod tests {
         p.line_to(40., 10.);
         p.line_to(40., 40.);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xa33cb40dd676741e);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x81a9af7769f88e68);
     }
 
     #[test]
@@ -274,7 +274,7 @@ mod tests {
         p.line_to(15., 35.);
         p.close();
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x81d3f6981834234b);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xb34344234f2f75a8);
 
         let mut p = PathBuilder::new();
         p.move_to(10., 10.);
@@ -289,7 +289,7 @@ mod tests {
         p.close();
         p.set_fill_mode(FillMode::Winding);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x6ebf6d38d18c3fa9);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xee4ecd8a738fc42c);
 
     }
 
@@ -327,7 +327,7 @@ mod tests {
         p.curve_to(40., 10., 40., 10., 40., 40.);
         p.close();
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x2b4a3e89d19fb5d5);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x6f92480332842ac9);
     }
 
     #[test]
@@ -341,7 +341,7 @@ mod tests {
 
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(result.len(), 16);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xf31cd214f48dafbf);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xf606699f20d45d96);
     }
 
     #[test]
@@ -355,7 +355,7 @@ mod tests {
 
         let result = p.rasterize_to_tri_strip(0, 0, 400, 400);
         assert_eq!(result.len(), 676);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x3208fd473e65e40a);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xd216dc8076add4b3);
     }
 
 
@@ -368,7 +368,7 @@ mod tests {
         p.line_to(40., 40.);
         p.close();
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x27d610994219a978);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xb8cbea29b27f7598);
     }
 
     #[test]
@@ -397,7 +397,7 @@ mod tests {
         p.close();
         p.set_outside_bounds(Some((0, 0, 50, 50)), false);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x27edd1fbd58b4d90);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x1e734743e1785634);
     }
 
     #[test]
@@ -410,7 +410,7 @@ mod tests {
         p.close();
         p.set_outside_bounds(Some((0, 0, 50, 50)), true);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x74454613e878570);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x1b741fc435aa1897);
     }
 
     #[test]

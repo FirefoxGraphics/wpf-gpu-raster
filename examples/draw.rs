@@ -342,7 +342,7 @@ fn main() {
             let mut model = Model::new();
         
             for vertex in result.iter() {
-                model.vertices.push(Vec3f::new(&[vertex.x, vertex.y, 0.]));
+                model.vertices.push(Vec3f::new(&[vertex.x - 0.5, vertex.y - 0.5, 0.]));
                 let color = vertex.coverage;
                 model.colors.push(Vec3f::new(&[color, color, color]));
             }
@@ -378,7 +378,7 @@ fn main() {
         t.hash(&mut s);
         s.finish()
     }
-    assert_eq!(calculate_hash(&image.buf), 0xec7dfa0cb4ba18e);
+    assert_eq!(calculate_hash(&image.buf), 0x4351654ca83459c0);
 
 
 }

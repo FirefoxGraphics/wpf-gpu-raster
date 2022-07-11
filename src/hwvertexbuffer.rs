@@ -2462,7 +2462,7 @@ impl CHwVertexBuffer {
             let mut output = Vec::with_capacity(self.m_rgVerticesTriStrip.GetCount());
             let data = self.m_rgVerticesTriStrip.GetDataBuffer();
             for vert in  data {
-                output.push(OutputVertex {x: vert.X + 0.5, y: vert.Y + 0.5, coverage: f32::from_bits(vert.Diffuse)})
+                output.push(OutputVertex {x: vert.X, y: vert.Y, coverage: f32::from_bits(vert.Diffuse)})
             }
             pDevice.output.replace(output);
             return S_OK;
