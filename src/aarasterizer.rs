@@ -510,8 +510,6 @@ pub fn AssertActiveList(mut list: Ref<CEdge>, yCurrent: INT) -> bool {
 
 fn AssertActiveListOrder(mut list:  Ref<CEdge>) {
 
-    let mut activeCount = 0;
-
     assert!((*list).X.get() == INT::MIN);
 
     // Skip the head sentinel:
@@ -522,7 +520,6 @@ fn AssertActiveListOrder(mut list:  Ref<CEdge>) {
         assert!((*list).X.get() != INT::MIN);
         assert!((*list).X <= (*(*list).Next.get()).X);
 
-        activeCount += 1;
         list = (*list).Next.get();
     }
 

@@ -37,12 +37,12 @@ mod matrix;
 
 mod nullable_ref;
 
-use std::{rc::Rc, cell::{RefCell, Cell}, mem::take};
+use std::{rc::Rc, cell::RefCell};
 
 use hwrasterizer::CHwRasterizer;
 use hwvertexbuffer::CHwVertexBufferBuilder;
 use matrix::CMatrix;
-use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, HRESULT, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath, CMILSurfaceRect};
+use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath, CMILSurfaceRect};
 
 
 #[repr(C)]
