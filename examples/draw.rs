@@ -276,7 +276,7 @@ fn main() {
     let rtree = usvg::Tree::from_file("tiger.svg", &opt).unwrap();
 
     let mut image = TGAImage::new(WIDTH, HEIGHT);
-    for _ in 0..10 {
+    for _ in 0..1 {
     let mut total_vertex_count = 0;
     let mut total_time = std::time::Duration::default();
     for node in rtree.root().descendants() {
@@ -303,7 +303,7 @@ fn main() {
                 }
             };
             let mut builder = PathBuilder::new();
-            dbg!(&usvg_path.segments);
+            //dbg!(&usvg_path.segments);
             for segment in &usvg_path.segments {
                 match *segment {
                     usvg::PathSegment::MoveTo { x, y } => {
