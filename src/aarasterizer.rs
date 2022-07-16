@@ -63,6 +63,7 @@ macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 32 }; }
 
 macro_rules! ASSERTACTIVELIST {
     ($list: expr, $y: expr) => {
+        #[cfg(debug_assertions)]
         AssertActiveList($list, $y);
     };
 }
@@ -111,9 +112,9 @@ impl<'a> Default for CInactiveEdge<'a> {
         }
     }
 }
-
 macro_rules! ASSERTACTIVELISTORDER {
     ($list: expr) => {
+        #[cfg(debug_assertions)]
         AssertActiveListOrder($list)
     };
 }
@@ -594,7 +595,7 @@ fn TransformRasterizerPointsTo28_4(
 ) -> HRESULT {
     let hr = S_OK;
 
-    assert!(cPoints > 0);
+    debug_assert!(cPoints > 0);
 
     //
     // We want coordinates in the 28.4 range in the end.  The matrix we get
@@ -1136,6 +1137,7 @@ fn ValidatePathTypes(typesArray: &[BYTE], mut count: INT) -> bool {
 \**************************************************************************/
 macro_rules! ASSERTPATH {
     ($types: expr, $points: expr) => {
+        #[cfg(debug_assertions)]
         AssertPath($types, $points)
     };
 }
@@ -1459,7 +1461,7 @@ fn QuickSortEdges(inactive: &mut [CInactiveEdge],
 
     // f->Yx is now the desired median, and (f + 1)->Yx <= f->Yx <= l->Yx
 
-    assert!((inactive[f + 1].Yx <= inactive[f].Yx) && (inactive[f].Yx <= inactive[l].Yx));
+    debug_assert!((inactive[f + 1].Yx <= inactive[f].Yx) && (inactive[f].Yx <= inactive[l].Yx));
 
     let median = inactive[f].Yx;
 
@@ -1592,6 +1594,7 @@ fn InsertionSortEdges(
 \**************************************************************************/
 macro_rules! ASSERTINACTIVEARRAY {
     ($inactive: expr, $count: expr) => {
+        #[cfg(debug_assertions)]
         AssertInactiveArray($inactive, $count);
     };
 }

@@ -237,7 +237,7 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
     // Convert interval to pixel space so that we can insert it 
     // into the coverage buffer
 
-    assert!(nSubpixelXLeft < nSubpixelXRight);
+    debug_assert!(nSubpixelXLeft < nSubpixelXRight);
     nPixelXLeft = nSubpixelXLeft >> c_nShift;
     nPixelXRight = nSubpixelXRight >> c_nShift; 
 
@@ -284,7 +284,7 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
 
     // If nCoverageLeft == 0, then the value of nPixelXLeft is wrong
     // and should have been equal to nPixelXLeft+1.
-    assert!(nCoverageLeft > 0);
+    debug_assert!(nCoverageLeft > 0);
 
     // If we have partial coverage, then ensure that we have a position
     // for the end of the pixel 
@@ -310,7 +310,7 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
     if (nPixelXLeft == nPixelXRight)
     {
         pInterval.m_nCoverage.set(pInterval.m_nCoverage.get() + nSubpixelXRight - nSubpixelXLeft);
-        assert!(pInterval.m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
+        debug_assert!(pInterval.m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
         //goto Cleanup;
 
         //Cleanup:
@@ -322,7 +322,7 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
 
     // Update coverage of current interval
     pInterval.m_nCoverage.set(pInterval.m_nCoverage.get() + nCoverageLeft);
-    assert!(pInterval.m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
+    debug_assert!(pInterval.m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
 
     // Increase the coverage for any intervals between 'nPixelXLeft'
     // and 'nPixelXRight':
@@ -335,7 +335,7 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
         }
         pInterval = pInterval.m_pNext.get();
         pInterval.m_nCoverage.set(pInterval.m_nCoverage.get() + c_nShiftSize);
-        assert!(pInterval.m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
+        debug_assert!(pInterval.m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
     }
 
     // Insert another new interval if necessary:
@@ -383,7 +383,7 @@ pub fn AddInterval(&'a self, nSubpixelXLeft: INT, nSubpixelXRight: INT) -> HRESU
         }
 
         pInterval.m_nCoverage.set((*pInterval).m_nCoverage.get() + nCoverageRight);
-        assert!(pInterval.m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
+        debug_assert!(pInterval.m_nCoverage.get() <= c_nShiftSize*c_nShiftSize);
     }
 
 //Cleanup:
@@ -435,7 +435,7 @@ pub fn FillEdgesAlternating(&'a self,
                 pEdgeEnd = pEdgeEnd.Next.get().Next.get();
             }
 
-            assert!((nSubpixelXLeft < nSubpixelXRight) && (nSubpixelXRight < INT::MAX));
+            debug_assert!((nSubpixelXLeft < nSubpixelXRight) && (nSubpixelXRight < INT::MAX));
 
             IFC!(self.AddInterval(nSubpixelXLeft, nSubpixelXRight));
         }
@@ -483,7 +483,7 @@ pub fn FillEdgesWinding(&'a self,
             pEdgeEnd = pEdgeEnd.Next.get();
         }
 
-        assert!(pEdgeEnd.X.get() != INT::MAX);
+        debug_assert!(pEdgeEnd.X.get() != INT::MAX);
 
         // We skip empty pairs:
 
@@ -504,7 +504,7 @@ pub fn FillEdgesWinding(&'a self,
                 }
             }
 
-            assert!((nSubpixelXLeft < nSubpixelXRight) && (nSubpixelXRight < INT::MAX));
+            debug_assert!((nSubpixelXLeft < nSubpixelXRight) && (nSubpixelXRight < INT::MAX));
 
             IFC!(self.AddInterval(nSubpixelXLeft, nSubpixelXRight));
         }
