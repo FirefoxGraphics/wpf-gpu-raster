@@ -378,7 +378,9 @@ fn main() {
         t.hash(&mut s);
         s.finish()
     }
-    assert_eq!(calculate_hash(&image.buf), 0x4351654ca83459c0);
+
+    assert_eq!(calculate_hash(&image.buf),
+        if cfg!(debug_assertions) { 0xb03d06a10a8353a1 } else { 0x4351654ca83459c0});
 
 
 }
