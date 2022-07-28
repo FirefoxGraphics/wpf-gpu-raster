@@ -8,16 +8,14 @@ license = "MIT"
 debug = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[build-dependencies]
-cc = "1.0"
-
 [dependencies]
-png = "0.17.2"
+cfor = "1.1.0"
+typed-arena-nomut = "0.1.0"
+
+[dev-dependencies]
 usvg = "0.4"
 euclid = "0.22.6"
-cfor = "1.1.0"
-scopeguard = "1.1.0"
-typed-arena-nomut = "0.1.0"
+png = "0.17.2"
 
 [features]
 default = ["c_bindings"]
