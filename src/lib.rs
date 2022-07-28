@@ -37,6 +37,9 @@ mod matrix;
 
 mod nullable_ref;
 
+#[cfg(feature = "c_bindings")]
+pub mod c_bindings;
+
 use std::{rc::Rc, cell::RefCell};
 
 use hwrasterizer::CHwRasterizer;
