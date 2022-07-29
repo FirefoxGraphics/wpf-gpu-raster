@@ -26,36 +26,16 @@ macro_rules! EDGE_STORE_STACK_NUMBER {
     };
 }
 #[cfg(debug_assertions)]
-macro_rules! EDGE_STORE_ALLOCATION_NUMBER {
-    () => {
-        11
-    };
-}
+macro_rules! EDGE_STORE_ALLOCATION_NUMBER { () => { 11 }; }
 #[cfg(debug_assertions)]
-macro_rules! INACTIVE_LIST_NUMBER {
-    () => {
-        12
-    };
-}
+macro_rules! INACTIVE_LIST_NUMBER { () => { 12 }; }
 #[cfg(debug_assertions)]
-macro_rules! ENUMERATE_BUFFER_NUMBER {
-    () => {
-        15
-    };
-}
+macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 15 }; }
 
 #[cfg(not(debug_assertions))]
-macro_rules! EDGE_STORE_STACK_NUMBER {
-    () => {
-        (1600 / std::mem::size_of::<CEdge>())
-    };
-}
+macro_rules! EDGE_STORE_STACK_NUMBER { () => { (1600 / std::mem::size_of::<CEdge>()) }; }
 #[cfg(not(debug_assertions))]
-macro_rules! EDGE_STORE_ALLOCATION_NUMBER {
-    () => {
-        (4032 / std::mem::size_of::<CEdge>()) as u32
-    };
-}
+macro_rules! EDGE_STORE_ALLOCATION_NUMBER { () => { (4032 / std::mem::size_of::<CEdge>()) as u32 }; }
 #[cfg(not(debug_assertions))]
 macro_rules! INACTIVE_LIST_NUMBER { () => { EDGE_STORE_STACK_NUMBER!() }; }
 #[cfg(not(debug_assertions))]
