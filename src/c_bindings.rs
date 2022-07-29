@@ -1,4 +1,4 @@
-use crate::{PathBuilder, OutputVertex};
+use crate::{PathBuilder, OutputVertex, FillMode};
 
 #[no_mangle]
 pub extern "C" fn wgr_new_builder() -> *mut PathBuilder {
@@ -25,6 +25,12 @@ pub extern "C" fn wgr_builder_curve_to(pb: &mut PathBuilder, c1x: f32, c1y: f32,
 pub extern "C" fn wgr_builder_quad_to(pb: &mut PathBuilder, cx: f32, cy: f32, x: f32, y: f32) {
     pb.quad_to(cx, cy, x, y);
 }
+
+#[no_mangle]
+pub extern "C" fn wgr_builder_set_fill_mode(pb: &mut PathBuilder, fill_mode: FillMode) {
+    pb.set_fill_mode(fill_mode)
+}
+
 #[repr(C)]
 pub struct VertexBuffer {
     data: *const OutputVertex,

@@ -56,6 +56,7 @@ pub struct OutputVertex {
     pub coverage: f32
 }
 
+#[repr(C)]
 pub enum FillMode {
     EvenOdd = 0,
     Winding = 1,
