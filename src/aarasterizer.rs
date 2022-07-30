@@ -694,7 +694,7 @@ fn InitializeEdges(
     let mut error: i32;
     let mut windingDirection;
     //let mut edgeBuffer: *mut CEdge = NULL();
-    let mut bufferCount: UINT = 0;
+    let bufferCount: UINT = 0;
     let mut yClipTopInteger;
     let mut yClipTop;
     let mut yClipBottom;
@@ -702,7 +702,7 @@ fn InitializeEdges(
     let mut xClipRight;
 
     let mut yMax = pEdgeContext.MaxY;
-    let store = &mut pEdgeContext.Store;
+    let _store = &mut pEdgeContext.Store;
     let clipRect = pEdgeContext.ClipRect;
 
     let mut edgeCount = vertexCount - 1;

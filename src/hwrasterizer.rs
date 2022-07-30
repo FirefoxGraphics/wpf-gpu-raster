@@ -510,7 +510,7 @@ pub fn RasterizePath(
     pmatWorldTransform: &CMILMatrix
     ) -> HRESULT
 {
-    let mut hr = S_OK;
+    let mut hr;
     // Default is not implemented for arrays of size 40 so we need to use map
     let mut inactiveArrayStack: [CInactiveEdge; INACTIVE_LIST_NUMBER!()] = [(); INACTIVE_LIST_NUMBER!()].map(|_| Default::default());
     let mut pInactiveArray: &mut [CInactiveEdge];
@@ -1347,7 +1347,7 @@ RasterizeEdges<'a, 'b>(&mut self,
     nSubpixelYBottom: INT
     ) -> HRESULT
 {
-    let mut hr: HRESULT = S_OK;
+    let hr: HRESULT = S_OK;
     let mut pEdgePrevious: Ref<CEdge>;
     let mut pEdgeCurrent: Ref<CEdge>;
     let mut nSubpixelYNextInactive: INT = 0;

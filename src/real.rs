@@ -22,6 +22,7 @@ pub mod CFloatFPU {
             _mm_store_ss((&mut correction) as *mut _ as *mut _, mask); // get comparison result as integer
             return result - correction;                         // correct the result of rounding
         }
+        #[cfg(not(target_feature = "sse2"))]
         return (x.floor() + 0.5) as i32;
     }
 

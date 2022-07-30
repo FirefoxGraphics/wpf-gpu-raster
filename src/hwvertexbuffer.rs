@@ -2801,7 +2801,7 @@ fn AddTrapezoidStandard(&mut self,
         pVertex[i].X = rPixelXBottomRight + rPixelXRightDelta;
         pVertex[i].Y = rPixelYBottom;
         pVertex[i].Diffuse = FLOAT_ZERO;
-        i += 1;
+        // i += 1;
     }
 
 //Cleanup:
@@ -3221,7 +3221,7 @@ fn FlushInternal(&mut self,
     }
 
   //Cleanup:
-    if let Some(ppVertexBuffer) = (ppVertexBuffer)
+    if let Some(_ppVertexBuffer) = (ppVertexBuffer)
     {
         if (!self.m_fHasFlushed)
         {
