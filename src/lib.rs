@@ -439,7 +439,6 @@ mod tests {
         } else {
             assert_eq!(result.len(), 238);
         }
-
     }
 
     #[test]

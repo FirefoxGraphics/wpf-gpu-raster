@@ -383,7 +383,7 @@ pub type CHwVertexBuffer = CHwTVertexBuffer<CD3DVertexXYZDUV2>;
 #[derive(Default)]
 pub struct CHwTVertexBuffer<TVertex>
 {
-    m_rgIndices: DynArray<WORD>,     // Dynamic array of indices
+    //m_rgIndices: DynArray<WORD>,     // Dynamic array of indices
 
 
     //m_pBuilder: Rc<CHwTVertexBufferBuilder<TVertex>>,
@@ -684,7 +684,7 @@ protected:
 
     // Dynamic array of vertices for which all allocations are zeroed.
     // XXX: the zero has been removed
-    m_rgVerticesTriList: DynArray<TVertex>,             // Indexed triangle list vertices
+    //m_rgVerticesTriList: DynArray<TVertex>,             // Indexed triangle list vertices
     //m_rgVerticesNonIndexedTriList: DynArray<TVertex>,   // Non-indexed triangle list vertices
     m_rgVerticesTriStrip: DynArray<TVertex>,            // Triangle strip vertices
     //m_rgVerticesLineList: DynArray<TVertex>,            // Linelist vertices
@@ -765,8 +765,8 @@ impl<TVertex> CHwTVertexBuffer<TVertex> {
             self.m_fDbgNonLineSegmentTriangleStrip = false;
         }
 
-        self.m_rgIndices.SetCount(0);
-        self.m_rgVerticesTriList.SetCount(0);
+        //self.m_rgIndices.SetCount(0);
+        //self.m_rgVerticesTriList.SetCount(0);
         self.m_rgVerticesTriStrip.SetCount(0);
         //self.m_rgVerticesLineList.SetCount(0);
         //self.m_rgVerticesNonIndexedTriList.SetCount(0);
@@ -776,8 +776,8 @@ impl<TVertex> CHwTVertexBuffer<TVertex> {
 
     fn IsEmpty(&self) -> bool
     {
-        return 
-               (self.m_rgIndices.GetCount() == 0)
+        return true
+             //  && (self.m_rgIndices.GetCount() == 0)
             //&& (self.m_rgVerticesLineList.GetCount() == 0)
             && (self.m_rgVerticesTriStrip.GetCount() == 0)
             //&& (self.m_rgVerticesNonIndexedTriList.GetCount() == 0);
@@ -1123,11 +1123,11 @@ private:
 
     //m_pfnExpandVertices: PFN_ExpandVertices,  // Method for expanding vertices
 
-    m_rgoPrecomputedTriListVertices: *const TVertex,
-    m_cPrecomputedTriListVertices: UINT,
+    //m_rgoPrecomputedTriListVertices: *const TVertex,
+    //m_cPrecomputedTriListVertices: UINT,
 
-    m_rguPrecomputedTriListIndices: *const UINT,
-    m_cPrecomputedTriListIndices: UINT,
+    //m_rguPrecomputedTriListIndices: *const UINT,
+    //m_cPrecomputedTriListIndices: UINT,
 
     //m_map: CHwTVertexMappings<TVertex>,
 
@@ -1784,11 +1784,11 @@ fn new(pVertexBuffer: Box<CHwTVertexBuffer<TVertex>>, device: Rc<CD3DDeviceLevel
     m_pVB: pVertexBuffer,
 
 
-    m_rgoPrecomputedTriListVertices: NULL(),
-    m_cPrecomputedTriListVertices: 0,
+    //m_rgoPrecomputedTriListVertices: NULL(),
+    //m_cPrecomputedTriListVertices: 0,
 
-    m_rguPrecomputedTriListIndices: NULL(),
-    m_cPrecomputedTriListIndices: 0,
+    //m_rguPrecomputedTriListIndices: NULL(),
+    //m_cPrecomputedTriListIndices: 0,
 
     // These two track the Y extent of the shape this builder is producing.
     m_rCurStratumTop: f32::MAX,
@@ -3211,7 +3211,7 @@ fn FlushInternal(&mut self,
 */
     IFC!(self.EndBuilding(NULL()));
 
-    if (self.m_rgoPrecomputedTriListVertices != NULL())
+    if (false/*self.m_rgoPrecomputedTriListVertices != NULL()*/)
     {
         panic!();
     }
@@ -3234,11 +3234,11 @@ fn FlushInternal(&mut self,
         self.m_fHasFlushed = true;
         self.m_pVB.Reset();
 
-        self.m_rgoPrecomputedTriListVertices = NULL();
-        self.m_cPrecomputedTriListVertices = 0;
+        //self.m_rgoPrecomputedTriListVertices = NULL();
+        //self.m_cPrecomputedTriListVertices = 0;
 
-        self.m_rguPrecomputedTriListIndices = NULL();
-        self.m_cPrecomputedTriListIndices = 0;
+        //self.m_rguPrecomputedTriListIndices = NULL();
+        //self.m_cPrecomputedTriListIndices = 0;
     }
     
     RRETURN!(hr);
