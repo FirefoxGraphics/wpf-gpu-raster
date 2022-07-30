@@ -2209,7 +2209,7 @@ Cleanup:
         ) -> HRESULT {
 
     let hr: HRESULT = S_OK;
-    let pVertex: *mut CD3DVertexXYZDUV2 = NULL();
+    //let pVertex: *mut CD3DVertexXYZDUV2 = NULL();
 
     IFC!(self.PrepareStratum((nPixelY) as f32,
                   (nPixelY+1) as f32, 
@@ -2219,7 +2219,6 @@ Cleanup:
     let rPixelY: f32;
     rPixelY = (nPixelY) as f32 + 0.5;
 
-{
     //LineWaffler<PointXYA> wafflers[NUM_OF_VERTEX_TEXTURE_COORDS(TVertex) * 2];
 
     // Use sink for waffling & the first line fix up (aka the complicated cases.)
@@ -2362,13 +2361,13 @@ Cleanup:
 
         pIntervalSpanStart = (*pIntervalSpanStart).m_pNext.get();
     }
-}
+
 
 //Cleanup:
     RRETURN!(hr);
 
 }
-        }
+}
 
 //+----------------------------------------------------------------------------
 //
