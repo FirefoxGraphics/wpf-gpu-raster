@@ -174,14 +174,14 @@ struct TGAImage {
 
 impl TGAImage {
     fn new(width: u32, height: u32) -> Self { Self { width, height, buf: vec![0; (width * height * 3) as usize] } }
-    fn set(&mut self, x: i32, y: i32, color: TGAColor) {
+    /*fn set(&mut self, x: i32, y: i32, color: TGAColor) {
         if x >= self.width as i32 || y >= self.height as i32 {
             return;
         }
         self.buf[((x + y * self.width as i32) * 3) as usize] = color.0;
         self.buf[((x + y * self.width as i32) * 3 + 1) as usize] = color.1;
         self.buf[((x + y * self.width as i32) * 3 + 2) as usize] = color.2;
-    }
+    }*/
     fn blend(&mut self, x: i32, y: i32, color: TGAColor) {
         if x >= self.width as i32 || y >= self.height as i32 {
             return;
