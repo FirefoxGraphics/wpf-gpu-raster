@@ -388,7 +388,7 @@ mod tests {
             p.close();
         }
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        //assert_eq!(dbg!(calculate_hash(&result)), 0xab9e651ac1aa1d48);
+        assert_eq!(result.len(), 24000);
     }
 
     #[test]
