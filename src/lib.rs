@@ -410,6 +410,11 @@ mod tests {
         p.set_outside_bounds(Some((0, 0, 50, 50)), false);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x1e734743e1785634);
+
+        // ensure that adjusting the outside bounds changes the results
+        p.set_outside_bounds(Some((5, 5, 50, 50)), false);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x750791f4ed45f038);
     }
 
     #[test]
@@ -469,5 +474,14 @@ mod tests {
         p.set_fill_mode(FillMode::Winding);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(result.len(), 820);
+    }
+
+    #[test]
+    fn empty_fill() {
+        let mut p = PathBuilder::new();
+        p.move_to(0., 0.);
+        p.line_to(10., 100.);
+        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        assert_eq!(result.len(), 0);
     }
 }
