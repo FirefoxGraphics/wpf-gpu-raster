@@ -43,6 +43,8 @@ macro_rules! ENUMERATE_BUFFER_NUMBER { () => { 32 }; }
 
 macro_rules! ASSERTACTIVELIST {
     ($list: expr, $y: expr) => {
+        // make sure we use y even in non debug builds
+        _ = $y;
         #[cfg(debug_assertions)]
         AssertActiveList($list, $y);
     };

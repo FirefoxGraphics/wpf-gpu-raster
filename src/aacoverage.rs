@@ -13,8 +13,9 @@ use typed_arena_nomut::Arena;
 //
 //  Description:
 //      Coverage buffer implementation
-//
-use crate::aarasterizer::{AssertActiveList, CEdge};
+#[cfg(debug_assertions)]
+use crate::aarasterizer::AssertActiveList;
+use crate::aarasterizer::CEdge;
 use crate::nullable_ref::Ref;
 use crate::types::*;
 //struct CEdge;
