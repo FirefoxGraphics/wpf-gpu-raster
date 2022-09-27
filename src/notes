@@ -14,4 +14,7 @@ we can avoid the ComplexSpan code path.
 Direct2D uses a triangle for line segments intead of a quad. This reduces the number of vertices
 for a line segment from 6 down to 5
 
+If we're drawing lines there's not really any advantage to using triangle strips,
+because we have very limited edge sharing. We can draw a line with 3 vertices.
 
+In fact, D2D doesn't use triangle strips and just uses a triangle list.
