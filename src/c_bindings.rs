@@ -27,6 +27,11 @@ pub extern "C" fn wgr_builder_quad_to(pb: &mut PathBuilder, cx: f32, cy: f32, x:
 }
 
 #[no_mangle]
+pub extern "C" fn wgr_builder_close(pb: &mut PathBuilder) {
+    pb.close();
+}
+
+#[no_mangle]
 pub extern "C" fn wgr_builder_set_fill_mode(pb: &mut PathBuilder, fill_mode: FillMode) {
     pb.set_fill_mode(fill_mode)
 }
