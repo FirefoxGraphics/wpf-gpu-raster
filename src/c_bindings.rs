@@ -41,7 +41,9 @@ pub struct VertexBuffer {
 pub extern "C" fn wgr_rasterize_to_tri_strip(pb: &PathBuilder, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> VertexBuffer
 {
     let result = pb.rasterize_to_tri_strip(clip_x, clip_y, clip_width, clip_height);
-    VertexBuffer { data: result.as_ptr(), len: result.len()}
+    let (data, len) = (result.as_ptr(), result.len());
+    std::mem::forget(result);
+    VertexBuffer { data, len }
 }
 
 #[no_mangle]
