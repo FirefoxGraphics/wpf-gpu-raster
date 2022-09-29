@@ -116,41 +116,41 @@ pub fn AdvanceDDAAndUpdateActiveEdgeList(nSubpixelYCurrent: INT, pEdgeActiveList
 
         let mut nOutOfOrderCount: INT = 0;
         let mut pEdgePrevious: Ref<CEdge> = pEdgeActiveList;
-        let mut pEdgeCurrent: Ref<CEdge> = (*pEdgeActiveList).Next.get();
+        let mut pEdgeCurrent: Ref<CEdge> = pEdgeActiveList.Next.get();
 
         // Advance DDA and update edge list
 
         loop {
-            if ((*pEdgeCurrent).EndY <= nSubpixelYCurrent) {
+            if (pEdgeCurrent.EndY <= nSubpixelYCurrent) {
                 // If we've hit the sentinel, our work here is done:
 
-                if ((*pEdgeCurrent).EndY == INT::MIN) {
+                if (pEdgeCurrent.EndY == INT::MIN) {
                     break; // ============>
                 }
                 // This edge is stale, remove it from the list:
 
-                pEdgeCurrent = (*pEdgeCurrent).Next.get();
-                (*pEdgePrevious).Next.set(pEdgeCurrent);
+                pEdgeCurrent = pEdgeCurrent.Next.get();
+                pEdgePrevious.Next.set(pEdgeCurrent);
                 continue; // ============>
             }
 
             // Advance the DDA:
 
-            (*pEdgeCurrent).X.set((*pEdgeCurrent).X.get() + (*pEdgeCurrent).Dx);
-            (*pEdgeCurrent).Error.set((*pEdgeCurrent).Error.get()+ (*pEdgeCurrent).ErrorUp);
-            if ((*pEdgeCurrent).Error.get() >= 0) {
-                (*pEdgeCurrent).Error.set((*pEdgeCurrent).Error.get() - (*pEdgeCurrent).ErrorDown);
-                (*pEdgeCurrent).X.set((*pEdgeCurrent).X.get() + 1);
+            pEdgeCurrent.X.set(pEdgeCurrent.X.get() + pEdgeCurrent.Dx);
+            pEdgeCurrent.Error.set(pEdgeCurrent.Error.get()+ pEdgeCurrent.ErrorUp);
+            if (pEdgeCurrent.Error.get() >= 0) {
+                pEdgeCurrent.Error.set(pEdgeCurrent.Error.get() - pEdgeCurrent.ErrorDown);
+                pEdgeCurrent.X.set(pEdgeCurrent.X.get() + 1);
             }
 
             // Is this entry out-of-order with respect to the previous one?
 
-            nOutOfOrderCount += ((*pEdgePrevious).X > (*pEdgeCurrent).X) as i32;
+            nOutOfOrderCount += (pEdgePrevious.X > pEdgeCurrent.X) as i32;
 
             // Advance:
 
             pEdgePrevious = pEdgeCurrent;
-            pEdgeCurrent = (*pEdgeCurrent).Next.get();
+            pEdgeCurrent = pEdgeCurrent.Next.get();
         }
 
         // It turns out that having any out-of-order edges at this point
