@@ -905,16 +905,16 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
     if (self.m_fillMode == MilFillMode::Winding)
     {
-        cfor!{let mut pEdge = pEdgeCurrent; (*pEdge).EndY != INT::MIN; pEdge = (*(*pEdge).Next.get()).Next.get();
+        cfor!{let mut pEdge = pEdgeCurrent; pEdge.EndY != INT::MIN; pEdge = pEdge.Next.get().Next.get();
         {
             // The active edge list always has an even number of edges which we actually
             // assert in ASSERTACTIVELIST.
 
-            assert!((*(*pEdge).Next.get()).EndY != INT::MIN);
+            assert!(pEdge.Next.get().EndY != INT::MIN);
 
             // If not alternating winding direction, we can't fill with alternate mode
 
-            if ((*pEdge).WindingDirection == (*(*pEdge).Next.get()).WindingDirection)
+            if (pEdge.WindingDirection == pEdge.Next.get().WindingDirection)
             {
                 // Give up until we handle winding mode
                 nSubpixelYBottomTrapezoids = nSubpixelYCurrent;
@@ -934,7 +934,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
     nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
 
-    cfor!{let mut pEdge = pEdgeCurrent; (*pEdge).EndY != INT::MIN; pEdge = (*pEdge).Next.get(); 
+    cfor!{let mut pEdge = pEdgeCurrent; pEdge.EndY != INT::MIN; pEdge = pEdge.Next.get(); 
     {
         //
         // Step 1
@@ -945,7 +945,7 @@ fn ComputeTrapezoidsEndScan(&mut self,
         // that pEdge->EndY <= nSubpixelYBottom so there is no need to check for that here.
         //
 
-        nSubpixelYBottomTrapezoids = nSubpixelYBottomTrapezoids.min((*pEdge).EndY);
+        nSubpixelYBottomTrapezoids = nSubpixelYBottomTrapezoids.min(pEdge.EndY);
 
         //
         // Step 2
@@ -954,9 +954,9 @@ fn ComputeTrapezoidsEndScan(&mut self,
         //
 
         pEdgeLeft = pEdge;
-        pEdgeRight = (*pEdge).Next.get();
+        pEdgeRight = pEdge.Next.get();
 
-        if ((*pEdgeRight).EndY != INT::MIN)
+        if (pEdgeRight.EndY != INT::MIN)
         {
             //
             //        __A__A'___________________B'_B__
@@ -1020,9 +1020,9 @@ fn ComputeTrapezoidsEndScan(&mut self,
             // the fact that the edges don't converge, so we can be too conservative here.
             //
 
-            if ((*pEdgeLeft).Dx > (*pEdgeRight).Dx
-                || (((*pEdgeLeft).Dx == (*pEdgeRight).Dx)
-                    && IsFractionGreaterThan((*pEdgeLeft).ErrorUp, (*pEdgeLeft).ErrorDown, (*pEdgeRight).ErrorUp, (*pEdgeRight).ErrorDown)))
+            if (pEdgeLeft.Dx > pEdgeRight.Dx
+                || ((pEdgeLeft.Dx == pEdgeRight.Dx)
+                    && IsFractionGreaterThan(pEdgeLeft.ErrorUp, pEdgeLeft.ErrorDown, pEdgeRight.ErrorUp, pEdgeRight.ErrorDown)))
             {
 
                 let nSubpixelYAdvance: INT =  nSubpixelYBottomTrapezoids - nSubpixelYCurrent;
@@ -1207,8 +1207,8 @@ OutputTrapezoids(&mut self,
     let mut pEdgeRight = (*pEdgeCurrent).Next.get();
 
     assert!((nSubpixelYCurrent & c_nShiftMask) == 0);
-    assert!((*pEdgeLeft).EndY != INT::MIN);
-    assert!((*pEdgeRight).EndY != INT::MIN);
+    assert!(pEdgeLeft.EndY != INT::MIN);
+    assert!(pEdgeRight.EndY != INT::MIN);
 
     //
     // Compute the height our trapezoids
@@ -1254,14 +1254,14 @@ OutputTrapezoids(&mut self,
         // Computation of edge data
         //
 
-        rSubpixelLeftErrorDown  = (*pEdgeLeft).ErrorDown as f32;
-        rSubpixelRightErrorDown = (*pEdgeRight).ErrorDown as f32;
-        rPixelXLeft  = ConvertSubpixelXToPixel((*pEdgeLeft).X.get(), (*pEdgeLeft).Error.get(), rSubpixelLeftErrorDown);
-        rPixelXRight = ConvertSubpixelXToPixel((*pEdgeRight).X.get(), (*pEdgeRight).Error.get(), rSubpixelRightErrorDown);
+        rSubpixelLeftErrorDown  = pEdgeLeft.ErrorDown as f32;
+        rSubpixelRightErrorDown = pEdgeRight.ErrorDown as f32;
+        rPixelXLeft  = ConvertSubpixelXToPixel(pEdgeLeft.X.get(), pEdgeLeft.Error.get(), rSubpixelLeftErrorDown);
+        rPixelXRight = ConvertSubpixelXToPixel(pEdgeRight.X.get(), pEdgeRight.Error.get(), rSubpixelRightErrorDown);
 
-        rSubpixelLeftInvSlope     = (*pEdgeLeft).Dx as f32 + (*pEdgeLeft).ErrorUp as f32/rSubpixelLeftErrorDown;
+        rSubpixelLeftInvSlope     = pEdgeLeft.Dx as f32 + pEdgeLeft.ErrorUp as f32/rSubpixelLeftErrorDown;
         rSubpixelLeftAbsInvSlope  = rSubpixelLeftInvSlope.abs();
-        rSubpixelRightInvSlope    = (*pEdgeRight).Dx as f32 + (*pEdgeRight).ErrorUp as f32/rSubpixelRightErrorDown;
+        rSubpixelRightInvSlope    = pEdgeRight.Dx as f32 + pEdgeRight.ErrorUp as f32/rSubpixelRightErrorDown;
         rSubpixelRightAbsInvSlope = rSubpixelRightInvSlope.abs();
 
         rPixelXLeftDelta  = 0.5 + 0.5 * rSubpixelLeftAbsInvSlope;
@@ -1273,13 +1273,13 @@ OutputTrapezoids(&mut self,
         let rPixelXBottomLeft  = ConvertSubpixelXToPixel(
                                         nSubpixelXLeftBottom,
                                         nSubpixelErrorLeftBottom,
-                                        (*pEdgeLeft).ErrorDown as f32
+                                        pEdgeLeft.ErrorDown as f32
                                         );
 
         let rPixelXBottomRight = ConvertSubpixelXToPixel(
                                         nSubpixelXRightBottom,
                                         nSubpixelErrorRightBottom,
-                                        (*pEdgeRight).ErrorDown as f32
+                                        pEdgeRight.ErrorDown as f32
                                         );
 
         //
@@ -1303,16 +1303,16 @@ OutputTrapezoids(&mut self,
 
         //  no need to do this if edges are stale
 
-        (*pEdgeLeft).X.set(nSubpixelXLeftBottom);
-        (*pEdgeLeft).Error.set(nSubpixelErrorLeftBottom);
-        (*pEdgeRight).X.set(nSubpixelXRightBottom);
-        (*pEdgeRight).Error.set(nSubpixelErrorRightBottom);
+        pEdgeLeft.X.set(nSubpixelXLeftBottom);
+        pEdgeLeft.Error.set(nSubpixelErrorLeftBottom);
+        pEdgeRight.X.set(nSubpixelXRightBottom);
+        pEdgeRight.Error.set(nSubpixelErrorRightBottom);
 
         //
         // Check for termination
         //
 
-        if ((*(*pEdgeRight).Next.get()).EndY == INT::MIN)
+        if (pEdgeRight.Next.get().EndY == INT::MIN)
         {
             break;
         }
@@ -1321,8 +1321,8 @@ OutputTrapezoids(&mut self,
         // Advance edge data
         //
 
-        pEdgeLeft  = (*pEdgeRight).Next.get();
-        pEdgeRight = (*pEdgeLeft).Next.get();
+        pEdgeLeft  = pEdgeRight.Next.get();
+        pEdgeRight = pEdgeLeft.Next.get();
 
     }
 
@@ -1369,18 +1369,18 @@ RasterizeEdges<'a, 'b>(&mut self,
         //
 
         pEdgePrevious = pEdgeActiveList;
-        pEdgeCurrent = (*pEdgeActiveList).Next.get();
+        pEdgeCurrent = pEdgeActiveList.Next.get();
 
         nSubpixelYNext = nSubpixelYCurrent;
 
         if (!IsTagEnabled!(tagDisableTrapezoids)
             && (nSubpixelYCurrent & c_nShiftMask) == 0
-            && (*pEdgeCurrent).EndY != INT::MIN
+            && pEdgeCurrent.EndY != INT::MIN
             && nSubpixelYNextInactive >= nSubpixelYCurrent + c_nShiftSize
             )
         {
             // Edges are paired, so we can assert we have another one
-            assert!((*(*pEdgeCurrent).Next.get()).EndY != INT::MIN);
+            assert!(pEdgeCurrent.Next.get().EndY != INT::MIN);
 
             //
             // Given an active edge list, we compute the furthest we can go in the y direction
@@ -1423,21 +1423,21 @@ RasterizeEdges<'a, 'b>(&mut self,
 
             // Remove stale edges.  Note that the DDA is incremented in OutputTrapezoids.
 
-            while ((*pEdgeCurrent).EndY != INT::MIN)
+            while (pEdgeCurrent.EndY != INT::MIN)
             {
-                if ((*pEdgeCurrent).EndY <= nSubpixelYCurrent)
+                if (pEdgeCurrent.EndY <= nSubpixelYCurrent)
                 {
                     // Unlink and advance
 
-                    pEdgeCurrent = (*pEdgeCurrent).Next.get();
-                    (*pEdgePrevious).Next.set(pEdgeCurrent);
+                    pEdgeCurrent = pEdgeCurrent.Next.get();
+                    pEdgePrevious.Next.set(pEdgeCurrent);
                 }
                 else
                 {
                     // Advance
 
                     pEdgePrevious = pEdgeCurrent;
-                    pEdgeCurrent = (*pEdgeCurrent).Next.get();
+                    pEdgeCurrent = pEdgeCurrent.Next.get();
                 }
             }
         }
@@ -1449,7 +1449,7 @@ RasterizeEdges<'a, 'b>(&mut self,
             //   2) fall back to scan rasterization
             //
 
-            if ((*pEdgeCurrent).EndY == INT::MIN)
+            if (pEdgeCurrent.EndY == INT::MIN)
             {
                 nSubpixelYNext = nSubpixelYNextInactive;
             }
