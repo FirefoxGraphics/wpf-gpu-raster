@@ -164,8 +164,8 @@ impl PathBuilder {
     /// 
     /// This is useful for creating geometry for other blend modes.
     /// For example:
-    /// IN can be done with outside_bounds and need_inside = false
-    /// IN with transparency can be done with outside_bounds and need_inside = true
+    /// IN(dest, geometry) can be done with outside_bounds and need_inside = false
+    /// IN(dest, geometry, alpha) can be done with outside_bounds and need_inside = true
     pub fn set_outside_bounds(&mut self, outside_bounds: Option<(i32, i32, i32, i32)>, need_inside: bool) {
         self.outside_bounds = outside_bounds.map(|r| CMILSurfaceRect { left: r.0, top: r.1, right: r.2, bottom: r.3 });
         self.need_inside = need_inside;
