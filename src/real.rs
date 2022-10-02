@@ -23,7 +23,7 @@ pub mod CFloatFPU {
             return result - correction;                         // correct the result of rounding
         }
         #[cfg(not(target_feature = "sse2"))]
-        return (x.floor() + 0.5) as i32;
+        return (x + 0.5).floor() as i32;
     }
 
 
