@@ -164,12 +164,16 @@ impl PathBuilder {
     /// 
     /// This is useful for creating geometry for other blend modes.
     /// For example:
-    /// IN(dest, geometry) can be done with outside_bounds and need_inside = false
-    /// IN(dest, geometry, alpha) can be done with outside_bounds and need_inside = true
+    /// - `IN(dest, geometry)` can be done with `outside_bounds` and `need_inside = false`
+    /// - `IN(dest, geometry, alpha)` can be done with `outside_bounds` and `need_inside = true`
+    ///
+    /// Note: trapezoidal areas won't be clipped to outside_bounds
     pub fn set_outside_bounds(&mut self, outside_bounds: Option<(i32, i32, i32, i32)>, need_inside: bool) {
         self.outside_bounds = outside_bounds.map(|r| CMILSurfaceRect { left: r.0, top: r.1, right: r.2, bottom: r.3 });
         self.need_inside = need_inside;
     }
+
+    /// Note: trapezodial areas won't necessarily be clipped to the clip rect
     pub fn rasterize_to_tri_strip(&self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
         let mut rasterizer = CHwRasterizer::new();
         let mut device = CD3DDeviceLevel1::new();
@@ -428,6 +432,19 @@ mod tests {
         p.set_outside_bounds(Some((0, 0, 50, 50)), true);
         let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
         assert_eq!(dbg!(calculate_hash(&result)), 0x1b741fc435aa1897);
+    }
+
+    #[test]
+    fn outside_clipped() {
+        let mut p = PathBuilder::new();
+        p.move_to(10., 10.);
+        p.line_to(10., 40.);
+        p.line_to(90., 40.);
+        p.line_to(40., 10.);
+        p.close();
+        p.set_outside_bounds(Some((0, 0, 50, 50)), false);
+        let result = p.rasterize_to_tri_strip(0, 0, 50, 50);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x59eea88edd340269);
     }
 
     #[test]
