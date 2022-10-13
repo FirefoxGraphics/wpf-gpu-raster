@@ -46,8 +46,8 @@ use std::{rc::Rc, cell::RefCell};
 use hwrasterizer::CHwRasterizer;
 use hwvertexbuffer::CHwVertexBufferBuilder;
 use matrix::CMatrix;
-use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath, CMILSurfaceRect};
-
+use real::CFloatFPU;
+use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath, CMILSurfaceRect, POINT};
 
 #[repr(C)]
 #[derive(Debug, Default)]
@@ -58,6 +58,7 @@ pub struct OutputVertex {
 }
 
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub enum FillMode {
     EvenOdd = 0,
     Winding = 1,
@@ -72,11 +73,11 @@ impl std::hash::Hash for OutputVertex {
 }
 
 pub struct PathBuilder {
-    points: DynArray<MilPoint2F>,
+    points: DynArray<POINT>,
     types: DynArray<BYTE>,
     initial_point: Option<MilPoint2F>,
     in_shape: bool,
-    fill_mode: MilFillMode,
+    fill_mode: FillMode,
     outside_bounds: Option<CMILSurfaceRect>,
     need_inside: bool
 }
@@ -88,20 +89,26 @@ impl PathBuilder {
         types: Vec::new(),
         initial_point: None,
         in_shape: false,
-        fill_mode: MilFillMode::Alternate,
+        fill_mode: FillMode::EvenOdd,
         outside_bounds: None,
         need_inside: true,
         }
+    }
+    fn add_point(&mut self, x: f32, y: f32) {
+        self.points.push(POINT {
+            x: CFloatFPU::Round(x * 16.0),
+            y: CFloatFPU::Round(y * 16.0),
+        });
     }
     pub fn line_to(&mut self, x: f32, y: f32) {
         if let Some(initial_point) = self.initial_point {
             if !self.in_shape {
                 self.types.push(PathPointTypeStart);
-                self.points.push(initial_point);
+                self.add_point(initial_point.X, initial_point.Y);
                 self.in_shape = true;
             }
             self.types.push(PathPointTypeLine);
-            self.points.push(MilPoint2F{X: x, Y: y});
+            self.add_point(x, y);
         } else {
             self.initial_point = Some(MilPoint2F{X: x, Y: y})
         }
@@ -117,16 +124,14 @@ impl PathBuilder {
         };
         if !self.in_shape {
             self.types.push(PathPointTypeStart);
-            self.points.push(initial_point);
+            self.add_point(initial_point.X, initial_point.Y);
             self.initial_point = Some(initial_point);
             self.in_shape = true;
         }
         self.types.push(PathPointTypeBezier);
-        self.points.push(MilPoint2F{X:c1x, Y:c1y});
-        self.types.push(PathPointTypeBezier);
-        self.points.push(MilPoint2F{X:c2x, Y: c2y});
-        self.types.push(PathPointTypeBezier);
-        self.points.push(MilPoint2F{X: x, Y: y});
+        self.add_point(c1x, c1y);
+        self.add_point(c2x, c2y);
+        self.add_point(x, y);
     }
     pub fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
         // For now we just implement quad_to on top of curve_to.
@@ -153,15 +158,12 @@ impl PathBuilder {
         self.initial_point = None;
     }
     pub fn set_fill_mode(&mut self, fill_mode: FillMode) {
-        self.fill_mode = match fill_mode {
-            FillMode::EvenOdd => MilFillMode::Alternate,
-            FillMode::Winding => MilFillMode::Winding,
-        }
+        self.fill_mode = fill_mode;
     }
     /// Enables rendering geometry for areas outside the shape but
     /// within the bounds.  These areas will be created with
     /// zero alpha.
-    /// 
+    ///
     /// This is useful for creating geometry for other blend modes.
     /// For example:
     /// - `IN(dest, geometry)` can be done with `outside_bounds` and `need_inside = false`
@@ -175,56 +177,100 @@ impl PathBuilder {
 
     /// Note: trapezodial areas won't necessarily be clipped to the clip rect
     pub fn rasterize_to_tri_strip(&self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
-        let mut rasterizer = CHwRasterizer::new();
-        let mut device = CD3DDeviceLevel1::new();
-        
-        device.clipRect.X = clip_x;
-        device.clipRect.Y = clip_y;
-        device.clipRect.Width = clip_width;
-        device.clipRect.Height = clip_height;
-        let device = Rc::new(device);
-        /* 
-        device.m_rcViewport = device.clipRect;
-    */
-        let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
-
-        struct PathShape {
-            fill_mode: MilFillMode,
-        }
-
-        impl IShapeData for PathShape {
-            fn GetFillMode(&self) -> MilFillMode {
-                self.fill_mode
-            }
-        }
-
-        let path = Rc::new(PathShape { fill_mode: self.fill_mode });
-    
-        rasterizer.Setup(device.clone(), path, Some(&worldToDevice));
-    
-        let mut m_mvfIn: MilVertexFormat = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
-        let m_mvfGenerated: MilVertexFormat  = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
-        //let mvfaAALocation  = MILVFAttrNone;
-        const HWPIPELINE_ANTIALIAS_LOCATION: MilVertexFormatAttribute = MilVertexFormatAttribute::MILVFAttrDiffuse;
-        let mvfaAALocation = HWPIPELINE_ANTIALIAS_LOCATION;
-        struct CHwPipeline {
-            m_pDevice: Rc<CD3DDeviceLevel1>
-        }
-        let pipeline =  CHwPipeline { m_pDevice: device.clone() };
-        let m_pHP = &pipeline;
-    
-        rasterizer.GetPerVertexDataType(&mut m_mvfIn);
-        let vertexBuilder= Rc::new(RefCell::new(CHwVertexBufferBuilder::Create(m_mvfIn,                                          m_mvfIn | m_mvfGenerated,
-            mvfaAALocation,
-            m_pHP.m_pDevice.clone())));
-    
-        vertexBuilder.borrow_mut().SetOutsideBounds(self.outside_bounds.as_ref(), self.need_inside);
-        vertexBuilder.borrow_mut().BeginBuilding();
-    
-        rasterizer.SendGeometry(vertexBuilder.clone(), &self.points, &self.types);
-        vertexBuilder.borrow_mut().FlushTryGetVertexBuffer(None);
-        device.output.replace(Vec::new()).into_boxed_slice()
+        let (x, y, width, height, need_outside) = if let Some(CMILSurfaceRect { left, top, right, bottom }) = self.outside_bounds {
+            let x0 = clip_x.max(left);
+            let y0 = clip_y.max(top);
+            let x1 = (clip_x + clip_width).min(right);
+            let y1 = (clip_y + clip_height).min(bottom);
+            (x0, y0, x1 - x0, y1 - y0, true)
+        } else {
+            (clip_x, clip_y, clip_width, clip_height, false)
+        };
+        rasterize_to_tri_strip(self.fill_mode, &self.types, &self.points, x, y, width, height, self.need_inside, need_outside)
     }
+}
+
+// Converts a path that is specified as an array of edge types, each associated with a fixed number
+// of points that are serialized to the points array. Edge types are specified via PathPointType
+// masks, whereas points must be supplied in 28.4 signed fixed-point format. By default, users can
+// fill the inside of the path excluding the outside. It may alternatively be desirable to fill the
+// outside the path out to the clip boundary, optionally keeping the inside. PathBuilder may be
+// used instead as a simpler interface to this function that handles building the path arrays.
+pub fn rasterize_to_tri_strip(
+    fill_mode: FillMode,
+    types: &[BYTE],
+    points: &[POINT],
+    clip_x: i32,
+    clip_y: i32,
+    clip_width: i32,
+    clip_height: i32,
+    need_inside: bool,
+    need_outside: bool,
+) -> Box<[OutputVertex]> {
+    let mut rasterizer = CHwRasterizer::new();
+    let mut device = CD3DDeviceLevel1::new();
+
+    device.clipRect.X = clip_x;
+    device.clipRect.Y = clip_y;
+    device.clipRect.Width = clip_width;
+    device.clipRect.Height = clip_height;
+    let device = Rc::new(device);
+    /*
+    device.m_rcViewport = device.clipRect;
+    */
+    let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
+
+    struct PathShape {
+        fill_mode: MilFillMode,
+    }
+
+    impl IShapeData for PathShape {
+        fn GetFillMode(&self) -> MilFillMode {
+            self.fill_mode
+        }
+    }
+
+    let mil_fill_mode = match fill_mode {
+        FillMode::EvenOdd => MilFillMode::Alternate,
+        FillMode::Winding => MilFillMode::Winding,
+    };
+
+    let path = Rc::new(PathShape { fill_mode: mil_fill_mode });
+
+    rasterizer.Setup(device.clone(), path, Some(&worldToDevice));
+
+    let mut m_mvfIn: MilVertexFormat = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
+    let m_mvfGenerated: MilVertexFormat  = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
+    //let mvfaAALocation  = MILVFAttrNone;
+    const HWPIPELINE_ANTIALIAS_LOCATION: MilVertexFormatAttribute = MilVertexFormatAttribute::MILVFAttrDiffuse;
+    let mvfaAALocation = HWPIPELINE_ANTIALIAS_LOCATION;
+    struct CHwPipeline {
+        m_pDevice: Rc<CD3DDeviceLevel1>
+    }
+    let pipeline =  CHwPipeline { m_pDevice: device.clone() };
+    let m_pHP = &pipeline;
+
+    rasterizer.GetPerVertexDataType(&mut m_mvfIn);
+    let vertexBuilder= Rc::new(RefCell::new(CHwVertexBufferBuilder::Create(m_mvfIn, m_mvfIn | m_mvfGenerated,
+        mvfaAALocation,
+        m_pHP.m_pDevice.clone())));
+
+    let outside_bounds = if need_outside {
+        Some(CMILSurfaceRect {
+            left: clip_x,
+            top: clip_y,
+            right: clip_x + clip_width,
+            bottom: clip_y + clip_height,
+        })
+    } else {
+        None
+    };
+    vertexBuilder.borrow_mut().SetOutsideBounds(outside_bounds.as_ref(), need_inside);
+    vertexBuilder.borrow_mut().BeginBuilding();
+
+    rasterizer.SendGeometry(vertexBuilder.clone(), points, types);
+    vertexBuilder.borrow_mut().FlushTryGetVertexBuffer(None);
+    device.output.replace(Vec::new()).into_boxed_slice()
 }
 
 #[cfg(test)]
@@ -349,7 +395,7 @@ mod tests {
     #[test]
     fn partial_coverage_last_line() {
         let mut p = PathBuilder::new();
-        
+
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(40., 39.6);
