@@ -257,11 +257,9 @@ fn triangle(pts: &[Vec4f], shader: &Shader, image: &mut TGAImage, color: TGAColo
             bboxmax[j] = bboxmax[j].max(pts[i][j]/pts[i][3]);
         }
     }
-    let mut P: Vec2i = Default::default();
     for x in (bboxmin[0] as i32)..=(bboxmax[0] as i32) {
         for y in (bboxmin[1] as i32)..=(bboxmax[1] as i32) {
-            P[0] = x;
-            P[1] = y;
+            let P = Vec2i::new(&[x, y]);
             let c = barycentric(proj::<_, 2, 4>(&(pts[0]/pts[0][3])), proj::<_, 2, 4>(&(pts[1]/pts[1][3])), proj::<_, 2, 4>(&(pts[2]/pts[2][3])), proj::<_, 2, 2>(&P.into()));
             if c[0]<0. || c[1]<0. || c[2]<0. { continue };
             let color = shader.fragment(c, color);
