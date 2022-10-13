@@ -1,4 +1,5 @@
-use crate::{PathBuilder, OutputVertex, FillMode};
+use crate::{PathBuilder, OutputVertex, FillMode, rasterize_to_tri_strip};
+use crate::types::{BYTE, POINT};
 
 #[no_mangle]
 pub extern "C" fn wgr_new_builder() -> *mut PathBuilder {
@@ -43,9 +44,22 @@ pub struct VertexBuffer {
 }
 
 #[no_mangle]
-pub extern "C" fn wgr_rasterize_to_tri_strip(pb: &PathBuilder, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> VertexBuffer
-{
-    let result = pb.rasterize_to_tri_strip(clip_x, clip_y, clip_width, clip_height);
+pub extern "C" fn wgr_rasterize_to_tri_strip(
+    fill_mode: FillMode,
+    types: *const BYTE,
+    num_types: usize,
+    points: *const POINT,
+    num_points: usize,
+    clip_x: i32,
+    clip_y: i32,
+    clip_width: i32,
+    clip_height: i32,
+    need_inside: bool,
+    need_outside: bool,
+) -> VertexBuffer {
+    let types_slice = unsafe { std::slice::from_raw_parts(types, num_types) };
+    let points_slice = unsafe { std::slice::from_raw_parts(points, num_points) };
+    let result = rasterize_to_tri_strip(fill_mode, types_slice, points_slice, clip_x, clip_y, clip_width, clip_height, need_inside, need_outside);
     let (data, len) = (result.as_ptr(), result.len());
     std::mem::forget(result);
     VertexBuffer { data, len }

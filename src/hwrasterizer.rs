@@ -504,7 +504,7 @@ impl CHwRasterizer {
 //-------------------------------------------------------------------------
 pub fn RasterizePath(
     &mut self,
-    rgpt: &[MilPoint2F],
+    rgpt: &[POINT],
     rgTypes: &[BYTE],
     cPoints: UINT,
     pmatWorldTransform: &CMILMatrix
@@ -735,7 +735,7 @@ pub fn Setup(&mut self,
 //-------------------------------------------------------------------------
 pub fn SendGeometry(&mut self,
     pIGeometrySink: Rc<RefCell<CHwVertexBufferBuilder>>,
-    points: &[MilPoint2F],
+    points: &[POINT],
     types: &[BYTE],
     ) -> HRESULT
 {

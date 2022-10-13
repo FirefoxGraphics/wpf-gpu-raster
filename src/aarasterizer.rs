@@ -1066,23 +1066,7 @@ fn ValidatePathTypes(typesArray: &[BYTE], mut count: INT) -> bool {
                         return (false);
                     }
 
-                    if ((types[2] & PathPointTypePathTypeMask) != PathPointTypeBezier) {
-                        TraceTag!((
-                            tagMILWarning,
-                            "Expected plain Bezier control point for 3rd vertex"
-                        ));
-                        return (false);
-                    }
-
-                    if ((types[3] & PathPointTypePathTypeMask) != PathPointTypeBezier) {
-                        TraceTag!((
-                            tagMILWarning,
-                            "Expected Bezier control point for 4th vertex"
-                        ));
-                        return (false);
-                    }
-
-                    types = &types[3..];
+                    types = &types[1..];
                     count -= 3;
                     if (count == 0) {
                         return (true);
@@ -1163,10 +1147,10 @@ fn AssertPath(rgTypes: &[BYTE], cPoints: UINT) {
 //
 
 pub fn FixedPointPathEnumerate(
-    rgpt: &[MilPoint2F],
+    rgpt: &[POINT],
     rgTypes: &[BYTE],
     cPoints: UINT,
-    matrix: &CMILMatrix,
+    _matrix: &CMILMatrix,
     clipRect: Option<&RECT>, // In scaled 28.4 format
     enumerateContext: &mut CInitializeEdgesContext,
 ) -> HRESULT {
@@ -1176,8 +1160,10 @@ pub fn FixedPointPathEnumerate(
     let mut buffer: &mut [POINT];
     let mut bufferSize: usize;
     let mut startFigure: [POINT; 1] = Default::default();
-    let mut iStart: usize;
-    let mut iEnd: usize;
+    // The current point offset in rgpt
+    let mut iPoint: usize;
+    // The current type offset in rgTypes
+    let mut iType: usize;
     let mut runSize: usize;
     let mut thisCount: usize;
     let mut isMore: bool = false;
@@ -1189,22 +1175,18 @@ pub fn FixedPointPathEnumerate(
     // Every valid subpath has at least two vertices in it, hence the
     // check of 'cPoints - 1':
 
-    iStart = 0;
+    iPoint = 0;
+    iType = 0;
 
     assert!(cPoints > 1);
-    while (iStart < cPoints as usize - 1) {
-        assert!((rgTypes[iStart] & PathPointTypePathTypeMask) == PathPointTypeStart);
-        assert!((rgTypes[iStart + 1] & PathPointTypePathTypeMask) != PathPointTypeStart);
+    while (iPoint < cPoints as usize - 1) {
+        assert!((rgTypes[iType] & PathPointTypePathTypeMask) == PathPointTypeStart);
+        assert!((rgTypes[iType + 1] & PathPointTypePathTypeMask) != PathPointTypeStart);
 
         // Add the start point to the beginning of the batch, and
         // remember it for handling the close figure:
 
-        IFR!(TransformRasterizerPointsTo28_4(
-            matrix,
-            &rgpt[iStart..],
-            1,
-            &mut startFigure
-        ));
+        startFigure[0] = rgpt[iPoint];
 
         bufferStart[0].x = startFigure[0].x;
         bufferStart[0].y = startFigure[0].y;
@@ -1212,43 +1194,39 @@ pub fn FixedPointPathEnumerate(
         buffer = &mut bufferStart[1..];
         bufferSize = ENUMERATE_BUFFER_NUMBER!() - 1;
 
-        // We need to enter our loop with 'iStart' pointing one past
+        // We need to enter our loop with 'iType' pointing one past
         // the start figure:
 
-        iStart += 1;
+        iPoint += 1;
+        iType += 1;
 
         while {
             // Try finding a run of lines:
 
-            if ((rgTypes[iStart] & PathPointTypePathTypeMask) == PathPointTypeLine) {
-                iEnd = iStart + 1;
+            if ((rgTypes[iType] & PathPointTypePathTypeMask) == PathPointTypeLine) {
+                runSize = 1;
 
-                while ((iEnd < cPoints as usize)
-                    && ((rgTypes[iEnd] & PathPointTypePathTypeMask) == PathPointTypeLine))
+                while ((iPoint + runSize < cPoints as usize)
+                    && ((rgTypes[iType + runSize] & PathPointTypePathTypeMask) == PathPointTypeLine))
                 {
-                    iEnd += 1;
+                    runSize += 1;
                 }
 
                 // Okay, we've found a run of lines.  Break it up into our
                 // buffer size:
 
-                runSize = (iEnd - iStart);
                 loop {
                     thisCount = bufferSize.min(runSize);
 
-                    IFR!(TransformRasterizerPointsTo28_4(
-                        matrix,
-                        &rgpt[iStart..],
-                        thisCount as u32,
-                        buffer
-                    ));
+                    buffer[0 .. thisCount].copy_from_slice(&rgpt[iPoint .. iPoint + thisCount]);
 
                     __analysis_assume!(
                         buffer + bufferSize == bufferStart + ENUMERATE_BUFFER_NUMBER
                     );
                     assert!(buffer.as_ptr().wrapping_offset(bufferSize as isize) == bufferStartPtr.wrapping_offset(ENUMERATE_BUFFER_NUMBER!()) );
 
-                    iStart += thisCount;
+                    iPoint += thisCount;
+                    iType += thisCount;
                     buffer = &mut buffer[thisCount..];
                     runSize -= thisCount;
                     bufferSize -= thisCount;
@@ -1276,21 +1254,15 @@ pub fn FixedPointPathEnumerate(
                     }
                 }
             } else {
-                assert!(iStart + 3 <= cPoints as usize);
-                assert!((rgTypes[iStart] & PathPointTypePathTypeMask) == PathPointTypeBezier);
-                assert!((rgTypes[iStart + 1] & PathPointTypePathTypeMask) == PathPointTypeBezier);
-                assert!((rgTypes[iStart + 2] & PathPointTypePathTypeMask) == PathPointTypeBezier);
+                assert!(iPoint + 3 <= cPoints as usize);
+                assert!((rgTypes[iType] & PathPointTypePathTypeMask) == PathPointTypeBezier);
 
-                IFR!(TransformRasterizerPointsTo28_4(
-                    matrix,
-                    &rgpt[(iStart - 1)..],
-                    4,
-                    &mut bezierBuffer
-                ));
+                bezierBuffer.copy_from_slice(&rgpt[(iPoint - 1) .. iPoint + 3]);
 
                 // Prepare for the next iteration:
 
-                iStart += 3;
+                iPoint += 3;
+                iType += 1;
 
                 // Process the Bezier:
 
@@ -1330,8 +1302,8 @@ pub fn FixedPointPathEnumerate(
                 }
             }
 
-            ((iStart < cPoints as usize)
-                && ((rgTypes[iStart] & PathPointTypePathTypeMask) != PathPointTypeStart))
+            ((iPoint < cPoints as usize)
+                && ((rgTypes[iType] & PathPointTypePathTypeMask) != PathPointTypeStart))
         } {}
 
         // Okay, the subpath is done.  But we still have to handle the

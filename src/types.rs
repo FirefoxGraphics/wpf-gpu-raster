@@ -101,9 +101,9 @@ pub enum MilFillMode {
     Winding = 1,
 }
 
-pub const    PathPointTypeStart: u8           = 0;    // move
-pub const    PathPointTypeLine: u8            = 1;    // line
-pub const    PathPointTypeBezier: u8          = 3;    // default Bezier (= cubic Bezier)
+pub const    PathPointTypeStart: u8           = 0;    // move, 1 point
+pub const    PathPointTypeLine: u8            = 1;    // line, 1 point
+pub const    PathPointTypeBezier: u8          = 3;    // default Bezier (= cubic Bezier), 3 points
 pub const    PathPointTypePathTypeMask: u8    = 0x07; // type mask (lowest 3 bits).
 pub const    PathPointTypeCloseSubpath: u8    = 0x80; // closed flag
 
@@ -199,4 +199,3 @@ pub struct PointXYA
 {
     pub x: f32,pub y: f32, pub a: f32,
 }
- 
