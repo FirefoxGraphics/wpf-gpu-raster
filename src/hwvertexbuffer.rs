@@ -374,10 +374,10 @@ private:
 pub struct CD3DVertexXYZDUV2 {
     X: f32,
     Y: f32,
-    Z: f32,
+    //Z: f32,
     Diffuse: DWORD,
-    U0: f32, V0: f32,
-    U1: f32, V1: f32,
+    /*U0: f32, V0: f32,
+    U1: f32, V1: f32,*/
 }
 pub type CHwVertexBuffer = CHwTVertexBuffer<CD3DVertexXYZDUV2>;
 #[derive(Default)]
