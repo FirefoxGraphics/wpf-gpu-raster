@@ -223,7 +223,7 @@ struct Shader {
 impl Shader {
     fn new() -> Self { Self { coverage: Default::default() } }
     fn vertex(&mut self, model: &Model, iface: i32, nthvert: i32) -> Vec4f {
-        let gl_Vertex = embed::<_, 3, 4>(&model.vert(iface, nthvert)); // read the vertex from .obj file
+        let gl_Vertex = embed(&model.vert(iface, nthvert)); // read the vertex from .obj file
         self.coverage[nthvert as usize] = model.color(iface, nthvert)[0]; // read the color from the .obj file
         gl_Vertex
     }
@@ -260,7 +260,7 @@ fn triangle(pts: &[Vec4f], shader: &Shader, image: &mut TGAImage, color: TGAColo
     for x in (bboxmin[0] as i32)..=(bboxmax[0] as i32) {
         for y in (bboxmin[1] as i32)..=(bboxmax[1] as i32) {
             let P = Vec2i::new(&[x, y]);
-            let c = barycentric(proj::<_, 2, 4>(&(pts[0]/pts[0][3])), proj::<_, 2, 4>(&(pts[1]/pts[1][3])), proj::<_, 2, 4>(&(pts[2]/pts[2][3])), proj::<_, 2, 2>(&P.into()));
+            let c = barycentric(proj(&(pts[0]/pts[0][3])), proj(&(pts[1]/pts[1][3])), proj(&(pts[2]/pts[2][3])), P.into());
             if c[0]<0. || c[1]<0. || c[2]<0. { continue };
             let color = shader.fragment(c, color);
             image.blend(P[0], P[1], color);
