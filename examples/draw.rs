@@ -26,7 +26,6 @@ impl<T, const N: usize> Index<usize> for vec<T, N>  {
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.data_[index]
-
     }
 }
 
@@ -110,14 +109,14 @@ fn cross<T>(v1: vec<T, 3>, v2: vec<T, 3>) -> vec<T, 3> where T: Copy + Mul<Outpu
 
 
 struct Model {
-    vertices: Vec<Vec3f>,
+    vertices: Vec<Vec2f>,
     colors: Vec<Vec3f>,
     faces: Vec<Vec<usize>>
 }
 impl Model {
     fn new() -> Self { Self { vertices: Vec::new(), colors: Vec::new(), faces: Vec::new() } }
     fn nfaces(&self) -> i32 { self.faces.len() as i32 }
-    fn vert(&self, iface: i32, nthvert: i32) -> Vec3f { self.vertices[self.faces[iface as usize][nthvert as usize] as usize] }
+    fn vert(&self, iface: i32, nthvert: i32) -> Vec2f { self.vertices[self.faces[iface as usize][nthvert as usize] as usize] }
     fn color(&self, iface: i32, nthvert: i32) -> Vec3f { self.colors[self.faces[iface as usize][nthvert as usize] as usize] }
 
 }
@@ -340,7 +339,7 @@ fn main() {
             let mut model = Model::new();
         
             for vertex in result.iter() {
-                model.vertices.push(Vec3f::new(&[vertex.x - 0.5, vertex.y - 0.5, 0.]));
+                model.vertices.push(Vec2f::new(&[vertex.x - 0.5, vertex.y - 0.5]));
                 let color = vertex.coverage;
                 model.colors.push(Vec3f::new(&[color, color, color]));
             }
