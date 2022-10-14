@@ -4,7 +4,7 @@ use euclid::{default::Transform2D, point2};
 use wpf_gpu_raster::{PathBuilder};
 
 
-use std::{convert::TryInto, ops::{Index, Mul, Sub, Div, IndexMut, AddAssign}};
+use std::{convert::TryInto, ops::{Index, Mul, Sub, IndexMut, AddAssign}};
 #[derive(Clone, Copy, Debug)]
 struct vec<T, const M: usize> {
     data_: [T; M]
@@ -48,17 +48,6 @@ impl<T, const N: usize> Mul for vec<T, N> where T: Copy + Default + Mul + AddAss
     }
 }
 
-impl<T: Div<Output = T> + Clone + Copy, const N: usize> Div<T> for vec<T, N>  {
-    type Output = vec<T, N>;
-
-    fn div(self, rhs: T) -> Self::Output {
-        let mut result = self;
-        for i in 0..N {
-            result[i] = result[i] / rhs
-        }
-        result
-    }
-}
 
 type Vec2f = vec<f32, 2>;
 type Vec2i = vec<i32, 2>;
