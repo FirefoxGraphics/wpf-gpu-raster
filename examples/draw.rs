@@ -63,22 +63,11 @@ impl<T: Div<Output = T> + Clone + Copy, const N: usize> Div<T> for vec<T, N>  {
 type Vec2f = vec<f32, 2>;
 type Vec2i = vec<i32, 2>;
 type Vec3f = vec<f32, 3>;
-type Vec4f = vec<f32, 4>;
 
 impl From<Vec2i> for Vec2f {
     fn from(v: Vec2i) -> Self {
         Vec2f::new(&[v[0] as f32, v[1] as f32])
     }
-}
-
-
-fn proj<T: Default + Copy, const LEN: usize, const DIM: usize>(v: &vec<T, DIM>) ->  vec<T, LEN> where [T; LEN]: Default {
-    let _fill = 1;
-    let mut ret: vec<T, LEN> = Default::default();
-    for i in (0..LEN).rev() {
-        ret[i] = v[i];
-    }
-    ret
 }
 
 fn cross<T>(v1: vec<T, 3>, v2: vec<T, 3>) -> vec<T, 3> where T: Copy + Mul<Output = T> + Sub<Output = T> {
@@ -197,19 +186,19 @@ fn barycentric(A: Vec2f, B: Vec2f, C: Vec2f, P: Vec2f) -> Vec3f {
     Vec3f::new(&[-1.,1.,1.]) // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
 
-fn triangle(pts: &[Vec4f], coverage: Vec3f, image: &mut TGAImage, color: TGAColor) {
+fn triangle(pts: &[Vec2f], coverage: Vec3f, image: &mut TGAImage, color: TGAColor) {
     let mut bboxmin = Vec2f::new( &[f32::MAX,  f32::MAX]);
     let mut bboxmax = Vec2f::new(&[-f32::MAX, -f32::MAX]);
     for i in 0..3 {
         for j in 0..2 {
-            bboxmin[j] = bboxmin[j].min(pts[i][j]/pts[i][3]);
-            bboxmax[j] = bboxmax[j].max(pts[i][j]/pts[i][3]);
+            bboxmin[j] = bboxmin[j].min(pts[i][j]);
+            bboxmax[j] = bboxmax[j].max(pts[i][j]);
         }
     }
     for x in (bboxmin[0] as i32)..=(bboxmax[0] as i32) {
         for y in (bboxmin[1] as i32)..=(bboxmax[1] as i32) {
             let P = Vec2i::new(&[x, y]);
-            let c = barycentric(proj(&(pts[0]/pts[0][3])), proj(&(pts[1]/pts[1][3])), proj(&(pts[2]/pts[2][3])), P.into());
+            let c = barycentric(pts[0], pts[1], pts[2], P.into());
             if c[0]<0. || c[1]<0. || c[2]<0. { continue };
             let coverage = coverage * c;
             let color = color * coverage;
@@ -295,11 +284,11 @@ fn main() {
                     [&result[n+1], &result[n], &result[n+2]]
                 };
 
-                let mut screen_coords: [Vec4f; 3] = Default::default();
+                let mut screen_coords: [Vec2f; 3] = Default::default();
                 let mut coverage: Vec3f = Default::default();
                 for j in 0..3 {
                     let vertex = vertices[j];
-                    screen_coords[j] = Vec4f::new(&[vertex.x - 0.5, vertex.y - 0.5, 1., 1.]);
+                    screen_coords[j] = Vec2f::new(&[vertex.x - 0.5, vertex.y - 0.5]);
                     coverage[j] = vertex.coverage;                 
                 }
                 triangle(&screen_coords, coverage, &mut image, color);
