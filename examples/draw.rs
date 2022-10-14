@@ -71,28 +71,8 @@ impl From<Vec2i> for Vec2f {
     }
 }
 
-trait Unit {
-    fn unit() -> Self;
-}
 
-impl Unit for f32 {
-    fn unit() -> Self { 1. }
-}
-
-fn embed<T: Unit + Default + Copy, const DIM: usize, const LEN: usize>(v: &vec<T, DIM>) ->  vec<T, LEN> where [T; LEN]: Default {
-    let fill = T::unit();
-    let mut ret: vec<T, LEN> = Default::default();
-    for i in (0..LEN).rev() {
-        ret[i] = if i < DIM {
-            v[i]
-        } else {
-            fill
-        }
-    }
-    ret
-}
-
-fn proj<T: Unit + Default + Copy, const LEN: usize, const DIM: usize>(v: &vec<T, DIM>) ->  vec<T, LEN> where [T; LEN]: Default {
+fn proj<T: Default + Copy, const LEN: usize, const DIM: usize>(v: &vec<T, DIM>) ->  vec<T, LEN> where [T; LEN]: Default {
     let _fill = 1;
     let mut ret: vec<T, LEN> = Default::default();
     for i in (0..LEN).rev() {
@@ -319,7 +299,7 @@ fn main() {
                 let mut coverage: Vec3f = Default::default();
                 for j in 0..3 {
                     let vertex = vertices[j];
-                    screen_coords[j] = embed(&Vec2f::new(&[vertex.x - 0.5, vertex.y - 0.5]));
+                    screen_coords[j] = Vec4f::new(&[vertex.x - 0.5, vertex.y - 0.5, 1., 1.]);
                     coverage[j] = vertex.coverage;                 
                 }
                 triangle(&screen_coords, coverage, &mut image, color);
