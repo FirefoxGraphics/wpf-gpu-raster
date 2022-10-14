@@ -105,21 +105,6 @@ fn cross<T>(v1: vec<T, 3>, v2: vec<T, 3>) -> vec<T, 3> where T: Copy + Mul<Outpu
     vec::<T, 3>::new(&[v1[1]*v2[2] - v1[2]*v2[1], v1[2]*v2[0] - v1[0]*v2[2], v1[0]*v2[1] - v1[1]*v2[0]])
 }
 
-
-
-
-struct Model {
-    vertices: Vec<Vec2f>,
-    colors: Vec<Vec3f>,
-    faces: Vec<Vec<usize>>
-}
-impl Model {
-    fn new() -> Self { Self { vertices: Vec::new(), colors: Vec::new(), faces: Vec::new() } }
-    fn nfaces(&self) -> i32 { self.faces.len() as i32 }
-    fn vert(&self, iface: i32, nthvert: i32) -> Vec2f { self.vertices[self.faces[iface as usize][nthvert as usize] as usize] }
-    fn color(&self, iface: i32, nthvert: i32) -> Vec3f { self.colors[self.faces[iface as usize][nthvert as usize] as usize] }
-
-}
 const  WIDTH: u32  = 800;
 const HEIGHT: u32  = 800;
 
@@ -216,22 +201,7 @@ impl TGAImage {
         writer.write_image_data(&self.buf).unwrap(); // Save
     }
 }
-struct Shader {
-    coverage: Vec3f // written by vertex shader, read by fragment shader
-}
-impl Shader {
-    fn new() -> Self { Self { coverage: Default::default() } }
-    fn vertex(&mut self, model: &Model, iface: i32, nthvert: i32) -> Vec4f {
-        let gl_Vertex = embed(&model.vert(iface, nthvert)); // read the vertex from .obj file
-        self.coverage[nthvert as usize] = model.color(iface, nthvert)[0]; // read the color from the .obj file
-        gl_Vertex
-    }
 
-    fn fragment(&self, bar: Vec3f, color: TGAColor) -> TGAColor {
-        let intensity = self.coverage*bar;   // interpolate intensity for the current pixel
-        color*intensity // well duh
-    }
-}
 
 fn barycentric(A: Vec2f, B: Vec2f, C: Vec2f, P: Vec2f) -> Vec3f {
     let mut s: [Vec3f; 2] = Default::default();
@@ -247,7 +217,7 @@ fn barycentric(A: Vec2f, B: Vec2f, C: Vec2f, P: Vec2f) -> Vec3f {
     Vec3f::new(&[-1.,1.,1.]) // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
 
-fn triangle(pts: &[Vec4f], shader: &Shader, image: &mut TGAImage, color: TGAColor) {
+fn triangle(pts: &[Vec4f], coverage: Vec3f, image: &mut TGAImage, color: TGAColor) {
     let mut bboxmin = Vec2f::new( &[f32::MAX,  f32::MAX]);
     let mut bboxmax = Vec2f::new(&[-f32::MAX, -f32::MAX]);
     for i in 0..3 {
@@ -261,7 +231,8 @@ fn triangle(pts: &[Vec4f], shader: &Shader, image: &mut TGAImage, color: TGAColo
             let P = Vec2i::new(&[x, y]);
             let c = barycentric(proj(&(pts[0]/pts[0][3])), proj(&(pts[1]/pts[1][3])), proj(&(pts[2]/pts[2][3])), P.into());
             if c[0]<0. || c[1]<0. || c[2]<0. { continue };
-            let color = shader.fragment(c, color);
+            let coverage = coverage * c;
+            let color = color * coverage;
             image.blend(P[0], P[1], color);
         }
     }
@@ -336,29 +307,22 @@ fn main() {
             if result.len() == 0 {
                 continue;
             }
-            let mut model = Model::new();
-        
-            for vertex in result.iter() {
-                model.vertices.push(Vec2f::new(&[vertex.x - 0.5, vertex.y - 0.5]));
-                let color = vertex.coverage;
-                model.colors.push(Vec3f::new(&[color, color, color]));
-            }
-            for n in 0..result.len()-2 {
-                if n % 2 == 0 {
-                    model.faces.push(vec![n, n+1, n+2]);
+
+            for n in 0..result.len() - 2 {
+                let vertices = if n % 2 == 0 {
+                    [&result[n], &result[n+1], &result[n+2]]
                 } else {
-                    model.faces.push(vec![n+1, n, n+2]);
-                }
-            }
-        
-            let mut shader = Shader::new();
-            for i in 0..model.nfaces() {
+                    [&result[n+1], &result[n], &result[n+2]]
+                };
+
                 let mut screen_coords: [Vec4f; 3] = Default::default();
+                let mut coverage: Vec3f = Default::default();
                 for j in 0..3 {
-                    screen_coords[j as usize] = shader.vertex(&model, i, j);
-                
+                    let vertex = vertices[j];
+                    screen_coords[j] = embed(&Vec2f::new(&[vertex.x - 0.5, vertex.y - 0.5]));
+                    coverage[j] = vertex.coverage;                 
                 }
-                triangle(&screen_coords, &shader, &mut image, color);
+                triangle(&screen_coords, coverage, &mut image, color);
             }
         }
     }
