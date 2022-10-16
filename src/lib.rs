@@ -43,6 +43,7 @@ pub mod c_bindings;
 
 use std::{rc::Rc, cell::RefCell};
 
+use aarasterizer::CheckValidRange28_4;
 use hwrasterizer::CHwRasterizer;
 use hwvertexbuffer::CHwVertexBufferBuilder;
 use matrix::CMatrix;
@@ -79,7 +80,8 @@ pub struct PathBuilder {
     in_shape: bool,
     fill_mode: FillMode,
     outside_bounds: Option<CMILSurfaceRect>,
-    need_inside: bool
+    need_inside: bool,
+    valid_range: bool,
 }
 
 impl PathBuilder {
@@ -92,12 +94,17 @@ impl PathBuilder {
         fill_mode: FillMode::EvenOdd,
         outside_bounds: None,
         need_inside: true,
+        valid_range: true,
         }
     }
     fn add_point(&mut self, x: f32, y: f32) {
+        // Transform from pixel corner at 0.0 to pixel center at 0.0. Scale into 28.4 range.
+        // Validate that the point before rounding is within expected bounds for the rasterizer.
+        let (x, y) = ((x - 0.5) * 16.0, (y - 0.5) * 16.0);
+        self.valid_range = self.valid_range && CheckValidRange28_4(x, y);
         self.points.push(POINT {
-            x: CFloatFPU::Round(x * 16.0),
-            y: CFloatFPU::Round(y * 16.0),
+            x: CFloatFPU::Round(x),
+            y: CFloatFPU::Round(y),
         });
     }
     pub fn line_to(&mut self, x: f32, y: f32) {
@@ -177,6 +184,10 @@ impl PathBuilder {
 
     /// Note: trapezodial areas won't necessarily be clipped to the clip rect
     pub fn rasterize_to_tri_strip(&self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
+        if !self.valid_range {
+            // If any of the points are outside of valid 28.4 range, then just return an empty triangle list.
+            return Box::new([]);
+        }
         let (x, y, width, height, need_outside) = if let Some(CMILSurfaceRect { left, top, right, bottom }) = self.outside_bounds {
             let x0 = clip_x.max(left);
             let y0 = clip_y.max(top);
