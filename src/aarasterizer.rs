@@ -557,6 +557,28 @@ fn ClipEdge(edgeBuffer: &mut CEdge, yClipTopInteger: INT, dMOriginal: INT) {
     edgeBuffer.X.set(edgeBuffer.X.get() + xDelta);
     edgeBuffer.Error.set(error - dN); // Renormalize error
 }
+
+pub fn CheckValidRange28_4(x: f32, y: f32) -> bool {
+    //
+    // We want coordinates in the 28.4 range in the end.  The matrix we get
+    // as input includes the scale by 16 to get to 28.4, so we want to
+    // ensure that we are in integer range.  Assuming a sign bit and
+    // five bits for the rasterizer working range, we want coordinates in the
+    // -2^26 to 2^26.
+    //
+    // Note that the 5-bit requirement comes from the
+    // implementation of InitializeEdges.
+    // (See line with "error -= dN * (16 - (xStart & 15))")
+    //
+    // Anti-aliasing uses another c_nShift bits, so we get a
+    // desired range of -2^(26-c_nShift) to 2^(26-c_nShift)
+    //
+    let rPixelCoordinateMax = (1 << (26 - c_nShift)) as f32;
+    let rPixelCoordinateMin = -rPixelCoordinateMax;
+    return x <= rPixelCoordinateMax && x >= rPixelCoordinateMin
+            && y <= rPixelCoordinateMax && y >= rPixelCoordinateMin;
+}
+
 //+-----------------------------------------------------------------------------
 //
 //  Function:  TransformRasterizerPointsTo28_4
@@ -579,24 +601,6 @@ fn TransformRasterizerPointsTo28_4(
 
     debug_assert!(cPoints > 0);
 
-    //
-    // We want coordinates in the 28.4 range in the end.  The matrix we get
-    // as input includes the scale by 16 to get to 28.4, so we want to
-    // ensure that we are in integer range.  Assuming a sign bit and
-    // five bits for the rasterizer working range, we want coordinates in the
-    // -2^26 to 2^26.
-    //
-    // Note that the 5-bit requirement comes from the
-    // implementation of InitializeEdges.
-    // (See line with "error -= dN * (16 - (xStart & 15))")
-    //
-    // Anti-aliasing uses another c_nShift bits, so we get a
-    // desired range of -2^(26-c_nShift) to 2^(26-c_nShift)
-    //
-
-    let rPixelCoordinateMax = (1 << (26 - c_nShift)) as f32;
-    let rPixelCoordinateMin = -rPixelCoordinateMax;
-
     while {
         //
         // Transform coordinates
@@ -611,11 +615,7 @@ fn TransformRasterizerPointsTo28_4(
         // Check for NaNs or overflow
         //
 
-        if (!(rPixelX <= rPixelCoordinateMax
-            && rPixelX >= rPixelCoordinateMin
-            && rPixelY <= rPixelCoordinateMax
-            && rPixelY >= rPixelCoordinateMin))
-        {
+        if !CheckValidRange28_4(rPixelX, rPixelY) {
             return WGXERR_BADNUMBER;
         }
 
