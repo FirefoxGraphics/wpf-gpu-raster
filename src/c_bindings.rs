@@ -65,10 +65,18 @@ impl Into<OutputPath> for Path {
         OutputPath {
             fill_mode: self.fill_mode,
             points: unsafe {
-                Box::from_raw(std::slice::from_raw_parts_mut(self.points as *mut POINT, self.num_points))
+                if self.points == std::ptr::null() {
+                    Default::default()
+                } else {
+                    Box::from_raw(std::slice::from_raw_parts_mut(self.points as *mut POINT, self.num_points))
+                }
             },
             types: unsafe {
-                Box::from_raw(std::slice::from_raw_parts_mut(self.types as *mut BYTE, self.num_types))
+                if self.types == std::ptr::null() {
+                    Default::default()
+                } else {
+                    Box::from_raw(std::slice::from_raw_parts_mut(self.types as *mut BYTE, self.num_types))
+                }
             },
         }
     }
