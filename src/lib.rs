@@ -65,6 +65,19 @@ pub enum FillMode {
     Winding = 1,
 }
 
+impl Default for FillMode {
+    fn default() -> Self {
+        FillMode::EvenOdd
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct OutputPath {
+    fill_mode: FillMode,
+    points: Box<[POINT]>,
+    types: Box<[BYTE]>,
+}
+
 impl std::hash::Hash for OutputVertex {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.x.to_bits().hash(state);
@@ -87,14 +100,14 @@ pub struct PathBuilder {
 impl PathBuilder {
     pub fn new() -> Self {
         Self {
-        points: Vec::new(),
-        types: Vec::new(),
-        initial_point: None,
-        in_shape: false,
-        fill_mode: FillMode::EvenOdd,
-        outside_bounds: None,
-        need_inside: true,
-        valid_range: true,
+            points: Vec::new(),
+            types: Vec::new(),
+            initial_point: None,
+            in_shape: false,
+            fill_mode: FillMode::EvenOdd,
+            outside_bounds: None,
+            need_inside: true,
+            valid_range: true,
         }
     }
     fn add_point(&mut self, x: f32, y: f32) {
@@ -182,7 +195,7 @@ impl PathBuilder {
         self.need_inside = need_inside;
     }
 
-    /// Note: trapezodial areas won't necessarily be clipped to the clip rect
+    /// Note: trapezoidal areas won't necessarily be clipped to the clip rect
     pub fn rasterize_to_tri_strip(&self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
         if !self.valid_range {
             // If any of the points are outside of valid 28.4 range, then just return an empty triangle list.
@@ -198,6 +211,18 @@ impl PathBuilder {
             (clip_x, clip_y, clip_width, clip_height, false)
         };
         rasterize_to_tri_strip(self.fill_mode, &self.types, &self.points, x, y, width, height, self.need_inside, need_outside)
+    }
+
+    pub fn get_path(&mut self) -> Option<OutputPath> {
+        if self.valid_range && !self.points.is_empty() && !self.types.is_empty() {
+            Some(OutputPath {
+                fill_mode: self.fill_mode,
+                points: std::mem::take(&mut self.points).into_boxed_slice(),
+                types: std::mem::take(&mut self.types).into_boxed_slice(),
+            })
+        } else {
+            None
+        }
     }
 }
 
