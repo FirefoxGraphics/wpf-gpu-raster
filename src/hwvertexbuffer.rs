@@ -2438,15 +2438,10 @@ impl CHwVertexBuffer {
     //
     //-------------------------------------------------------------------------
 
-    fn DrawPrimitive(&self,
+    fn DrawPrimitive(&mut self,
         pDevice: &CD3DDeviceLevel1
         ) -> HRESULT {
-            let mut output = Vec::with_capacity(self.m_rgVerticesTriList.GetCount());
-            let data = self.m_rgVerticesTriList.GetDataBuffer();
-            for vert in  data {
-                output.push(OutputVertex {x: vert.x, y: vert.y, coverage: vert.coverage})
-            }
-            pDevice.output.replace(output);
+            pDevice.output.replace(std::mem::replace(&mut self.m_rgVerticesTriList, Vec::new()));
             return S_OK;
         }
 
