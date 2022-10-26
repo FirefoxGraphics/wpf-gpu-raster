@@ -1,6 +1,4 @@
 pub mod CFloatFPU {
-    use std::arch::x86_64::{__m128, _mm_set_ss, _mm_cvtss_si32, _mm_cvtsi32_ss, _mm_sub_ss, _mm_cmple_ss, _mm_store_ss, _mm_setzero_ps};
-
     // Maximum allowed argument for SmallRound
     // const sc_uSmallMax: u32 = 0xFFFFF;
 
@@ -11,6 +9,8 @@ pub mod CFloatFPU {
         //XXX: the SSE2 version is probably slower than a naive SSE4 implementation that can use roundss
         #[cfg(target_feature = "sse2")]
         unsafe {
+            use std::arch::x86_64::{__m128, _mm_set_ss, _mm_cvtss_si32, _mm_cvtsi32_ss, _mm_sub_ss, _mm_cmple_ss, _mm_store_ss, _mm_setzero_ps};
+
             let given: __m128 = _mm_set_ss(x);                       // load given value
             let result = _mm_cvtss_si32(given);
             let rounded: __m128 = _mm_setzero_ps();             // convert it to integer (rounding mode doesn't matter)
