@@ -13,4 +13,10 @@ the builtin stack storage. Storing these in an Arena is not ideal, we'd rather
 just heap allocate them individually.
 
 
+Changes for performance
+-----------------------
 
+Switched from using triangle strips to triangle lists. This lets
+us use a single triangle to draw each line segement which reduces
+the amount of geometry per line segment from 6 vertices to 3.
+Direct2D also made this switch in later versions.

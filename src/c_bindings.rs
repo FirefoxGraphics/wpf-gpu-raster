@@ -1,4 +1,4 @@
-use crate::{PathBuilder, OutputPath, OutputVertex, FillMode, rasterize_to_tri_strip};
+use crate::{PathBuilder, OutputPath, OutputVertex, FillMode, rasterize_to_tri_list};
 use crate::types::{BYTE, POINT};
 
 #[no_mangle]
@@ -103,7 +103,7 @@ pub extern "C" fn wgr_path_rasterize_to_tri_strip(
     need_inside: bool,
     need_outside: bool,
 ) -> VertexBuffer {
-    let result = rasterize_to_tri_strip(
+    let result = rasterize_to_tri_list(
         path.fill_mode,
         unsafe { std::slice::from_raw_parts(path.types, path.num_types) },
         unsafe { std::slice::from_raw_parts(path.points, path.num_points) },

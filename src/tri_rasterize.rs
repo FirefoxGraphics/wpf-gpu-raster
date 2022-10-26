@@ -174,12 +174,9 @@ fn rast_triangle(buffer: &mut [u8], width: usize, height: usize, tri: &Triangle)
 
 pub fn rasterize_to_mask(vertices: &[OutputVertex], width: u32, height: u32) -> Box<[u8]> {
     let mut mask = vec![0; (width * height) as usize];
-    for n in 0..vertices.len() - 2 {
-        let tri = if n % 2 == 0 {
-            [&vertices[n], &vertices[n+1], &vertices[n+2]]
-        } else {
-            [&vertices[n+1], &vertices[n], &vertices[n+2]]
-        };
+    for n in (0..vertices.len()).step_by(3) {
+        let tri =
+            [&vertices[n], &vertices[n+1], &vertices[n+2]];
 
         let tri = Triangle { v: [
             Vertex { x: tri[0].x, y: tri[0].y, coverage: tri[0].coverage},
