@@ -686,7 +686,7 @@ protected:
     // XXX: the zero has been removed
     //m_rgVerticesTriList: DynArray<TVertex>,             // Indexed triangle list vertices
     //m_rgVerticesNonIndexedTriList: DynArray<TVertex>,   // Non-indexed triangle list vertices
-    m_rgVerticesTriStrip: DynArray<TVertex>,            // Triangle strip vertices
+    m_rgVerticesTriList: DynArray<TVertex>,            // Triangle strip vertices
     //m_rgVerticesLineList: DynArray<TVertex>,            // Linelist vertices
 
     #[cfg(debug_assertions)]
@@ -767,7 +767,7 @@ impl<TVertex> CHwTVertexBuffer<TVertex> {
 
         //self.m_rgIndices.SetCount(0);
         //self.m_rgVerticesTriList.SetCount(0);
-        self.m_rgVerticesTriStrip.SetCount(0);
+        self.m_rgVerticesTriList.SetCount(0);
         //self.m_rgVerticesLineList.SetCount(0);
         //self.m_rgVerticesNonIndexedTriList.SetCount(0);
 
@@ -779,7 +779,7 @@ impl<TVertex> CHwTVertexBuffer<TVertex> {
         return true
              //  && (self.m_rgIndices.GetCount() == 0)
             //&& (self.m_rgVerticesLineList.GetCount() == 0)
-            && (self.m_rgVerticesTriStrip.GetCount() == 0)
+            && (self.m_rgVerticesTriList.GetCount() == 0)
             //&& (self.m_rgVerticesNonIndexedTriList.GetCount() == 0);
     }
 
@@ -1165,6 +1165,10 @@ private:
     // right boundary of the last trapezoid handled by PrepareStratum.
     // We need it to cloze the stratus properly.
     m_rLastTrapezoidRight: f32,
+
+    // These are needed to implement outside geometry using triangle lists
+    m_rLastTrapezoidTopRight: f32,
+    m_rLastTrapezoidBottomRight: f32,
 }
 
 /*
@@ -1285,7 +1289,7 @@ fn AddLine(&mut self,
 
     if (fUseTriangles)
     {
-        IFC!(self.AddLineAsTriangleStrip(&pVertices[0],&pVertices[1]));
+        IFC!(self.AddLineAsTriangleList(&pVertices[0],&pVertices[1]));
     }
     
     RRETURN!(hr);
@@ -1342,12 +1346,12 @@ CHwTVertexBuffer<TVertex>::AddTriListVertices(
 */
 //+----------------------------------------------------------------------------
 //
-//  Member:    CHwTVertexBuffer<TVertex>::AddTriStripVertices
+//  Member:    CHwTVertexBuffer<TVertex>::AddTriListVertices
 //
 //  Synopsis:  Reserve space for consecutive vertices
 //
 impl<TVertex: Default> CHwTVertexBuffer<TVertex> {
-fn AddTriStripVertices(
+fn AddTriListVertices(
     &mut self,
     uCount: UINT,
     ) -> &mut [TVertex]
@@ -1360,10 +1364,10 @@ fn AddTriStripVertices(
         self.m_fDbgNonLineSegmentTriangleStrip = true;
     }
 
-    let Count = (self.m_rgVerticesTriStrip.GetCount() as UINT);
+    let Count = (self.m_rgVerticesTriList.GetCount() as UINT);
     let newCount = Count + uCount;
 
-    self.m_rgVerticesTriStrip.resize_with(newCount as usize, Default::default);
+    self.m_rgVerticesTriList.resize_with(newCount as usize, Default::default);
 /* 
     if (newCount > self.m_rgVerticesTriStrip.GetCapacity())
     {
@@ -1371,7 +1375,7 @@ fn AddTriStripVertices(
     }
 
     self.m_rgVerticesTriStrip.SetCount(newCount);*/
-    return &mut self.m_rgVerticesTriStrip[Count as usize..];
+    return &mut self.m_rgVerticesTriList[Count as usize..];
 
 //Cleanup:
     //RRETURN!(hr);
@@ -1797,6 +1801,9 @@ fn new(pVertexBuffer: Box<CHwTVertexBuffer<TVertex>>, device: Rc<CD3DDeviceLevel
     m_fNeedInsideGeometry: true,
 
     m_rLastTrapezoidRight: -f32::MAX,
+    m_rLastTrapezoidTopRight: -f32::MAX,
+    m_rLastTrapezoidBottomRight: -f32::MAX,
+
     m_fHasFlushed: false,
     m_iViewportTop: 0,
     //m_map: Default::default(),
@@ -2214,7 +2221,8 @@ Cleanup:
     IFC!(self.PrepareStratum((nPixelY) as f32,
                   (nPixelY+1) as f32, 
                   false, /* Not a trapezoid. */ 
-                0., 0.));
+                  0., 0.,
+                0., 0., 0., 0.));
 
     let rPixelY: f32;
     rPixelY = (nPixelY) as f32 + 0.5;
@@ -2371,9 +2379,9 @@ Cleanup:
 
 //+----------------------------------------------------------------------------
 //
-//  Member:    CHwTVertexBuffer<TVertex>::Builder::AddLineAsTriangleStrip
+//  Member:    CHwTVertexBuffer<TVertex>::Builder::AddLineAsTriangleList
 //
-//  Synopsis:  Adds a horizontal line as a triangle strip to work around
+//  Synopsis:  Adds a horizontal line as a triangle list to work around
 //             issue in D3D9 where horizontal lines with y = 0 may not render.
 //
 //              Line clipping in D3D9
@@ -2382,7 +2390,7 @@ Cleanup:
 //              
 //-----------------------------------------------------------------------------
 impl CHwVertexBuffer {
-    fn AddLineAsTriangleStrip(&mut self,
+    fn AddLineAsTriangleList(&mut self,
     pBegin: &CD3DVertexXYZDUV2, // Begin
     pEnd: &CD3DVertexXYZDUV2    // End
     ) -> HRESULT
@@ -2404,43 +2412,18 @@ impl CHwVertexBuffer {
     // Add the vertices
     //
 
-    let pVertex = self.AddTriStripVertices(6);
+    let pVertex = self.AddTriListVertices(3);
 
-    //
-    // Duplicate the first vertex.  Assuming that the previous two
-    // vertices in the tristrip are coincident then the first three
-    // vertices here create degenerate triangles.  If this is the
-    // beginning of the strip the first two vertices fill the pipe,
-    // the third creates a degenerate vertex.  In either case the
-    // fourth creates the first triangle in our quad.
-    // 
+    // Use a single triangle to cover the entire line
     pVertex[0].X = x0;
     pVertex[0].Y = y  - 0.5;
     pVertex[0].Diffuse = dwDiffuse;
-    
-    // Offset two vertices up and two down to form a 1-pixel-high quad.
-    // Order is TL-BL-TR-BR.
     pVertex[1].X = x0;
-    pVertex[1].Y = y  - 0.5;
+    pVertex[1].Y = y  + 0.5;
     pVertex[1].Diffuse = dwDiffuse;
-    pVertex[2].X = x0;
-    pVertex[2].Y = y  + 0.5;
+    pVertex[2].X = x1;
+    pVertex[2].Y = y;
     pVertex[2].Diffuse = dwDiffuse;
-    pVertex[3].X = x1;
-    pVertex[3].Y = y  - 0.5;
-    pVertex[3].Diffuse = dwDiffuse;
-    pVertex[4].X = x1;
-    pVertex[4].Y = y  + 0.5;
-    pVertex[4].Diffuse = dwDiffuse;
-    
-    //
-    // Duplicate the last vertex. This creates a degenerate triangle
-    // and sets up the next tristrip to create three more degenerate
-    // triangles.
-    // 
-    pVertex[5].X = x1;
-    pVertex[5].Y = y  + 0.5;
-    pVertex[5].Diffuse = dwDiffuse;
 
   //Cleanup:
     RRETURN!(hr);
@@ -2458,8 +2441,8 @@ impl CHwVertexBuffer {
     fn DrawPrimitive(&self,
         pDevice: &CD3DDeviceLevel1
         ) -> HRESULT {
-            let mut output = Vec::with_capacity(self.m_rgVerticesTriStrip.GetCount());
-            let data = self.m_rgVerticesTriStrip.GetDataBuffer();
+            let mut output = Vec::with_capacity(self.m_rgVerticesTriList.GetCount());
+            let data = self.m_rgVerticesTriList.GetDataBuffer();
             for vert in  data {
                 output.push(OutputVertex {x: vert.X, y: vert.Y, coverage: f32::from_bits(vert.Diffuse)})
             }
@@ -2690,50 +2673,24 @@ fn AddTrapezoidStandard(&mut self,
         rPixelYBottom,
         true, /* Trapezoid */
         rPixelXTopLeft.min(rPixelXBottomLeft),
-        rPixelXTopRight.max(rPixelXBottomRight)
+        rPixelXTopRight.max(rPixelXBottomRight),
+        rPixelXTopLeft - rPixelXLeftDelta, rPixelXBottomLeft - rPixelXLeftDelta,
+        rPixelXTopRight + rPixelXRightDelta, rPixelXBottomRight + rPixelXRightDelta
         ));
     
     //
     // Add the vertices
     //
 
-	let mut cVertices:  UINT;
 	let fNeedOutsideGeometry: bool; let fNeedInsideGeometry: bool;
-    cVertices = 8;
     fNeedOutsideGeometry = self.NeedOutsideGeometry();
     fNeedInsideGeometry = self.NeedInsideGeometry();
 
-    if (!fNeedOutsideGeometry)
-    {
-        // For duplicates at beginning and end required to skip outside
-        // geometry.
-        cVertices += 2;
-    }
-       
-    if (!fNeedInsideGeometry)
-    {
-        // For duplicates in middle required to skip inside geometry.
-        cVertices += 2;
-    }
-
-    let pVertex = self.m_pVB.AddTriStripVertices(cVertices);
+    let pVertex = self.m_pVB.AddTriListVertices(18);
 
     let mut i = 0;
-    if (!fNeedOutsideGeometry)
-    {
-        //
-        // Duplicate the first vertex. This creates 2 degenerate triangles: one connecting
-        // the previous trapezoid to this one and another between vertices 0 and 1.
-        //
-
-        pVertex[i].X = rPixelXTopLeft - rPixelXLeftDelta;
-        pVertex[i].Y = rPixelYTop;
-        pVertex[i].Diffuse = FLOAT_ZERO;
-        i += 1;
-    }
-
     //
-    // Fill in the strip vertices
+    // Fill in the vertices
     //
 
     pVertex[i].X = rPixelXTopLeft - rPixelXLeftDelta;
@@ -2751,21 +2708,55 @@ fn AddTrapezoidStandard(&mut self,
     pVertex[i].Diffuse = FLOAT_ONE;
     i += 1;
 
+
+
+    pVertex[i].X = rPixelXBottomLeft - rPixelXLeftDelta;
+    pVertex[i].Y = rPixelYBottom;
+    pVertex[i].Diffuse = FLOAT_ZERO;
+    i += 1;
+
+    pVertex[i].X = rPixelXTopLeft + rPixelXLeftDelta;
+    pVertex[i].Y = rPixelYTop;
+    pVertex[i].Diffuse = FLOAT_ONE;
+    i += 1;
+
     pVertex[i].X = rPixelXBottomLeft + rPixelXLeftDelta;
     pVertex[i].Y = rPixelYBottom;
     pVertex[i].Diffuse = FLOAT_ONE;
     i += 1;
 
-    if (!fNeedInsideGeometry)
+     
+    if (fNeedInsideGeometry)
     {
-        // Don't create inside geometry.
+        pVertex[i].X = rPixelXTopLeft + rPixelXLeftDelta;
+        pVertex[i].Y = rPixelYTop;
+        pVertex[i].Diffuse = FLOAT_ONE;
+        i += 1;
+
         pVertex[i].X = rPixelXBottomLeft + rPixelXLeftDelta;
         pVertex[i].Y = rPixelYBottom;
         pVertex[i].Diffuse = FLOAT_ONE;
         i += 1;
-        
+
         pVertex[i].X = rPixelXTopRight - rPixelXRightDelta;
         pVertex[i].Y = rPixelYTop;
+        pVertex[i].Diffuse = FLOAT_ONE;
+        i += 1;
+
+
+
+        pVertex[i].X = rPixelXBottomLeft + rPixelXLeftDelta;
+        pVertex[i].Y = rPixelYBottom;
+        pVertex[i].Diffuse = FLOAT_ONE;
+        i += 1;
+
+        pVertex[i].X = rPixelXTopRight - rPixelXRightDelta;
+        pVertex[i].Y = rPixelYTop;
+        pVertex[i].Diffuse = FLOAT_ONE;
+        i += 1;
+
+        pVertex[i].X = rPixelXBottomRight - rPixelXRightDelta;
+        pVertex[i].Y = rPixelYBottom;
         pVertex[i].Diffuse = FLOAT_ONE;
         i += 1;
     }
@@ -2785,10 +2776,21 @@ fn AddTrapezoidStandard(&mut self,
     pVertex[i].Diffuse = FLOAT_ZERO;
     i += 1;
 
+
+    pVertex[i].X = rPixelXBottomRight - rPixelXRightDelta;
+    pVertex[i].Y = rPixelYBottom;
+    pVertex[i].Diffuse = FLOAT_ONE;
+    i += 1;
+
+    pVertex[i].X = rPixelXTopRight + rPixelXRightDelta;
+    pVertex[i].Y = rPixelYTop;
+    pVertex[i].Diffuse = FLOAT_ZERO;
+    i += 1;
+
     pVertex[i].X = rPixelXBottomRight + rPixelXRightDelta;
     pVertex[i].Y = rPixelYBottom;
     pVertex[i].Diffuse = FLOAT_ZERO;
-    i += 1;
+    // i += 1;
 
     if (!fNeedOutsideGeometry)
     {
@@ -2798,9 +2800,9 @@ fn AddTrapezoidStandard(&mut self,
         // next one.
         //
 
-        pVertex[i].X = rPixelXBottomRight + rPixelXRightDelta;
-        pVertex[i].Y = rPixelYBottom;
-        pVertex[i].Diffuse = FLOAT_ZERO;
+        //pVertex[i].X = rPixelXBottomRight + rPixelXRightDelta;
+        //pVertex[i].Y = rPixelYBottom;
+        //pVertex[i].Diffuse = FLOAT_ZERO;
         // i += 1;
     }
 
@@ -2946,8 +2948,13 @@ fn NeedCoverageGeometry(&self,
         rStratumTop: f32,
         rStratumBottom: f32,
         fTrapezoid: bool,
-        rTrapezoidLeft: f32, // = 0
-        rTrapezoidRight: f32, // = 0
+        rTrapezoidLeft: f32,
+        rTrapezoidRight: f32,
+        rTrapezoidTopLeft: f32, // = 0
+        rTrapezoidBottomLeft: f32, // = 0
+        rTrapezoidTopRight: f32, // = 0
+        rTrapezoidBottomRight: f32, // = 0
+
         ) -> HRESULT
     {
         return if self.NeedOutsideGeometry() {
@@ -2956,7 +2963,11 @@ fn NeedCoverageGeometry(&self,
                 rStratumBottom,
                 fTrapezoid,
                 rTrapezoidLeft,
-                rTrapezoidRight
+                rTrapezoidRight,
+                rTrapezoidTopLeft,
+                rTrapezoidBottomLeft,
+                rTrapezoidTopRight,
+                rTrapezoidBottomRight
                 )
      } else { S_OK };
     }
@@ -2987,7 +2998,11 @@ fn PrepareStratumSlow(&mut self,
     rStratumBottom: f32,
     fTrapezoid: bool,
     rTrapezoidLeft: f32,
-    rTrapezoidRight: f32
+    rTrapezoidRight: f32,
+    rTrapezoidTopLeft: f32,
+    rTrapezoidBottomLeft: f32,
+    rTrapezoidTopRight: f32,
+    rTrapezoidBottomRight: f32,
     ) -> HRESULT
 {
     type TVertex = CD3DVertexXYZDUV2;
@@ -3029,20 +3044,32 @@ fn PrepareStratumSlow(&mut self,
 
             // End current trapezoid stratum.
 
-            let pVertex: &mut [CD3DVertexXYZDUV2] = self.m_pVB.AddTriStripVertices(3);
+            let pVertex: &mut [CD3DVertexXYZDUV2] = self.m_pVB.AddTriListVertices(6);
 
-            pVertex[0].X = rOutsideRight;
+            pVertex[0].X = self.m_rLastTrapezoidTopRight;
             pVertex[0].Y = self.m_rCurStratumTop;
             pVertex[0].Diffuse = FLOAT_ZERO;
-
-            pVertex[1].X = rOutsideRight;
+        
+            pVertex[1].X = self.m_rLastTrapezoidBottomRight;
             pVertex[1].Y = self.m_rCurStratumBottom;
             pVertex[1].Diffuse = FLOAT_ZERO;
 
-            // Duplicate last vertex in row
             pVertex[2].X = rOutsideRight;
-            pVertex[2].Y = self.m_rCurStratumBottom;
+            pVertex[2].Y = self.m_rCurStratumTop;
             pVertex[2].Diffuse = FLOAT_ZERO;
+
+
+            pVertex[3].X = self.m_rLastTrapezoidBottomRight;
+            pVertex[3].Y = self.m_rCurStratumBottom;
+            pVertex[3].Diffuse = FLOAT_ZERO;
+
+            pVertex[4].X = rOutsideRight;
+            pVertex[4].Y = self.m_rCurStratumTop;
+            pVertex[4].Diffuse = FLOAT_ZERO;
+
+            pVertex[5].X = rOutsideRight;
+            pVertex[5].Y = self.m_rCurStratumBottom;
+            pVertex[5].Diffuse = FLOAT_ZERO;
         }
         // Compute the gap between where the last stratum ended and where
         // this one begins.
@@ -3064,7 +3091,7 @@ fn PrepareStratumSlow(&mut self,
 
             let outside_left = self.OutsideLeft();
             let outside_right = self.OutsideRight();
-            let pVertex = self.m_pVB.AddTriStripVertices(6);
+            let pVertex = self.m_pVB.AddTriListVertices(6);
             
             // Duplicate first vertex.
             pVertex[0].X = outside_left;
@@ -3072,21 +3099,22 @@ fn PrepareStratumSlow(&mut self,
             pVertex[0].Diffuse = FLOAT_ZERO;
 
             pVertex[1].X = outside_left;
-            pVertex[1].Y = flRectTop;
+            pVertex[1].Y = flRectBot;
             pVertex[1].Diffuse = FLOAT_ZERO;
 
-            pVertex[2].X = outside_left;
-            pVertex[2].Y = flRectBot;
+            pVertex[2].X = outside_right;
+            pVertex[2].Y = flRectTop;
             pVertex[2].Diffuse = FLOAT_ZERO;
 
-            pVertex[3].X = outside_right;
-            pVertex[3].Y = flRectTop;
+
+            pVertex[3].X = outside_left;
+            pVertex[3].Y = flRectBot;
             pVertex[3].Diffuse = FLOAT_ZERO;
 
             pVertex[4].X = outside_right;
-            pVertex[4].Y = flRectBot;
+            pVertex[4].Y = flRectTop;
             pVertex[4].Diffuse = FLOAT_ZERO;
-        
+
             pVertex[5].X = outside_right;
             pVertex[5].Y = flRectBot;
             pVertex[5].Diffuse = FLOAT_ZERO;
@@ -3102,25 +3130,39 @@ fn PrepareStratumSlow(&mut self,
 
             // Begin new trapezoid stratum.
 
-            let mut pVertex: &mut [TVertex] = self.m_pVB.AddTriStripVertices(3);
+            let mut pVertex: &mut [TVertex] = self.m_pVB.AddTriListVertices(6);
 
-            // Duplicate first vertex.
             pVertex[0].X = rOutsideLeft;
             pVertex[0].Y = rStratumTop;
             pVertex[0].Diffuse = FLOAT_ZERO;
-            
+
             pVertex[1].X = rOutsideLeft;
-            pVertex[1].Y = rStratumTop;
+            pVertex[1].Y = rStratumBottom;
             pVertex[1].Diffuse = FLOAT_ZERO;
 
-            pVertex[2].X = rOutsideLeft;
-            pVertex[2].Y = rStratumBottom;
+            pVertex[2].X = rTrapezoidTopLeft;
+            pVertex[2].Y = rStratumTop;
             pVertex[2].Diffuse = FLOAT_ZERO;
+
+
+            pVertex[3].X = rOutsideLeft;
+            pVertex[3].Y = rStratumBottom;
+            pVertex[3].Diffuse = FLOAT_ZERO;
+
+            pVertex[4].X = rTrapezoidTopLeft;
+            pVertex[4].Y = rStratumTop;
+            pVertex[4].Diffuse = FLOAT_ZERO;
+        
+            pVertex[5].X = rTrapezoidBottomLeft;
+            pVertex[5].Y = rStratumBottom;
+            pVertex[5].Diffuse = FLOAT_ZERO;
         }
     }
     
     if (fTrapezoid)
     {
+        self.m_rLastTrapezoidTopRight = rTrapezoidTopRight;
+        self.m_rLastTrapezoidBottomRight = rTrapezoidBottomRight;
         self.m_rLastTrapezoidRight = rTrapezoidRight;
     }
 
@@ -3147,7 +3189,9 @@ fn EndBuildingOutside(&mut self) -> HRESULT
         self.OutsideBottom(),
         self.OutsideBottom(),
         false, /* Not a trapezoid. */
-        0., 0.
+        0., 0.,
+        0., 0.,
+        0., 0.,
         );
 }
 

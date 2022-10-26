@@ -307,7 +307,7 @@ fn main() {
                 }
             }
             let start = std::time::Instant::now(); 
-            let result = builder.rasterize_to_tri_strip(0, 0, WIDTH as i32, HEIGHT as i32);
+            let result = builder.rasterize_to_tri_list(0, 0, WIDTH as i32, HEIGHT as i32);
             let end = std::time::Instant::now();
             total_time += end - start;
 
@@ -317,11 +317,9 @@ fn main() {
                 continue;
             }
 
-            for n in 0..result.len() - 2 {
-                let vertices = if n % 2 == 0 {
+            for n in (0..result.len()).step_by(3) {
+                let vertices =  {
                     [&result[n], &result[n+1], &result[n+2]]
-                } else {
-                    [&result[n+1], &result[n], &result[n+2]]
                 };
 
                 let src = color;

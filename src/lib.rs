@@ -7,7 +7,7 @@ Converts a 2D path into a set of vertices of a triangle strip mesh that represen
     p.move_to(10., 10.);
     p.line_to(40., 10.);
     p.line_to(40., 40.);
-    let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+    let result = p.rasterize_to_tri_list(0, 0, 100, 100);
 ```
 
 */
@@ -199,7 +199,7 @@ impl PathBuilder {
     }
 
     /// Note: trapezoidal areas won't necessarily be clipped to the clip rect
-    pub fn rasterize_to_tri_strip(&self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
+    pub fn rasterize_to_tri_list(&self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
         if !self.valid_range {
             // If any of the points are outside of valid 28.4 range, then just return an empty triangle list.
             return Box::new([]);
@@ -213,7 +213,7 @@ impl PathBuilder {
         } else {
             (clip_x, clip_y, clip_width, clip_height, false)
         };
-        rasterize_to_tri_strip(self.fill_mode, &self.types, &self.points, x, y, width, height, self.need_inside, need_outside)
+        rasterize_to_tri_list(self.fill_mode, &self.types, &self.points, x, y, width, height, self.need_inside, need_outside)
     }
 
     pub fn get_path(&mut self) -> Option<OutputPath> {
@@ -235,7 +235,7 @@ impl PathBuilder {
 // fill the inside of the path excluding the outside. It may alternatively be desirable to fill the
 // outside the path out to the clip boundary, optionally keeping the inside. PathBuilder may be
 // used instead as a simpler interface to this function that handles building the path arrays.
-pub fn rasterize_to_tri_strip(
+pub fn rasterize_to_tri_list(
     fill_mode: FillMode,
     types: &[BYTE],
     points: &[POINT],
@@ -329,9 +329,9 @@ mod tests {
         p.line_to(30., 30.);
         p.line_to(30., 10.);
         p.close();
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(result.len(), 10);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x5851570566450135);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(result.len(), 18);
+        //assert_eq!(dbg!(calculate_hash(&result)), 0x5851570566450135);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0xfbb7c3932059e240);
     }
 
@@ -341,8 +341,8 @@ mod tests {
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(40., 40.);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x81a9af7769f88e68);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        //assert_eq!(dbg!(calculate_hash(&result)), 0x81a9af7769f88e68);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x6d1595533d40ef92);
     }
 
@@ -352,8 +352,8 @@ mod tests {
         p.move_to(10., 10.);
         p.line_to(40., 10.);
         p.line_to(40., 40.);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x81a9af7769f88e68);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        //assert_eq!(dbg!(calculate_hash(&result)), 0x81a9af7769f88e68);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x6d1595533d40ef92);
     }
 
@@ -370,8 +370,8 @@ mod tests {
         p.line_to(35., 35.);
         p.line_to(15., 35.);
         p.close();
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xb34344234f2f75a8);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        //assert_eq!(dbg!(calculate_hash(&result)), 0xb34344234f2f75a8);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0xc7bf999c56ccfc34);
 
         let mut p = PathBuilder::new();
@@ -386,8 +386,8 @@ mod tests {
         p.line_to(15., 35.);
         p.close();
         p.set_fill_mode(FillMode::Winding);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xee4ecd8a738fc42c);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        //assert_eq!(dbg!(calculate_hash(&result)), 0xee4ecd8a738fc42c);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0xfafad659db9a2efd);
 
     }
@@ -397,13 +397,13 @@ mod tests {
         // test for a start point out of range
         let mut p = PathBuilder::new();
         p.curve_to(8.872974e16, 0., 0., 0., 0., 0.);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         assert_eq!(result.len(), 0);
 
         // test for a subsequent point out of range
         let mut p = PathBuilder::new();
         p.curve_to(0., 0., 8.872974e16, 0., 0., 0.);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         assert_eq!(result.len(), 0);
     }
 
@@ -412,7 +412,7 @@ mod tests {
         let mut p = PathBuilder::new();
         p.line_to(10., 10.);
         p.move_to(0., 0.);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         assert_eq!(result.len(), 0);
     }
 
@@ -422,7 +422,7 @@ mod tests {
         p.curve_to(0., 0., 0., 0., 0., 32.0);
         p.close();
         p.curve_to(0., 0., 0., 0., 0., 32.0);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         assert_eq!(result.len(), 0);
     }
 
@@ -432,8 +432,8 @@ mod tests {
         p.move_to(10., 10.);
         p.curve_to(40., 10., 40., 10., 40., 40.);
         p.close();
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x6f92480332842ac9);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x8dbc4d23f9bba38d);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0xa92aae8dba7b8cd4);
     }
 
@@ -446,9 +446,9 @@ mod tests {
         p.line_to(40., 39.6);
         p.line_to(10., 39.6);
 
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(result.len(), 16);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xf606699f20d45d96);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(result.len(), 21);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xf90cb6afaadfb559);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0xfa200c3bae144952);
     }
 
@@ -461,9 +461,9 @@ mod tests {
         p.curve_to(-160.83 + 200., 40.309, -143.05 + 200., 32.956,  -122.3 + 200., 84.285);
         p.close();
 
-        let result = p.rasterize_to_tri_strip(0, 0, 400, 400);
-        assert_eq!(result.len(), 676);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xd216dc8076add4b3);
+        let result = p.rasterize_to_tri_list(0, 0, 400, 400);
+        assert_eq!(result.len(), 429);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x52d52992e249587a);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x5e82d98fdb47a796);
     }
 
@@ -476,8 +476,8 @@ mod tests {
         p.line_to(10., 40.);
         p.line_to(40., 40.);
         p.close();
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xb8cbea29b27f7598);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xf10babef5c619d19);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x49ecc769e1d4ec01);
     }
 
@@ -493,8 +493,8 @@ mod tests {
             p.line_to(0. + offset, 40.);
             p.close();
         }
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(result.len(), 24000);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(result.len(), 12000);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x5a7df39d9e9292f0);
     }
 
@@ -507,14 +507,14 @@ mod tests {
         p.line_to(40., 40.);
         p.close();
         p.set_outside_bounds(Some((0, 0, 50, 50)), false);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x1e734743e1785634);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x7c5750ee536ae4ee);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x59403ddbb7e1d09a);
 
         // ensure that adjusting the outside bounds changes the results
         p.set_outside_bounds(Some((5, 5, 50, 50)), false);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x750791f4ed45f038);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x55441457b28613e0);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x59403ddbb7e1d09a);
     }
 
@@ -527,8 +527,8 @@ mod tests {
         p.line_to(40., 40.);
         p.close();
         p.set_outside_bounds(Some((0, 0, 50, 50)), true);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x1b741fc435aa1897);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xaf76b42a5244d1ec);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x49ecc769e1d4ec01);
     }
 
@@ -541,8 +541,8 @@ mod tests {
         p.line_to(40., 10.);
         p.close();
         p.set_outside_bounds(Some((0, 0, 50, 50)), false);
-        let result = p.rasterize_to_tri_strip(0, 0, 50, 50);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x59eea88edd340269);
+        let result = p.rasterize_to_tri_list(0, 0, 50, 50);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x648a0b7b6aa3b4ed);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x3d2a08f5d0bac999);
     }
 
@@ -551,14 +551,14 @@ mod tests {
         let mut p = PathBuilder::new();
         // tests the bigNumerator < 0 case of aarasterizer::ClipEdge
         p.curve_to(-24., -10., -300., 119., 0.0, 0.0);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         // The edge merging only happens between points inside the enumerate buffer. This means
         // that the vertex output can depend on the size of the enumerate buffer because there
         // the number of edges and positions of vertices will change depending on edge merging.
         if ENUMERATE_BUFFER_NUMBER!() == 32 {
-            assert_eq!(result.len(), 170);
+            assert_eq!(result.len(), 111);
         } else {
-            assert_eq!(result.len(), 238);
+            assert_eq!(result.len(), 171);
         }
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x50b887b09a4c16e);
     }
@@ -569,8 +569,8 @@ mod tests {
         p.curve_to(0.0, 0.0, 0.0, 12.0, 0.0, 44.919434);
         p.line_to(64.0, 36.0 );
         p.line_to(0.0, 80.0,);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(result.len(), 574);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(result.len(), 300);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x659cc742f16b42f2);
     }
 
@@ -579,8 +579,8 @@ mod tests {
         let mut p = PathBuilder::new();
         p.line_to( 0., 2. );
         p.curve_to(0.0, 0.0,1., 6., 0.0, 0.0);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(result.len(), 18);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(result.len(), 9);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x726606a662fe46a0);
     }
 
@@ -591,8 +591,8 @@ mod tests {
         p.curve_to(45., 61., 0.09, 0., 0., 0.);
         p.curve_to(0., 0., 0., 38., 0.09, 15.);
         p.set_fill_mode(FillMode::Winding);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(result.len(), 820);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(result.len(), 462);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x651ea4ade5543087);
     }
 
@@ -601,7 +601,7 @@ mod tests {
         let mut p = PathBuilder::new();
         p.move_to(0., 0.);
         p.line_to(10., 100.);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         assert_eq!(result.len(), 0);
     }
 
@@ -613,7 +613,7 @@ mod tests {
         p.line_to(2., 2.);
         p.line_to(1., 2.);
         p.close();
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         let mask = rasterize_to_mask(&result, 3, 3);
         assert_eq!(&mask[..], &[0,   0, 0,
                                 0, 255, 0,
@@ -627,7 +627,7 @@ mod tests {
         p.line_to(100., 13.);
         p.line_to(1., 16.);
         p.close();
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x4757b0c5a19b02f0);
     }
 
@@ -639,8 +639,8 @@ mod tests {
         p.line_to(2., 2.);
         p.line_to(1.5, 2.);
         p.close();
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
-        assert_eq!(result.len(), 6);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
+        assert_eq!(result.len(), 3);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 4, 4)), 0x9f481fe5588e341c);
     }
 
@@ -657,7 +657,7 @@ mod tests {
         // and in this case the outside bounds geometry ends up drawing on top of the
         // edge geometry which could be considered a bug.
         p.set_outside_bounds(Some((0, 0, 50, 30)), true);
-        let result = p.rasterize_to_tri_strip(0, 0, 100, 100);
+        let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x6514e3d79d641f09);
 
     }
