@@ -372,10 +372,10 @@ private:
 }*/
 #[derive(Default)]
 pub struct CD3DVertexXYZDUV2 {
-    X: f32,
-    Y: f32,
+    x: f32,
+    y: f32,
     //Z: f32,
-    Coverage: f32,
+    coverage: f32,
     /*U0: f32, V0: f32,
     U1: f32, V1: f32,*/
 }
@@ -1280,12 +1280,12 @@ fn AddLine(&mut self,
         //IFC!(AddLineListVertices(2, &pVertices));
     //}
     
-    pVertices[0].X = v0.x;
-    pVertices[0].Y = v0.y;
-    pVertices[0].Coverage = v0.a;
-    pVertices[1].X = v1.x;
-    pVertices[1].Y = v1.y;
-    pVertices[1].Coverage = v1.a;
+    pVertices[0].x = v0.x;
+    pVertices[0].y = v0.y;
+    pVertices[0].coverage = v0.a;
+    pVertices[1].x = v1.x;
+    pVertices[1].y = v1.y;
+    pVertices[1].coverage = v1.a;
 
     if (fUseTriangles)
     {
@@ -2398,15 +2398,15 @@ impl CHwVertexBuffer {
     let hr = S_OK;
 
     // Collect pertinent data from vertices.
-    debug_assert!(pBegin.Y == pEnd.Y);
-    debug_assert!(pBegin.Coverage == pEnd.Coverage);
+    debug_assert!(pBegin.y == pEnd.y);
+    debug_assert!(pBegin.coverage == pEnd.coverage);
 
     // Offset begin and end X left by 0.5 because the line starts on the first
     // pixel center and ends on the center of the pixel after the line segment.
-    let x0 = pBegin.X - 0.5;
-    let x1 = pEnd.X - 0.5;
-    let y = pBegin.Y;
-    let dwDiffuse = pBegin.Coverage;
+    let x0 = pBegin.x - 0.5;
+    let x1 = pEnd.x - 0.5;
+    let y = pBegin.y;
+    let dwDiffuse = pBegin.coverage;
 
     //
     // Add the vertices
@@ -2415,15 +2415,15 @@ impl CHwVertexBuffer {
     let pVertex = self.AddTriListVertices(3);
 
     // Use a single triangle to cover the entire line
-    pVertex[0].X = x0;
-    pVertex[0].Y = y  - 0.5;
-    pVertex[0].Coverage = dwDiffuse;
-    pVertex[1].X = x0;
-    pVertex[1].Y = y  + 0.5;
-    pVertex[1].Coverage = dwDiffuse;
-    pVertex[2].X = x1;
-    pVertex[2].Y = y;
-    pVertex[2].Coverage = dwDiffuse;
+    pVertex[0].x = x0;
+    pVertex[0].y = y  - 0.5;
+    pVertex[0].coverage = dwDiffuse;
+    pVertex[1].x = x0;
+    pVertex[1].y = y  + 0.5;
+    pVertex[1].coverage = dwDiffuse;
+    pVertex[2].x = x1;
+    pVertex[2].y = y;
+    pVertex[2].coverage = dwDiffuse;
 
   //Cleanup:
     RRETURN!(hr);
@@ -2444,7 +2444,7 @@ impl CHwVertexBuffer {
             let mut output = Vec::with_capacity(self.m_rgVerticesTriList.GetCount());
             let data = self.m_rgVerticesTriList.GetDataBuffer();
             for vert in  data {
-                output.push(OutputVertex {x: vert.X, y: vert.Y, coverage: vert.Coverage})
+                output.push(OutputVertex {x: vert.x, y: vert.y, coverage: vert.coverage})
             }
             pDevice.output.replace(output);
             return S_OK;
@@ -2693,103 +2693,103 @@ fn AddTrapezoidStandard(&mut self,
     // Fill in the vertices
     //
 
-    pVertex[i].X = rPixelXTopLeft - rPixelXLeftDelta;
-    pVertex[i].Y = rPixelYTop;
-    pVertex[i].Coverage = FLOAT_ZERO;
+    pVertex[i].x = rPixelXTopLeft - rPixelXLeftDelta;
+    pVertex[i].y = rPixelYTop;
+    pVertex[i].coverage = FLOAT_ZERO;
     i += 1;
 
-    pVertex[i].X = rPixelXBottomLeft - rPixelXLeftDelta;
-    pVertex[i].Y = rPixelYBottom;
-    pVertex[i].Coverage = FLOAT_ZERO;
+    pVertex[i].x = rPixelXBottomLeft - rPixelXLeftDelta;
+    pVertex[i].y = rPixelYBottom;
+    pVertex[i].coverage = FLOAT_ZERO;
     i += 1;
 
-    pVertex[i].X = rPixelXTopLeft + rPixelXLeftDelta;
-    pVertex[i].Y = rPixelYTop;
-    pVertex[i].Coverage = FLOAT_ONE;
+    pVertex[i].x = rPixelXTopLeft + rPixelXLeftDelta;
+    pVertex[i].y = rPixelYTop;
+    pVertex[i].coverage = FLOAT_ONE;
     i += 1;
 
 
 
-    pVertex[i].X = rPixelXBottomLeft - rPixelXLeftDelta;
-    pVertex[i].Y = rPixelYBottom;
-    pVertex[i].Coverage = FLOAT_ZERO;
+    pVertex[i].x = rPixelXBottomLeft - rPixelXLeftDelta;
+    pVertex[i].y = rPixelYBottom;
+    pVertex[i].coverage = FLOAT_ZERO;
     i += 1;
 
-    pVertex[i].X = rPixelXTopLeft + rPixelXLeftDelta;
-    pVertex[i].Y = rPixelYTop;
-    pVertex[i].Coverage = FLOAT_ONE;
+    pVertex[i].x = rPixelXTopLeft + rPixelXLeftDelta;
+    pVertex[i].y = rPixelYTop;
+    pVertex[i].coverage = FLOAT_ONE;
     i += 1;
 
-    pVertex[i].X = rPixelXBottomLeft + rPixelXLeftDelta;
-    pVertex[i].Y = rPixelYBottom;
-    pVertex[i].Coverage = FLOAT_ONE;
+    pVertex[i].x = rPixelXBottomLeft + rPixelXLeftDelta;
+    pVertex[i].y = rPixelYBottom;
+    pVertex[i].coverage = FLOAT_ONE;
     i += 1;
 
      
     if (fNeedInsideGeometry)
     {
-        pVertex[i].X = rPixelXTopLeft + rPixelXLeftDelta;
-        pVertex[i].Y = rPixelYTop;
-        pVertex[i].Coverage = FLOAT_ONE;
+        pVertex[i].x = rPixelXTopLeft + rPixelXLeftDelta;
+        pVertex[i].y = rPixelYTop;
+        pVertex[i].coverage = FLOAT_ONE;
         i += 1;
 
-        pVertex[i].X = rPixelXBottomLeft + rPixelXLeftDelta;
-        pVertex[i].Y = rPixelYBottom;
-        pVertex[i].Coverage = FLOAT_ONE;
+        pVertex[i].x = rPixelXBottomLeft + rPixelXLeftDelta;
+        pVertex[i].y = rPixelYBottom;
+        pVertex[i].coverage = FLOAT_ONE;
         i += 1;
 
-        pVertex[i].X = rPixelXTopRight - rPixelXRightDelta;
-        pVertex[i].Y = rPixelYTop;
-        pVertex[i].Coverage = FLOAT_ONE;
+        pVertex[i].x = rPixelXTopRight - rPixelXRightDelta;
+        pVertex[i].y = rPixelYTop;
+        pVertex[i].coverage = FLOAT_ONE;
         i += 1;
 
 
 
-        pVertex[i].X = rPixelXBottomLeft + rPixelXLeftDelta;
-        pVertex[i].Y = rPixelYBottom;
-        pVertex[i].Coverage = FLOAT_ONE;
+        pVertex[i].x = rPixelXBottomLeft + rPixelXLeftDelta;
+        pVertex[i].y = rPixelYBottom;
+        pVertex[i].coverage = FLOAT_ONE;
         i += 1;
 
-        pVertex[i].X = rPixelXTopRight - rPixelXRightDelta;
-        pVertex[i].Y = rPixelYTop;
-        pVertex[i].Coverage = FLOAT_ONE;
+        pVertex[i].x = rPixelXTopRight - rPixelXRightDelta;
+        pVertex[i].y = rPixelYTop;
+        pVertex[i].coverage = FLOAT_ONE;
         i += 1;
 
-        pVertex[i].X = rPixelXBottomRight - rPixelXRightDelta;
-        pVertex[i].Y = rPixelYBottom;
-        pVertex[i].Coverage = FLOAT_ONE;
+        pVertex[i].x = rPixelXBottomRight - rPixelXRightDelta;
+        pVertex[i].y = rPixelYBottom;
+        pVertex[i].coverage = FLOAT_ONE;
         i += 1;
     }
 
-    pVertex[i].X = rPixelXTopRight - rPixelXRightDelta;
-    pVertex[i].Y = rPixelYTop;
-    pVertex[i].Coverage = FLOAT_ONE;
+    pVertex[i].x = rPixelXTopRight - rPixelXRightDelta;
+    pVertex[i].y = rPixelYTop;
+    pVertex[i].coverage = FLOAT_ONE;
     i += 1;
 
-    pVertex[i].X = rPixelXBottomRight - rPixelXRightDelta;
-    pVertex[i].Y = rPixelYBottom;
-    pVertex[i].Coverage = FLOAT_ONE;
+    pVertex[i].x = rPixelXBottomRight - rPixelXRightDelta;
+    pVertex[i].y = rPixelYBottom;
+    pVertex[i].coverage = FLOAT_ONE;
     i += 1;
 
-    pVertex[i].X = rPixelXTopRight + rPixelXRightDelta;
-    pVertex[i].Y = rPixelYTop;
-    pVertex[i].Coverage = FLOAT_ZERO;
+    pVertex[i].x = rPixelXTopRight + rPixelXRightDelta;
+    pVertex[i].y = rPixelYTop;
+    pVertex[i].coverage = FLOAT_ZERO;
     i += 1;
 
 
-    pVertex[i].X = rPixelXBottomRight - rPixelXRightDelta;
-    pVertex[i].Y = rPixelYBottom;
-    pVertex[i].Coverage = FLOAT_ONE;
+    pVertex[i].x = rPixelXBottomRight - rPixelXRightDelta;
+    pVertex[i].y = rPixelYBottom;
+    pVertex[i].coverage = FLOAT_ONE;
     i += 1;
 
-    pVertex[i].X = rPixelXTopRight + rPixelXRightDelta;
-    pVertex[i].Y = rPixelYTop;
-    pVertex[i].Coverage = FLOAT_ZERO;
+    pVertex[i].x = rPixelXTopRight + rPixelXRightDelta;
+    pVertex[i].y = rPixelYTop;
+    pVertex[i].coverage = FLOAT_ZERO;
     i += 1;
 
-    pVertex[i].X = rPixelXBottomRight + rPixelXRightDelta;
-    pVertex[i].Y = rPixelYBottom;
-    pVertex[i].Coverage = FLOAT_ZERO;
+    pVertex[i].x = rPixelXBottomRight + rPixelXRightDelta;
+    pVertex[i].y = rPixelYBottom;
+    pVertex[i].coverage = FLOAT_ZERO;
     // i += 1;
 
     if (!fNeedOutsideGeometry)
@@ -3046,30 +3046,30 @@ fn PrepareStratumSlow(&mut self,
 
             let pVertex: &mut [CD3DVertexXYZDUV2] = self.m_pVB.AddTriListVertices(6);
 
-            pVertex[0].X = self.m_rLastTrapezoidTopRight;
-            pVertex[0].Y = self.m_rCurStratumTop;
-            pVertex[0].Coverage = FLOAT_ZERO;
+            pVertex[0].x = self.m_rLastTrapezoidTopRight;
+            pVertex[0].y = self.m_rCurStratumTop;
+            pVertex[0].coverage = FLOAT_ZERO;
         
-            pVertex[1].X = self.m_rLastTrapezoidBottomRight;
-            pVertex[1].Y = self.m_rCurStratumBottom;
-            pVertex[1].Coverage = FLOAT_ZERO;
+            pVertex[1].x = self.m_rLastTrapezoidBottomRight;
+            pVertex[1].y = self.m_rCurStratumBottom;
+            pVertex[1].coverage = FLOAT_ZERO;
 
-            pVertex[2].X = rOutsideRight;
-            pVertex[2].Y = self.m_rCurStratumTop;
-            pVertex[2].Coverage = FLOAT_ZERO;
+            pVertex[2].x = rOutsideRight;
+            pVertex[2].y = self.m_rCurStratumTop;
+            pVertex[2].coverage = FLOAT_ZERO;
 
 
-            pVertex[3].X = self.m_rLastTrapezoidBottomRight;
-            pVertex[3].Y = self.m_rCurStratumBottom;
-            pVertex[3].Coverage = FLOAT_ZERO;
+            pVertex[3].x = self.m_rLastTrapezoidBottomRight;
+            pVertex[3].y = self.m_rCurStratumBottom;
+            pVertex[3].coverage = FLOAT_ZERO;
 
-            pVertex[4].X = rOutsideRight;
-            pVertex[4].Y = self.m_rCurStratumTop;
-            pVertex[4].Coverage = FLOAT_ZERO;
+            pVertex[4].x = rOutsideRight;
+            pVertex[4].y = self.m_rCurStratumTop;
+            pVertex[4].coverage = FLOAT_ZERO;
 
-            pVertex[5].X = rOutsideRight;
-            pVertex[5].Y = self.m_rCurStratumBottom;
-            pVertex[5].Coverage = FLOAT_ZERO;
+            pVertex[5].x = rOutsideRight;
+            pVertex[5].y = self.m_rCurStratumBottom;
+            pVertex[5].coverage = FLOAT_ZERO;
         }
         // Compute the gap between where the last stratum ended and where
         // this one begins.
@@ -3094,30 +3094,30 @@ fn PrepareStratumSlow(&mut self,
             let pVertex = self.m_pVB.AddTriListVertices(6);
             
             // Duplicate first vertex.
-            pVertex[0].X = outside_left;
-            pVertex[0].Y = flRectTop;
-            pVertex[0].Coverage = FLOAT_ZERO;
+            pVertex[0].x = outside_left;
+            pVertex[0].y = flRectTop;
+            pVertex[0].coverage = FLOAT_ZERO;
 
-            pVertex[1].X = outside_left;
-            pVertex[1].Y = flRectBot;
-            pVertex[1].Coverage = FLOAT_ZERO;
+            pVertex[1].x = outside_left;
+            pVertex[1].y = flRectBot;
+            pVertex[1].coverage = FLOAT_ZERO;
 
-            pVertex[2].X = outside_right;
-            pVertex[2].Y = flRectTop;
-            pVertex[2].Coverage = FLOAT_ZERO;
+            pVertex[2].x = outside_right;
+            pVertex[2].y = flRectTop;
+            pVertex[2].coverage = FLOAT_ZERO;
 
 
-            pVertex[3].X = outside_left;
-            pVertex[3].Y = flRectBot;
-            pVertex[3].Coverage = FLOAT_ZERO;
+            pVertex[3].x = outside_left;
+            pVertex[3].y = flRectBot;
+            pVertex[3].coverage = FLOAT_ZERO;
 
-            pVertex[4].X = outside_right;
-            pVertex[4].Y = flRectTop;
-            pVertex[4].Coverage = FLOAT_ZERO;
+            pVertex[4].x = outside_right;
+            pVertex[4].y = flRectTop;
+            pVertex[4].coverage = FLOAT_ZERO;
 
-            pVertex[5].X = outside_right;
-            pVertex[5].Y = flRectBot;
-            pVertex[5].Coverage = FLOAT_ZERO;
+            pVertex[5].x = outside_right;
+            pVertex[5].y = flRectBot;
+            pVertex[5].coverage = FLOAT_ZERO;
         }
 
         if (fTrapezoid)
@@ -3132,30 +3132,30 @@ fn PrepareStratumSlow(&mut self,
 
             let mut pVertex: &mut [TVertex] = self.m_pVB.AddTriListVertices(6);
 
-            pVertex[0].X = rOutsideLeft;
-            pVertex[0].Y = rStratumTop;
-            pVertex[0].Coverage = FLOAT_ZERO;
+            pVertex[0].x = rOutsideLeft;
+            pVertex[0].y = rStratumTop;
+            pVertex[0].coverage = FLOAT_ZERO;
 
-            pVertex[1].X = rOutsideLeft;
-            pVertex[1].Y = rStratumBottom;
-            pVertex[1].Coverage = FLOAT_ZERO;
+            pVertex[1].x = rOutsideLeft;
+            pVertex[1].y = rStratumBottom;
+            pVertex[1].coverage = FLOAT_ZERO;
 
-            pVertex[2].X = rTrapezoidTopLeft;
-            pVertex[2].Y = rStratumTop;
-            pVertex[2].Coverage = FLOAT_ZERO;
+            pVertex[2].x = rTrapezoidTopLeft;
+            pVertex[2].y = rStratumTop;
+            pVertex[2].coverage = FLOAT_ZERO;
 
 
-            pVertex[3].X = rOutsideLeft;
-            pVertex[3].Y = rStratumBottom;
-            pVertex[3].Coverage = FLOAT_ZERO;
+            pVertex[3].x = rOutsideLeft;
+            pVertex[3].y = rStratumBottom;
+            pVertex[3].coverage = FLOAT_ZERO;
 
-            pVertex[4].X = rTrapezoidTopLeft;
-            pVertex[4].Y = rStratumTop;
-            pVertex[4].Coverage = FLOAT_ZERO;
+            pVertex[4].x = rTrapezoidTopLeft;
+            pVertex[4].y = rStratumTop;
+            pVertex[4].coverage = FLOAT_ZERO;
         
-            pVertex[5].X = rTrapezoidBottomLeft;
-            pVertex[5].Y = rStratumBottom;
-            pVertex[5].Coverage = FLOAT_ZERO;
+            pVertex[5].x = rTrapezoidBottomLeft;
+            pVertex[5].y = rStratumBottom;
+            pVertex[5].coverage = FLOAT_ZERO;
         }
     }
     
