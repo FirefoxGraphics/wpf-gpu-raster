@@ -95,8 +95,8 @@ const FORCE_TRIANGLES: bool = true;
 //const c_rMinWaffleWidthPixels: f32 = 0.25;
 
 
-const FLOAT_ZERO: DWORD = 0x00000000;
-const FLOAT_ONE: DWORD = 0x3f800000;
+const FLOAT_ZERO: f32 = 0.;
+const FLOAT_ONE: f32 = 1.;
 
 //+----------------------------------------------------------------------------
 //
@@ -375,7 +375,7 @@ pub struct CD3DVertexXYZDUV2 {
     X: f32,
     Y: f32,
     //Z: f32,
-    Coverage: DWORD,
+    Coverage: f32,
     /*U0: f32, V0: f32,
     U1: f32, V1: f32,*/
 }
@@ -1282,10 +1282,10 @@ fn AddLine(&mut self,
     
     pVertices[0].X = v0.x;
     pVertices[0].Y = v0.y;
-    pVertices[0].Coverage = v0.a.to_bits();
+    pVertices[0].Coverage = v0.a;
     pVertices[1].X = v1.x;
     pVertices[1].Y = v1.y;
-    pVertices[1].Coverage = v1.a.to_bits();
+    pVertices[1].Coverage = v1.a;
 
     if (fUseTriangles)
     {
@@ -2444,7 +2444,7 @@ impl CHwVertexBuffer {
             let mut output = Vec::with_capacity(self.m_rgVerticesTriList.GetCount());
             let data = self.m_rgVerticesTriList.GetDataBuffer();
             for vert in  data {
-                output.push(OutputVertex {x: vert.X, y: vert.Y, coverage: f32::from_bits(vert.Coverage)})
+                output.push(OutputVertex {x: vert.X, y: vert.Y, coverage: vert.Coverage})
             }
             pDevice.output.replace(output);
             return S_OK;
