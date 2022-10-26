@@ -379,7 +379,7 @@ pub struct CD3DVertexXYZDUV2 {
     /*U0: f32, V0: f32,
     U1: f32, V1: f32,*/
 }
-pub type CHwVertexBuffer = CHwTVertexBuffer<CD3DVertexXYZDUV2>;
+pub type CHwVertexBuffer = CHwTVertexBuffer<OutputVertex>;
 #[derive(Default)]
 pub struct CHwTVertexBuffer<TVertex>
 {
@@ -1503,7 +1503,7 @@ CHwTVertexBuffer<CD3DVertexXYZNDSUV4>::Builder::GetOutVertexFormat()
 //             matching vertex builder
 //
 */
-pub type CHwVertexBufferBuilder = CHwTVertexBufferBuilder<CD3DVertexXYZDUV2>;
+pub type CHwVertexBufferBuilder = CHwTVertexBufferBuilder<OutputVertex>;
 impl CHwVertexBufferBuilder {
 pub fn Create(
      vfIn: MilVertexFormat,
@@ -3005,7 +3005,7 @@ fn PrepareStratumSlow(&mut self,
     rTrapezoidBottomRight: f32,
     ) -> HRESULT
 {
-    type TVertex = CD3DVertexXYZDUV2;
+    type TVertex = OutputVertex;
     let hr: HRESULT = S_OK;
     
     assert!(!(rStratumTop > rStratumBottom));
@@ -3044,7 +3044,7 @@ fn PrepareStratumSlow(&mut self,
 
             // End current trapezoid stratum.
 
-            let pVertex: &mut [CD3DVertexXYZDUV2] = self.m_pVB.AddTriListVertices(6);
+            let pVertex: &mut [OutputVertex] = self.m_pVB.AddTriListVertices(6);
 
             pVertex[0].x = self.m_rLastTrapezoidTopRight;
             pVertex[0].y = self.m_rCurStratumTop;
