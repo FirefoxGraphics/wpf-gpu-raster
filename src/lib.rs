@@ -51,7 +51,7 @@ use hwrasterizer::CHwRasterizer;
 use hwvertexbuffer::CHwVertexBufferBuilder;
 use matrix::CMatrix;
 use real::CFloatFPU;
-use types::{CoordinateSpace, CD3DDeviceLevel1, IShapeData, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath, CMILSurfaceRect, POINT};
+use types::{CoordinateSpace, CD3DDeviceLevel1, MilFillMode, PathPointTypeStart, MilPoint2F, PathPointTypeLine, MilVertexFormat, MilVertexFormatAttribute, DynArray, BYTE, PathPointTypeBezier, PathPointTypeCloseSubpath, CMILSurfaceRect, POINT};
 
 #[repr(C)]
 #[derive(Debug, Default)]
@@ -259,24 +259,12 @@ pub fn rasterize_to_tri_list(
     */
     let worldToDevice: CMatrix<CoordinateSpace::Shape, CoordinateSpace::Device> = CMatrix::Identity();
 
-    struct PathShape {
-        fill_mode: MilFillMode,
-    }
-
-    impl IShapeData for PathShape {
-        fn GetFillMode(&self) -> MilFillMode {
-            self.fill_mode
-        }
-    }
-
     let mil_fill_mode = match fill_mode {
         FillMode::EvenOdd => MilFillMode::Alternate,
         FillMode::Winding => MilFillMode::Winding,
     };
 
-    let path = Rc::new(PathShape { fill_mode: mil_fill_mode });
-
-    rasterizer.Setup(device.clone(), path, Some(&worldToDevice));
+    rasterizer.Setup(device.clone(), mil_fill_mode, Some(&worldToDevice));
 
     let mut m_mvfIn: MilVertexFormat = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;
     let m_mvfGenerated: MilVertexFormat  = MilVertexFormatAttribute::MILVFAttrNone as MilVertexFormat;

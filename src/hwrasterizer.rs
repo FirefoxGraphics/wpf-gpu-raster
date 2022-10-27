@@ -662,7 +662,7 @@ pub fn RasterizePath(
 //-------------------------------------------------------------------------
 pub fn Setup(&mut self,
     pD3DDevice: Rc<CD3DDeviceLevel1>,
-    pShape: Rc<dyn IShapeData>,
+    fillMode: MilFillMode,
     pmatWorldToDevice: Option<&CMatrix<CoordinateSpace::Shape,CoordinateSpace::Device>>
     ) -> HRESULT
 {
@@ -712,10 +712,8 @@ pub fn Setup(&mut self,
 
     pD3DDevice.GetClipRect(&mut self.m_rcClipBounds);
 
-    //IFC!(pShape.ConvertToGpPath(&mut *Rc::get_mut(self.m_prgPoints.as_mut().unwrap()).unwrap().borrow_mut(), &mut *Rc::get_mut(self.m_prgTypes.as_mut().unwrap()).unwrap().borrow_mut()));
-
     self.m_matWorldToDevice = matWorldHPCToDeviceIPC;
-    self.m_fillMode = pShape.GetFillMode();
+    self.m_fillMode = fillMode;
 
     //  There's an opportunity for early clipping here
     //
