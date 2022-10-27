@@ -93,6 +93,7 @@ pub struct PathBuilder {
     points: DynArray<POINT>,
     types: DynArray<BYTE>,
     initial_point: Option<MilPoint2F>,
+    current_point: Option<MilPoint2F>,
     in_shape: bool,
     fill_mode: FillMode,
     outside_bounds: Option<CMILSurfaceRect>,
@@ -106,6 +107,7 @@ impl PathBuilder {
             points: Vec::new(),
             types: Vec::new(),
             initial_point: None,
+            current_point: None,
             in_shape: false,
             fill_mode: FillMode::EvenOdd,
             outside_bounds: None,
@@ -114,6 +116,7 @@ impl PathBuilder {
         }
     }
     fn add_point(&mut self, x: f32, y: f32) {
+        self.current_point = Some(MilPoint2F{X: x, Y: y});
         // Transform from pixel corner at 0.0 to pixel center at 0.0. Scale into 28.4 range.
         // Validate that the point before rounding is within expected bounds for the rasterizer.
         let (x, y) = ((x - 0.5) * 16.0, (y - 0.5) * 16.0);
@@ -139,6 +142,7 @@ impl PathBuilder {
     pub fn move_to(&mut self, x: f32, y: f32) {
         self.in_shape = false;
         self.initial_point = Some(MilPoint2F{X: x, Y: y});
+        self.current_point = self.initial_point;
     }
     pub fn curve_to(&mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) {
         let initial_point = match self.initial_point {
@@ -160,13 +164,13 @@ impl PathBuilder {
         // For now we just implement quad_to on top of curve_to.
         // Long term we probably want to support quad curves
         // directly.
-        let c0 = match self.initial_point {
-            Some(initial_point) => initial_point,
+        let c0 = match self.current_point {
+            Some(current_point) => current_point,
             None => MilPoint2F{X:cx, Y:cy}
         };
 
         let c1x = c0.X + (2./3.) * (cx - c0.X);
-        let c1y = c0.Y + (2./3.) * (cx - c0.Y);
+        let c1y = c0.Y + (2./3.) * (cy - c0.Y);
 
         let c2x = x + (2./3.) * (cx - x);
         let c2y = y + (2./3.) * (cy - y);
@@ -648,5 +652,18 @@ mod tests {
         let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x6514e3d79d641f09);
 
+    }
+
+    #[test]
+    fn quad_to() {
+        let mut p = PathBuilder::new();
+        p.move_to(10., 10.0);
+        p.quad_to(30., 10., 30., 30.);
+        p.quad_to(10., 30., 30., 30.);
+        p.quad_to(60., 30., 60., 10.);
+        p.close();
+        let result = p.rasterize_to_tri_list(0, 0, 70, 40);
+        assert_eq!(result.len(), 279);
+        assert_eq!(calculate_hash(&rasterize_to_mask(&result, 70, 40)), 0xbd2eec3cfe9bd30b);
     }
 }
