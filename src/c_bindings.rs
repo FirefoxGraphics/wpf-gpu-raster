@@ -94,7 +94,7 @@ pub struct VertexBuffer {
 }
 
 #[no_mangle]
-pub extern "C" fn wgr_path_rasterize_to_tri_strip(
+pub extern "C" fn wgr_path_rasterize_to_tri_list(
     path: &Path,
     clip_x: i32,
     clip_y: i32,
