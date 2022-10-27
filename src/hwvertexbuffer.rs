@@ -285,19 +285,6 @@ impl CHwVertexBufferBuilder {
 }
 /* 
 /* 
-    //+------------------------------------------------------------------------
-    //
-    //  Member:    GetViewportTop
-    //
-    //  Synopsis:  Returns the top of the viewport last time BeginBuilding
-    //             was called.
-    //
-    //-------------------------------------------------------------------------
-
-    MIL_FORCEINLINE INT GetViewportTop() const
-    {
-        return m_iViewportTop;
-    }
         
     //
     // Currently all CHwVertexBuffer::Builder are supposed to be allocated via
@@ -346,8 +333,6 @@ protected:
 
     CHwPipeline *m_pPipelineNoRef;
     CD3DDeviceLevel1 *m_pDeviceNoRef;
-
-    INT m_iViewportTop;
 
     MilVertexFormat m_mvfIn;         // Vertex fields that are pre-generated
 
@@ -797,8 +782,7 @@ impl<TVertex> CHwTVertexBuffer<TVertex> {
 pub struct CHwTVertexBufferBuilder<TVertex>
 {
     m_pDeviceNoRef: Rc<CD3DDeviceLevel1>,
-    m_iViewportTop: INT,
-     m_mvfIn: MilVertexFormat,         // Vertex fields that are pre-generated
+    m_mvfIn: MilVertexFormat,         // Vertex fields that are pre-generated
 
     #[cfg(debug_assertions)]
     m_mvfDbgOut: MilVertexFormat,     // Output format of the vertex
@@ -1805,7 +1789,6 @@ fn new(pVertexBuffer: Box<CHwTVertexBuffer<TVertex>>, device: Rc<CD3DDeviceLevel
     m_rLastTrapezoidBottomRight: -f32::MAX,
 
     m_fHasFlushed: false,
-    m_iViewportTop: 0,
     //m_map: Default::default(),
     m_rcOutsideBounds: Default::default(),
     m_pDeviceNoRef: device,
@@ -2003,14 +1986,6 @@ pub fn BeginBuilding(&mut self,
 
     self.m_fHasFlushed = false;
     self.m_pVB.Reset(/*self*/);
-
-    // We need to know the viewport that this vertex buffer will be applied
-    // to because a horizontal line through the first row of the viewport
-    // can be incorrectly clipped.
-    // This assumes that we've already set the viewport & we won't use
-    // the vertex buffer with any other viewport.
-    let rcViewport: MilPointAndSizeL = self.m_pDeviceNoRef.GetViewport();
-    self.m_iViewportTop = rcViewport.Y;
 
     RRETURN!(hr);
 }
