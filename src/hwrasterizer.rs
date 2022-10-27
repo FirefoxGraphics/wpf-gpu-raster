@@ -418,7 +418,6 @@ CCoverageBuffer m_coverageBuffer;
 
 CD3DDeviceLevel1 * m_pDeviceNoRef;*/
     //m_coverageBuffer: CCoverageBuffer,
-    m_pDeviceNoRef: Option<Rc<CD3DDeviceLevel1>>
 }
 
 //-------------------------------------------------------------------------
@@ -467,7 +466,6 @@ impl CHwRasterizer {
     pub fn new() -> Self
     {
         Self {
-        m_pDeviceNoRef:  None,
         m_fillMode: MilFillMode::Alternate,
         m_rcClipBounds: Default::default(),
         m_pIGeometrySink: None,
@@ -675,9 +673,6 @@ pub fn Setup(&mut self,
     self.m_rcClipBounds = Default::default();
     self.m_pIGeometrySink = None;
 
-
-
-    self.m_pDeviceNoRef = Some(pD3DDevice.clone());
 
     //
     // PS#856364-2003/07/01-ashrafm  Remove pixel center fixup
