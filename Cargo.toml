@@ -9,7 +9,6 @@ debug = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cfor = "1.1.0"
 typed-arena-nomut = "0.1.0"
 
 [dev-dependencies]

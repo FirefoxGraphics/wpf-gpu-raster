@@ -14,7 +14,6 @@ use crate::nullable_ref::Ref;
 use crate::real::CFloatFPU;
 //use crate::types::PathPointType::*;
 use crate::types::*;
-use cfor::cfor;
 use typed_arena_nomut::Arena;
 
 const S_OK: HRESULT = 0;
@@ -926,8 +925,8 @@ fn InitializeEdges(
             if ((yStart & 15) != 0) {
                 // Advance to the next integer y coordinate
 
-                cfor!(let mut i = 16 - (yStart & 15); i != 0; i -= 1;
-                {
+                let mut i = 16 - (yStart & 15);
+                while i != 0 {
                     xStart += dX;
                     error += errorUp;
                     if (error >= 0)
@@ -935,7 +934,8 @@ fn InitializeEdges(
                         error -= dN;
                         xStart += 1;
                     }
-                })
+                    i -= 1;
+                }
             }
 
             if ((xStart & 15) != 0) {

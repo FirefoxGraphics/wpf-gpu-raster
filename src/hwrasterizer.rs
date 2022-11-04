@@ -16,7 +16,6 @@ use crate::aarasterizer::*;
 use crate::geometry_sink::IGeometrySink;
 use crate::helpers::Int32x32To64;
 use crate::types::*;
-use cfor::cfor;
 use typed_arena_nomut::Arena;
 
 //-----------------------------------------------------------------------------
@@ -898,8 +897,8 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
     if (self.m_fillMode == MilFillMode::Winding)
     {
-        cfor!{let mut pEdge = pEdgeCurrent; pEdge.EndY != INT::MIN; pEdge = pEdge.Next.get().Next.get();
-        {
+        let mut pEdge = pEdgeCurrent;
+        while pEdge.EndY != INT::MIN {
             // The active edge list always has an even number of edges which we actually
             // assert in ASSERTACTIVELIST.
 
@@ -913,7 +912,9 @@ fn ComputeTrapezoidsEndScan(&mut self,
                 nSubpixelYBottomTrapezoids = nSubpixelYCurrent;
                 return nSubpixelYBottomTrapezoids;
             }
-        }}
+
+            pEdge = pEdge.Next.get().Next.get();
+        }
     }
 
     //
@@ -927,8 +928,8 @@ fn ComputeTrapezoidsEndScan(&mut self,
 
     nSubpixelYBottomTrapezoids = nSubpixelYNextInactive;
 
-    cfor!{let mut pEdge = pEdgeCurrent; pEdge.EndY != INT::MIN; pEdge = pEdge.Next.get(); 
-    {
+    let mut pEdge = pEdgeCurrent;
+    while pEdge.EndY != INT::MIN {
         //
         // Step 1
         //
@@ -1127,7 +1128,9 @@ fn ComputeTrapezoidsEndScan(&mut self,
                 }
             }
         }
-    }};
+
+        pEdge = pEdge.Next.get();
+    }
 
     //
     // Snap to pixel boundary
