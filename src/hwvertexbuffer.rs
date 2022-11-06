@@ -171,21 +171,6 @@ public:
         __in_ecount(1) const CHwConstantColorSource *pConstCS
         ) PURE;
 
-    //+------------------------------------------------------------------------
-    //
-    //  Member:    SetTextureMapping
-    //
-    //  Synopsis:  Use this method to specify how to generate texture
-    //             coordinates at the given destination index
-    //
-    //-------------------------------------------------------------------------
-
-    virtual HRESULT SetTextureMapping(
-        DWORD dwDestinationCoordIndex,
-        DWORD dwSourceCoordIndex,
-        __in_ecount(1) const MILMatrix3x2 *pmatDevicePointToTextureUV
-        ) PURE;
-
 
     //+------------------------------------------------------------------------
     //
@@ -704,12 +689,6 @@ public:
         __in_ecount(1) const CHwConstantColorSource *pConstCS
         );
 
-    HRESULT SetTextureMapping(
-        DWORD dwDestinationCoordIndex,
-        DWORD dwSourceCoordIndex,
-        __in_ecount(1) const MILMatrix3x2 *pmatDevicePointToTextureUV
-        );
-
     void PointToUV(
         __in_ecount(1) const MilPoint2F &ptIn,
         __bound UINT uIndex,
@@ -814,12 +793,6 @@ public:
 
     void SetTransformMapping(
         __in_ecount(1) const MILMatrix3x2 &mat2DTransform
-        );
-
-    HRESULT SetTextureMapping(
-        DWORD dwDestinationCoordIndex,
-        DWORD dwSourceCoordIndex,
-        __in_ecount(1) const MILMatrix3x2 *pmatDevicePointToTextureUV
         );
 
     HRESULT FinalizeMappings(
@@ -1652,46 +1625,6 @@ GetMILVFAttributeOfTextureCoord(
 
 //+----------------------------------------------------------------------------
 //
-//  Member:    CHwTVertexMappings<TVertex>::SetTextureMapping
-//
-//  Synopsis:  Remember the the transformation for generating texture
-//             coordinates at the given index
-//
-
-template <class TVertex>
-HRESULT
-CHwTVertexMappings<TVertex>::SetTextureMapping(
-    DWORD dwDestinationCoordIndex,
-    DWORD dwSourceCoordIndex,
-    __in_ecount(1) const MILMatrix3x2 *pmatDevicePointToTextureUV
-    )
-{
-    HRESULT hr = S_OK;
-
-    // The array size is not accessible to this class.  The assert is left here
-    // for anyone debugging this code to check.
-//    Assert(dwDestinationCoordIndex < ARRAY_SIZE(m_rgmatPointToUV));
-
-    // Compute single bit of UV location from coord index
-    MilVertexFormat mvfLocation =
-        GetMILVFAttributeOfTextureCoord(dwDestinationCoordIndex);
-
-    Assert(!(m_mvfMapped & mvfLocation));
-
-    // Only mappings using matrix transforms from the position is supported
-    if (dwSourceCoordIndex != MAXDWORD) IFC(E_NOTIMPL);
-    if (!pmatDevicePointToTextureUV) IFC(E_NOTIMPL);
-
-    m_rgmatPointToUV[dwDestinationCoordIndex] = *pmatDevicePointToTextureUV;
-    
-    m_mvfMapped |= mvfLocation;     // Remember this field has been mapped
-
-Cleanup:
-    RRETURN(hr);
-}
-
-//+----------------------------------------------------------------------------
-//
 //  Member:    CHwTVertexMappings<TVertex>::PointToUV
 //
 //  Synopsis:  Helper function to populate the texture coordinates at the given
@@ -1860,26 +1793,6 @@ CHwTVertexBuffer<TVertex>::Builder::SetConstantMapping(
 
     IFC(m_map.SetConstantMapping(mvfaLocation, pConstCS));
 
-Cleanup:
-    RRETURN(hr);
-}
-
-template <class TVertex>
-HRESULT
-CHwTVertexBuffer<TVertex>::Builder::SetTextureMapping(
-    DWORD dwDestinationCoordIndex,
-    DWORD dwSourceCoordIndex,
-    __in_ecount(1) const MILMatrix3x2 *pmatDevicePointToTextureUV
-    )
-{
-    HRESULT hr = S_OK;
-
-    IFC(m_map.SetTextureMapping(
-        dwDestinationCoordIndex,
-        dwSourceCoordIndex,
-        pmatDevicePointToTextureUV
-        ));
-    
 Cleanup:
     RRETURN(hr);
 }
@@ -3258,24 +3171,4 @@ fn FlushInternal(&mut self,
     RRETURN!(hr);
 }
 
-
-
-/* 
-// 4505: unreferenced local function has been removed
-//   These will show up as errors in very bizarre way including references to
-//   shared\dynarray.h and the particular methods in
-//   CHwTVertexBuffer<TVertex>::Builder, but what you won't find is a reference
-//   to this line of explicit instantiation.  Proper placing of this was done
-//   by trial and error :)
-#pragma warning(disable : 4505)
-
-// Explicit template instantiation
-template class CHwTVertexBuffer<CD3DVertexXYZDUV2>;
-template class CHwTVertexBuffer<CD3DVertexXYZDUV8>;
-
-
-
-
-
-*/
 }
