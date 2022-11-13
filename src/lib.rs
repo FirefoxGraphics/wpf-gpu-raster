@@ -275,16 +275,11 @@ pub fn rasterize_to_tri_list(
     //let mvfaAALocation  = MILVFAttrNone;
     const HWPIPELINE_ANTIALIAS_LOCATION: MilVertexFormatAttribute = MilVertexFormatAttribute::MILVFAttrDiffuse;
     let mvfaAALocation = HWPIPELINE_ANTIALIAS_LOCATION;
-    struct CHwPipeline {
-        m_pDevice: Rc<CD3DDeviceLevel1>
-    }
-    let pipeline =  CHwPipeline { m_pDevice: device.clone() };
-    let m_pHP = &pipeline;
 
     rasterizer.GetPerVertexDataType(&mut m_mvfIn);
     let vertexBuilder= Rc::new(RefCell::new(CHwVertexBufferBuilder::Create(m_mvfIn, m_mvfIn | m_mvfGenerated,
         mvfaAALocation,
-        m_pHP.m_pDevice.clone())));
+        device.clone())));
 
     let outside_bounds = if need_outside {
         Some(CMILSurfaceRect {
