@@ -415,8 +415,8 @@ mod tests {
         p.curve_to(40., 10., 40., 10., 40., 40.);
         p.close();
         let result = p.rasterize_to_tri_list(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x8dbc4d23f9bba38d);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0xa92aae8dba7b8cd4);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x8dbc4d23f9bba38d);
     }
 
     #[test]
@@ -430,8 +430,8 @@ mod tests {
 
         let result = p.rasterize_to_tri_list(0, 0, 100, 100);
         assert_eq!(result.len(), 21);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xf90cb6afaadfb559);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0xfa200c3bae144952);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xf90cb6afaadfb559);
     }
 
     #[test]
@@ -445,8 +445,8 @@ mod tests {
 
         let result = p.rasterize_to_tri_list(0, 0, 400, 400);
         assert_eq!(result.len(), 429);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x52d52992e249587a);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x5e82d98fdb47a796);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x52d52992e249587a);
     }
 
 
@@ -459,8 +459,8 @@ mod tests {
         p.line_to(40., 40.);
         p.close();
         let result = p.rasterize_to_tri_list(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xf10babef5c619d19);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x49ecc769e1d4ec01);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xf10babef5c619d19);
     }
 
     #[test]
@@ -490,14 +490,14 @@ mod tests {
         p.close();
         p.set_outside_bounds(Some((0, 0, 50, 50)), false);
         let result = p.rasterize_to_tri_list(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0x805fd385e47e6f2);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x59403ddbb7e1d09a);
+        assert_eq!(dbg!(calculate_hash(&result)), 0x805fd385e47e6f2);
 
         // ensure that adjusting the outside bounds changes the results
         p.set_outside_bounds(Some((5, 5, 50, 50)), false);
         let result = p.rasterize_to_tri_list(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xcec2ed688999c966);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x59403ddbb7e1d09a);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xcec2ed688999c966);
     }
 
     #[test]
@@ -510,8 +510,8 @@ mod tests {
         p.close();
         p.set_outside_bounds(Some((0, 0, 50, 50)), true);
         let result = p.rasterize_to_tri_list(0, 0, 100, 100);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xaf76b42a5244d1ec);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x49ecc769e1d4ec01);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xaf76b42a5244d1ec);
     }
 
     #[test]
@@ -524,8 +524,8 @@ mod tests {
         p.close();
         p.set_outside_bounds(Some((0, 0, 50, 50)), false);
         let result = p.rasterize_to_tri_list(0, 0, 50, 50);
-        assert_eq!(dbg!(calculate_hash(&result)), 0xbd42b934ab52be39);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 100, 100)), 0x3d2a08f5d0bac999);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xbd42b934ab52be39);
     }
 
     #[test]
