@@ -96,6 +96,7 @@ pub struct PathBuilder {
     outside_bounds: Option<CMILSurfaceRect>,
     need_inside: bool,
     valid_range: bool,
+    rasterization_truncates: bool,
 }
 
 impl PathBuilder {
@@ -110,6 +111,7 @@ impl PathBuilder {
             outside_bounds: None,
             need_inside: true,
             valid_range: true,
+            rasterization_truncates: false,
         }
     }
     fn add_point(&mut self, x: f32, y: f32) {
@@ -199,6 +201,12 @@ impl PathBuilder {
         self.need_inside = need_inside;
     }
 
+    /// Set this to true if post vertex shader coordinates are converted to fixed point
+    /// via truncation. This has been observed with OpenGL on AMD GPUs on macOS. 
+    pub fn set_rasterization_truncates(&mut self, rasterization_truncates: bool) {
+        self.rasterization_truncates = rasterization_truncates;
+    }
+
     /// Note: trapezoidal areas won't necessarily be clipped to the clip rect
     pub fn rasterize_to_tri_list(&self, clip_x: i32, clip_y: i32, clip_width: i32, clip_height: i32) -> Box<[OutputVertex]> {
         if !self.valid_range {
@@ -214,7 +222,7 @@ impl PathBuilder {
         } else {
             (clip_x, clip_y, clip_width, clip_height, false)
         };
-        rasterize_to_tri_list(self.fill_mode, &self.types, &self.points, x, y, width, height, self.need_inside, need_outside, None)
+        rasterize_to_tri_list(self.fill_mode, &self.types, &self.points, x, y, width, height, self.need_inside, need_outside, self.rasterization_truncates, None)
             .flush_output()
     }
 
@@ -247,6 +255,7 @@ pub fn rasterize_to_tri_list<'a>(
     clip_height: i32,
     need_inside: bool,
     need_outside: bool,
+    rasterization_truncates: bool,
     output_buffer: Option<&'a mut [OutputVertex]>,
 ) -> CHwVertexBuffer<'a> {
     let clipRect = MilPointAndSizeL {
@@ -255,6 +264,7 @@ pub fn rasterize_to_tri_list<'a>(
         Width: clip_width,
         Height: clip_height,
     };
+
     let mil_fill_mode = match fill_mode {
         FillMode::EvenOdd => MilFillMode::Alternate,
         FillMode::Winding => MilFillMode::Winding,
@@ -277,7 +287,7 @@ pub fn rasterize_to_tri_list<'a>(
         None
     };
 
-    let mut vertexBuffer = CHwVertexBuffer::new(output_buffer);
+    let mut vertexBuffer = CHwVertexBuffer::new(rasterization_truncates, output_buffer);
     {
         let mut vertexBuilder = CHwVertexBufferBuilder::Create(
             m_mvfIn, m_mvfIn | m_mvfGenerated, mvfaAALocation, &mut vertexBuffer);
