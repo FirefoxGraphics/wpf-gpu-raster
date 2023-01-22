@@ -647,7 +647,7 @@ impl<'z, TVertex: Default> CHwTVertexBuffer<'z, TVertex> {
         CHwTVertexBuffer::<TVertex> {
             subpixel_bias: if rasterization_truncates {
                 // 1/512 is 0.5 of a subpixel when using 8 bits of subpixel precision.
-                -1./512.
+                1./512.
             } else {
                 0.
             },
