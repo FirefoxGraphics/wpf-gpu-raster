@@ -676,4 +676,17 @@ mod tests {
         assert_eq!(result.len(), 279);
         assert_eq!(calculate_hash(&rasterize_to_mask(&result, 70, 40)), 0xbd2eec3cfe9bd30b);
     }
+
+    #[test]
+    fn close_after_move_to() {
+        let mut p = PathBuilder::new();
+        p.move_to(0., 0.);
+        p.line_to(0., 10.);
+        p.line_to(10., 10.);
+        p.move_to(10., 0.);
+        p.close();
+        let result = p.rasterize_to_tri_list(0, 0, 20, 20);
+        assert_eq!(result.len(), 27);
+        assert_eq!(dbg!(calculate_hash(&result)), 0xecfdf5bdfa25a1dd);
+    }
 }
