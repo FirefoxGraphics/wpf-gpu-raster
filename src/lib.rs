@@ -177,6 +177,16 @@ impl PathBuilder {
         self.curve_to(c1x, c1y, c2x, c2y, x, y);
     }
     pub fn close(&mut self) {
+        if !self.in_shape {
+            match self.initial_point {
+                Some(initial_point) => {
+                    self.types.push(PathPointTypeStart);
+                    self.add_point(initial_point.X, initial_point.Y);
+                    self.in_shape = true;
+                }
+                None => return,
+            }
+        }
         if let Some(last) = self.types.last_mut() {
             *last |= PathPointTypeCloseSubpath;
         }
