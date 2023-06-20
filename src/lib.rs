@@ -186,8 +186,9 @@ impl PathBuilder {
           self.in_shape = false;
         }
         // Close must install a new initial point that is the same as the
-        // initial point of just-closed sub-path. Thus, just leave the initial
-        // point unchanged.
+        // initial point of the just-closed sub-path. Thus, just leave the
+        // initial point unchanged.
+        self.current_point = self.initial_point;
     }
     pub fn set_fill_mode(&mut self, fill_mode: FillMode) {
         self.fill_mode = fill_mode;
