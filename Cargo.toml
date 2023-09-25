@@ -3,6 +3,7 @@ name = "wpf-gpu-raster"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+include = ["src/**/*", "LICENSE", "README.md"]
 
 [profile.release]
 debug = true
